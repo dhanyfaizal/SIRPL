@@ -1,0 +1,198 @@
+import { createContext, useContext, useEffect, useState } from 'react'
+import { supabase, isMock } from '../lib/supabase'
+import { dbProfiles } from '../lib/db'
+
+const AuthContext = createContext(null)
+export const useAuth = () => useContext(AuthContext)
+
+export default function AuthProvider({ children }) {
+  const [user, setUser] = useState(null)
+  const [profile, setProfile] = useState(null)
+  const [role, setRole] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  // Inisialisasi Auth
+  useEffect(() => {
+    // 1. Cek apakah ada sesi mock aktif di LocalStorage
+    const mockSession = localStorage.getItem('si_rpl_mock_session')
+    if (mockSession) {
+      try {
+        const sessionObj = JSON.parse(mockSession)
+        setUser(sessionObj.user)
+        setProfile(sessionObj.profile)
+        setRole(sessionObj.profile.role)
+        setLoading(false)
+        return
+      } catch (e) {
+        console.error('Failed to parse mock session:', e)
+      }
+    }
+
+    if (isMock) {
+      setLoading(false)
+      return
+    }
+
+    // 2. Jika bukan mock, gunakan Supabase Auth asli
+    let active = true
+
+    async function initializeAuth() {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (session?.user && active) {
+          setUser(session.user)
+          await syncProfile(session.user)
+        }
+      } catch (err) {
+        console.error('Error during auth initialization:', err)
+      } finally {
+        if (active) setLoading(false)
+      }
+    }
+
+    initializeAuth()
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (_event, session) => {
+        if (session?.user) {
+          setUser(session.user)
+          await syncProfile(session.user)
+        } else {
+          setUser(null)
+          setProfile(null)
+          setRole(null)
+        }
+      }
+    )
+
+    return () => {
+      active = false
+      subscription.unsubscribe()
+    }
+  }, [])
+
+  // Sinkronisasi profil Supabase dengan tabel profiles
+  async function syncProfile(authUser) {
+    if (!authUser) return
+    const meta = authUser.user_metadata ?? {}
+    const nama = meta.full_name || meta.name || authUser.email?.split('@')[0] || 'Pengguna'
+    
+    // Default role untuk user pertama bisa calon_mhs, tapi kita bisa update di dashboard jika perlu
+    const { data, error } = await dbProfiles.getOrCreateProfile(
+      authUser.id,
+      authUser.email,
+      nama,
+      'calon_mhs'
+    )
+
+    if (!error && data) {
+      setProfile(data)
+      setRole(data.role)
+    }
+  }
+
+  // ── Simulasi Login (Mock Sign-In) ─────────────────────────────
+  async function signInMock(selectedRole, fullName) {
+    setLoading(true)
+    const email = `${selectedRole}@stikomyos.ac.id`
+    const mockUser = {
+      id: `mock-uid-${selectedRole}`,
+      email,
+      user_metadata: { full_name: fullName }
+    }
+
+    // Buat profil mock di database pembantu
+    const { data: mockProfile } = await dbProfiles.getOrCreateProfile(
+      mockUser.id,
+      mockUser.email,
+      fullName,
+      selectedRole
+    )
+
+    // Pastikan role tersinkronisasi jika user diubah
+    if (mockProfile.role !== selectedRole) {
+      await dbProfiles.updateRole(mockUser.id, selectedRole)
+      mockProfile.role = selectedRole
+    }
+
+    setUser(mockUser)
+    setProfile(mockProfile)
+    setRole(selectedRole)
+    
+    localStorage.setItem('si_rpl_mock_session', JSON.stringify({ user: mockUser, profile: mockProfile }))
+    setLoading(false)
+  }
+
+  // ── Google Sign In (Supabase) ─────────────────────────────────
+  async function signInWithGoogle() {
+    if (isMock) {
+      alert('Aplikasi sedang berjalan dalam MODE MOCK. Gunakan Simulasi Login Peran.')
+      return
+    }
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
+    })
+    if (error) throw error
+  }
+
+  // ── Keluar (Sign Out) ─────────────────────────────────────────
+  async function signOut() {
+    setLoading(true)
+    localStorage.removeItem('si_rpl_mock_session')
+    
+    if (!isMock) {
+      try {
+        await supabase.auth.signOut()
+      } catch (err) {
+        console.error('Error during supabase.auth.signOut:', err)
+      }
+    }
+
+    setUser(null)
+    setProfile(null)
+    setRole(null)
+    setLoading(false)
+  }
+
+  // Mengubah role secara runtime (Context Switcher untuk pengujian)
+  async function switchMockRole(newRole) {
+    if (!user) return
+    setLoading(true)
+    const updatedProfile = { ...profile, role: newRole }
+    
+    if (isMock) {
+      const list = JSON.parse(localStorage.getItem('si_rpl_profiles') || '[]')
+      const idx = list.findIndex(x => x.id === user.id)
+      if (idx !== -1) {
+        list[idx].role = newRole
+        localStorage.setItem('si_rpl_profiles', JSON.stringify(list))
+      }
+    } else {
+      await dbProfiles.updateRole(user.id, newRole)
+    }
+
+    setProfile(updatedProfile)
+    setRole(newRole)
+    localStorage.setItem('si_rpl_mock_session', JSON.stringify({ user, profile: updatedProfile }))
+    setLoading(false)
+  }
+
+  return (
+    <AuthContext.Provider value={{
+      user,
+      profile,
+      role,
+      loading,
+      signInMock,
+      signInWithGoogle,
+      signOut,
+      switchMockRole,
+      isMock
+    }}>
+      {children}
+    </AuthContext.Provider>
+  )
+}
