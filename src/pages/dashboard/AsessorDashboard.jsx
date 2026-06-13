@@ -44,7 +44,8 @@ export default function AsessorDashboard() {
 
   useEffect(() => {
     if (selectedItem) {
-      loadCurriculum(selectedItem.prodi_pilihan_id)
+      const pId = selectedItem.prodi_pilihan_id || selectedItem.prodi?.id
+      loadCurriculum(pId)
       loadRecognitionTable(selectedItem.id)
     }
   }, [selectedItem])

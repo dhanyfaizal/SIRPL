@@ -441,10 +441,11 @@ export default function KaprodiDashboard() {
   }
 
   useEffect(() => {
-    if (selectedItem?.prodi_pilihan_id) {
-      loadCurriculum(selectedItem.prodi_pilihan_id)
+    const pId = selectedItem?.prodi_pilihan_id || selectedItem?.prodi?.id
+    if (pId) {
+      loadCurriculum(pId)
     }
-  }, [selectedItem?.prodi_pilihan_id])
+  }, [selectedItem])
 
   const [scanEffect, setScanEffect] = useState(null) // 'javascript' | 'ai' | null
 

@@ -26,8 +26,22 @@ export default function AdminDashboard() {
     setLoading(true)
     try {
       const { data } = await dbPengajuan.getAll()
-      // Filter status 'assessed_asessor'
-      setSubmissions((data || []).filter(item => item.status === 'assessed_asessor'))
+      const filtered = (data || []).filter(item => item.status === 'assessed_asessor')
+      
+      // Load penetapan data for each submission to display the actual SKS
+      const enriched = await Promise.all(
+        filtered.map(async (item) => {
+          const { data: penData } = await dbPenetapan.getByPengajuanId(item.id)
+          return {
+            ...item,
+            total_sks_diakui: penData ? penData.total_sks_diakui : 0,
+            total_sks_sisa: penData ? penData.total_sks_sisa : 0,
+            biaya_total: penData ? penData.biaya_total : 0
+          }
+        })
+      )
+      
+      setSubmissions(enriched)
       setSelectedItem(null)
       setMappedCourses([])
       setPotonganBiaya(0)
@@ -91,7 +105,8 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     if (selectedItem) {
-      loadPenetapanInitial(selectedItem.id, selectedItem.prodi_pilihan_id)
+      const pId = selectedItem.prodi_pilihan_id || selectedItem.prodi?.id
+      loadPenetapanInitial(selectedItem.id, pId)
     }
   }, [selectedItem])
 
@@ -186,7 +201,7 @@ export default function AdminDashboard() {
                         <td><strong>{item.profile?.nama_lengkap}</strong></td>
                         <td>{item.profile?.email}</td>
                         <td><span className="badge-pill badge-slate">{item.prodi?.nama}</span></td>
-                        <td><span style={{ fontWeight: 600 }}>{totalSksDiakui} SKS</span> (Simulasi)</td>
+                        <td><span style={{ fontWeight: 600 }}>{item.total_sks_diakui || 0} SKS</span></td>
                         <td>
                           <button
                             onClick={() => setSelectedItem(item)}
