@@ -41,9 +41,7 @@ export default function Sidebar() {
     >
       {/* Logo */}
       <div className="sidebar-logo">
-        <div style={{ width: 28, height: 28, borderRadius: 6, background: 'linear-gradient(135deg, #4f46e5, #7c3aed)', display: 'flex', alignItems: 'center', justify: 'center', color: '#fff', fontWeight: 800, fontSize: 13 }}>
-          SR
-        </div>
+        <img src="/logo-sys.png" alt="STIKOM" className="sidebar-logo-img" onError={e => e.target.style.display='none'} />
         <div>
           <div className="sidebar-logo-brand">SI-RPL</div>
           <div className="sidebar-logo-sub">STIKOM Yos Sudarso</div>

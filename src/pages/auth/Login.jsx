@@ -74,22 +74,12 @@ export default function Login() {
         <div style={{ padding: '40px 32px' }}>
           {/* Logo & Title */}
           <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-            <div style={{
-              width: '54px',
-              height: '54px',
-              borderRadius: '12px',
-              background: 'linear-gradient(135deg, #4f46e5, #7c3aed)',
-              color: '#ffffff',
-              fontSize: '24px',
-              fontWeight: 800,
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginBottom: '16px',
-              boxShadow: '0 4px 12px rgba(79, 70, 229, 0.3)'
-            }}>
-              SR
-            </div>
+            <img src="/logo-sys.png" alt="STIKOM" style={{
+              width: '64px',
+              height: '64px',
+              objectFit: 'contain',
+              margin: '0 auto 16px',
+            }} onError={e => e.target.style.display='none'} />
             <h1 style={{ fontSize: '22px', fontWeight: 800, color: '#0f172a', margin: '0 0 6px 0', letterSpacing: '-0.5px' }}>
               SI-RPL
             </h1>
