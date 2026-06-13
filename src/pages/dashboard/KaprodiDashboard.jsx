@@ -231,7 +231,7 @@ export default function KaprodiDashboard() {
         'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        model: 'gemini/gemini-2.5-flash',
+        model: 'deepseek-v4-flash',
         messages: [
           {
             role: 'system',
