@@ -249,7 +249,7 @@ export const dbPenetapan = {
 
 // ── 6. Profiles ───────────────────────────────────────────────
 export const dbProfiles = {
-  getOrCreateProfile: async (id, fallbackEmail, fallbackName, role = 'calon_mhs') => {
+  getOrCreateProfile: async (id, fallbackEmail, fallbackName, role = 'calon_rpl') => {
     if (isMock) {
       const list = getLocalData('si_rpl_profiles')
       let item = list.find(x => x.id === id)
@@ -259,7 +259,7 @@ export const dbProfiles = {
           email: fallbackEmail,
           nama_lengkap: fallbackName,
           role: role,
-          is_verified: true,
+          is_verified: fallbackEmail === 'danizsheila@gmail.com' ? true : false,
           foto_url: null
         }
         list.push(item)
@@ -276,21 +276,33 @@ export const dbProfiles = {
       id,
       email: fallbackEmail,
       nama_lengkap: fallbackName,
-      role
+      role,
+      is_verified: fallbackEmail === 'danizsheila@gmail.com' ? true : false
     }).select().single()
   },
 
-  updateRole: async (id, role) => {
+  getAll: async () => {
+    if (isMock) {
+      return { data: getLocalData('si_rpl_profiles'), error: null }
+    }
+    return supabase.from('profiles').select('*').order('created_at', { ascending: false })
+  },
+
+  updateUser: async (id, updates) => {
     if (isMock) {
       const list = getLocalData('si_rpl_profiles')
       const idx = list.findIndex(x => x.id === id)
       if (idx !== -1) {
-        list[idx].role = role
+        list[idx] = { ...list[idx], ...updates }
         saveLocalData('si_rpl_profiles', list)
         return { data: list[idx], error: null }
       }
       return { data: null, error: new Error('User tidak ditemukan') }
     }
-    return supabase.from('profiles').update({ role }).eq('id', id).select().single()
+    return supabase.from('profiles').update(updates).eq('id', id).select().single()
+  },
+
+  updateRole: async (id, role) => {
+    return dbProfiles.updateUser(id, { role })
   }
 }

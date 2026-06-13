@@ -9,9 +9,12 @@ import { useSidebar } from './AppLayout'
 const ROLE_META = {
   admin: { label: 'Admin Akademik', color: 'badge-red' },
   asessor: { label: 'Asessor RPL', color: 'badge-indigo' },
-  kaprodi: { label: 'Ka. Prodi', color: 'badge-indigo' },
+  kaprodi_si: { label: 'Ka. Prodi SI', color: 'badge-indigo' },
+  kaprodi_ti: { label: 'Ka. Prodi TI', color: 'badge-indigo' },
+  kaprodi_dkv: { label: 'Ka. Prodi DKV', color: 'badge-indigo' },
+  kaprodi_ka: { label: 'Ka. Prodi KA', color: 'badge-indigo' },
   baak: { label: 'BAAK Officer', color: 'badge-slate' },
-  calon_mhs: { label: 'Pendaftar RPL', color: 'badge-amber' },
+  calon_rpl: { label: 'Pendaftar RPL', color: 'badge-amber' },
 }
 
 function NavItem({ label, icon: Icon, to }) {
@@ -63,7 +66,7 @@ export default function Sidebar() {
         <NavItem label="Dashboard" icon={LayoutDashboard} to="/dashboard" />
 
         {/* Menu Pendaftar */}
-        {role === 'calon_mhs' && (
+        {role === 'calon_rpl' && (
           <>
             <div className="sidebar-section-label">Layanan RPL</div>
             <NavItem label="Ajukan RPL Baru" icon={PlusCircle} to="/pengajuan/baru" />
@@ -79,7 +82,7 @@ export default function Sidebar() {
         )}
 
         {/* Menu Kaprodi */}
-        {role === 'kaprodi' && (
+        {role?.startsWith('kaprodi_') && (
           <>
             <div className="sidebar-section-label">Ekstraksi & Rekognisi</div>
             <NavItem label="Evaluasi Transkrip" icon={Award} to="/dashboard" />
@@ -99,6 +102,8 @@ export default function Sidebar() {
           <>
             <div className="sidebar-section-label">Studi & Keuangan</div>
             <NavItem label="Rencana Studi & Biaya" icon={BookOpen} to="/dashboard" />
+            <div className="sidebar-section-label">Pengaturan Sistem</div>
+            <NavItem label="Manajemen Pengguna" icon={Shield} to="/users" />
           </>
         )}
 

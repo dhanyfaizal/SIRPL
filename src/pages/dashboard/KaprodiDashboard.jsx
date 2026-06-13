@@ -2,8 +2,10 @@ import { useState, useEffect } from 'react'
 import { dbPengajuan, dbMK, dbRekognisi } from '../../lib/db'
 import { Award, Brain, RefreshCw, FileText, CheckCircle, Save, Plus, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { useAuth } from '../../contexts/AuthContext'
 
 export default function KaprodiDashboard() {
+  const { role } = useAuth()
   const [submissions, setSubmissions] = useState([])
   const [selectedItem, setSelectedItem] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -23,7 +25,20 @@ export default function KaprodiDashboard() {
     try {
       const { data } = await dbPengajuan.getAll()
       // Filter yang statusnya 'validated_baak'
-      setSubmissions((data || []).filter(item => item.status === 'validated_baak'))
+      let filtered = (data || []).filter(item => item.status === 'validated_baak')
+      
+      // Filter berdasarkan program studi Ka. Prodi jika perannya spesifik
+      if (role === 'kaprodi_si') {
+        filtered = filtered.filter(item => item.prodi?.kode === 'SI')
+      } else if (role === 'kaprodi_ti') {
+        filtered = filtered.filter(item => item.prodi?.kode === 'IF')
+      } else if (role === 'kaprodi_dkv') {
+        filtered = filtered.filter(item => item.prodi?.kode === 'DKV')
+      } else if (role === 'kaprodi_ka') {
+        filtered = filtered.filter(item => item.prodi?.kode === 'KA')
+      }
+      
+      setSubmissions(filtered)
       setSelectedItem(null)
       setRows([])
       setRecognitionMethod('')
@@ -68,41 +83,162 @@ export default function KaprodiDashboard() {
         setTimeout(() => {
           setOcrProgress('Mencocokkan nama MK dengan Kurikulum Prodi (OBE)...')
           setTimeout(() => {
-            // Generate Mock Extraction Rows
-            const mockRows = [
-              {
-                id: 'row-1',
-                mkAsal: 'Algoritma & Pemrograman I',
-                sksAsal: 3,
-                nilaiAsal: 'A',
-                mkTujuanId: curriculumMK.find(mk => mk.kode_mk === 'MKI201')?.id || '',
-                status: 'diakui'
-              },
-              {
-                id: 'row-2',
-                mkAsal: 'Struktur Data & Algoritma',
-                sksAsal: 3,
-                nilaiAsal: 'B',
-                mkTujuanId: curriculumMK.find(mk => mk.kode_mk === 'MKI202')?.id || '',
-                status: 'diakui'
-              },
-              {
-                id: 'row-3',
-                mkAsal: 'Sistem Manajemen Basis Data',
-                sksAsal: 3,
-                nilaiAsal: 'A',
-                mkTujuanId: curriculumMK.find(mk => mk.kode_mk === 'MKI203')?.id || '',
-                status: 'diakui'
-              },
-              {
-                id: 'row-4',
-                mkAsal: 'Pendidikan Pancasila',
-                sksAsal: 2,
-                nilaiAsal: 'A',
-                mkTujuanId: curriculumMK.find(mk => mk.kode_mk === 'MKU101')?.id || '',
-                status: 'diakui'
-              }
-            ]
+            // Generate Mock Extraction Rows secara dinamis berdasarkan Program Studi
+            const prodiKode = selectedItem.prodi?.kode
+            let mockRows = []
+            
+            if (prodiKode === 'IF') {
+              mockRows = [
+                {
+                  id: 'row-1',
+                  mkAsal: 'Algoritma & Pemrograman I',
+                  sksAsal: 3,
+                  nilaiAsal: 'A',
+                  mkTujuanId: curriculumMK.find(mk => mk.kode_mk === 'MKI201')?.id || '',
+                  status: 'diakui'
+                },
+                {
+                  id: 'row-2',
+                  mkAsal: 'Struktur Data & Algoritma',
+                  sksAsal: 3,
+                  nilaiAsal: 'B',
+                  mkTujuanId: curriculumMK.find(mk => mk.kode_mk === 'MKI202')?.id || '',
+                  status: 'diakui'
+                },
+                {
+                  id: 'row-3',
+                  mkAsal: 'Sistem Manajemen Basis Data',
+                  sksAsal: 3,
+                  nilaiAsal: 'A',
+                  mkTujuanId: curriculumMK.find(mk => mk.kode_mk === 'MKI203')?.id || '',
+                  status: 'diakui'
+                },
+                {
+                  id: 'row-4',
+                  mkAsal: 'Pendidikan Pancasila',
+                  sksAsal: 2,
+                  nilaiAsal: 'A',
+                  mkTujuanId: curriculumMK.find(mk => mk.kode_mk === 'MKU101')?.id || '',
+                  status: 'diakui'
+                }
+              ]
+            } else if (prodiKode === 'SI') {
+              mockRows = [
+                {
+                  id: 'row-1',
+                  mkAsal: 'Pengantar Sistem Informasi',
+                  sksAsal: 3,
+                  nilaiAsal: 'A',
+                  mkTujuanId: curriculumMK.find(mk => mk.kode_mk === 'MKI301')?.id || '',
+                  status: 'diakui'
+                },
+                {
+                  id: 'row-2',
+                  mkAsal: 'Analisis & Perancangan Sistem',
+                  sksAsal: 3,
+                  nilaiAsal: 'B',
+                  mkTujuanId: curriculumMK.find(mk => mk.kode_mk === 'MKI302')?.id || '',
+                  status: 'diakui'
+                },
+                {
+                  id: 'row-3',
+                  mkAsal: 'Pengantar E-Business',
+                  sksAsal: 3,
+                  nilaiAsal: 'A',
+                  mkTujuanId: curriculumMK.find(mk => mk.kode_mk === 'MKI303')?.id || '',
+                  status: 'diakui'
+                },
+                {
+                  id: 'row-4',
+                  mkAsal: 'Pendidikan Pancasila',
+                  sksAsal: 2,
+                  nilaiAsal: 'A',
+                  mkTujuanId: curriculumMK.find(mk => mk.kode_mk === 'MKU101')?.id || '',
+                  status: 'diakui'
+                }
+              ]
+            } else if (prodiKode === 'DKV') {
+              mockRows = [
+                {
+                  id: 'row-1',
+                  mkAsal: 'Dasar Seni Rupa',
+                  sksAsal: 3,
+                  nilaiAsal: 'A',
+                  mkTujuanId: curriculumMK.find(mk => mk.kode_mk === 'MKI401')?.id || '',
+                  status: 'diakui'
+                },
+                {
+                  id: 'row-2',
+                  mkAsal: 'Pengantar Tipografi',
+                  sksAsal: 3,
+                  nilaiAsal: 'A',
+                  mkTujuanId: curriculumMK.find(mk => mk.kode_mk === 'MKI402')?.id || '',
+                  status: 'diakui'
+                },
+                {
+                  id: 'row-3',
+                  mkAsal: 'Desain Grafis Digital',
+                  sksAsal: 4,
+                  nilaiAsal: 'B',
+                  mkTujuanId: curriculumMK.find(mk => mk.kode_mk === 'MKI403')?.id || '',
+                  status: 'diakui'
+                },
+                {
+                  id: 'row-4',
+                  mkAsal: 'Pendidikan Pancasila',
+                  sksAsal: 2,
+                  nilaiAsal: 'A',
+                  mkTujuanId: curriculumMK.find(mk => mk.kode_mk === 'MKU101')?.id || '',
+                  status: 'diakui'
+                }
+              ]
+            } else if (prodiKode === 'KA') {
+              mockRows = [
+                {
+                  id: 'row-1',
+                  mkAsal: 'Pengantar Akuntansi & Keuangan',
+                  sksAsal: 3,
+                  nilaiAsal: 'A',
+                  mkTujuanId: curriculumMK.find(mk => mk.kode_mk === 'MKI501')?.id || '',
+                  status: 'diakui'
+                },
+                {
+                  id: 'row-2',
+                  mkAsal: 'Sistem Informasi Keuangan',
+                  sksAsal: 3,
+                  nilaiAsal: 'B',
+                  mkTujuanId: curriculumMK.find(mk => mk.kode_mk === 'MKI502')?.id || '',
+                  status: 'diakui'
+                },
+                {
+                  id: 'row-3',
+                  mkAsal: 'Dasar-Dasar Perpajakan',
+                  sksAsal: 3,
+                  nilaiAsal: 'A',
+                  mkTujuanId: curriculumMK.find(mk => mk.kode_mk === 'MKI503')?.id || '',
+                  status: 'diakui'
+                },
+                {
+                  id: 'row-4',
+                  mkAsal: 'Pendidikan Pancasila',
+                  sksAsal: 2,
+                  nilaiAsal: 'A',
+                  mkTujuanId: curriculumMK.find(mk => mk.kode_mk === 'MKU101')?.id || '',
+                  status: 'diakui'
+                }
+              ]
+            } else {
+              mockRows = [
+                {
+                  id: 'row-1',
+                  mkAsal: 'Mata Kuliah Umum',
+                  sksAsal: 3,
+                  nilaiAsal: 'B',
+                  mkTujuanId: '',
+                  status: 'diakui'
+                }
+              ]
+            }
             setRows(mockRows)
             setOcrRunning(false)
             setRecognitionMethod('ai')

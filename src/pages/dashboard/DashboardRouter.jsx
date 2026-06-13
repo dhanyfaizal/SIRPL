@@ -17,9 +17,9 @@ export default function DashboardRouter() {
     )
   }
 
-  if (role === 'calon_mhs') return <PendaftarDashboard />
+  if (role === 'calon_rpl') return <PendaftarDashboard />
   if (role === 'baak') return <BaakDashboard />
-  if (role === 'kaprodi') return <KaprodiDashboard />
+  if (role?.startsWith('kaprodi_')) return <KaprodiDashboard />
   if (role === 'asessor') return <AsessorDashboard />
   if (role === 'admin') return <AdminDashboard />
 

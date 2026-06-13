@@ -77,7 +77,7 @@ export default function AuthProvider({ children }) {
     const meta = authUser.user_metadata ?? {}
     const nama = meta.full_name || meta.name || authUser.email?.split('@')[0] || 'Pengguna'
     
-    const userRole = authUser.email === 'danizsheila@gmail.com' ? 'admin' : 'calon_mhs'
+    const userRole = authUser.email === 'danizsheila@gmail.com' ? 'admin' : 'calon_rpl'
 
     let { data, error } = await dbProfiles.getOrCreateProfile(
       authUser.id,
@@ -86,9 +86,9 @@ export default function AuthProvider({ children }) {
       userRole
     )
 
-    // Paksa update ke role admin jika user login adalah danizsheila@gmail.com namun perannya di database masih calon_mhs
-    if (data && authUser.email === 'danizsheila@gmail.com' && data.role !== 'admin') {
-      const { data: updated } = await dbProfiles.updateRole(authUser.id, 'admin')
+    // Paksa update ke role admin jika user login adalah danizsheila@gmail.com namun perannya di database masih calon_rpl atau belum terverifikasi
+    if (data && authUser.email === 'danizsheila@gmail.com' && (data.role !== 'admin' || !data.is_verified)) {
+      const { data: updated } = await dbProfiles.updateUser(authUser.id, { role: 'admin', is_verified: true })
       if (updated) {
         data = updated
       }

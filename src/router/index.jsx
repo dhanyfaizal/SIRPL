@@ -10,13 +10,14 @@ import AuthCallback from '../pages/auth/AuthCallback'
 
 // Dashboard Router
 import DashboardRouter from '../pages/dashboard/DashboardRouter'
+import AdminUsersPage from '../pages/dashboard/AdminUsersPage'
 
 // Print page
 import ReportPrintPage from '../pages/public/ReportPrintPage'
 
 // Protected Route Wrapper
 function ProtectedRoute({ children, allowedRoles }) {
-  const { user, role, loading } = useAuth()
+  const { user, role, profile, loading } = useAuth()
 
   if (loading) {
     return (
@@ -28,6 +29,37 @@ function ProtectedRoute({ children, allowedRoles }) {
   }
 
   if (!user) return <Navigate to="/login" replace />
+
+  // Cek verifikasi pengguna oleh Admin
+  if (profile && profile.is_verified === false) {
+    return (
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh',
+        backgroundColor: '#f1f5f9', padding: '0 16px',
+        fontFamily: "'Inter', system-ui, -apple-system, sans-serif"
+      }}>
+        <div className="card" style={{ width: '100%', maxWidth: 440, padding: 32, textAlign: 'center', borderTop: '4px solid var(--amber-500)' }}>
+          <div style={{ fontSize: 48, marginBottom: 16 }}>⏳</div>
+          <h2 style={{ fontSize: 18, fontWeight: 700, color: '#1e293b', marginBottom: 8 }}>Akun Menunggu Verifikasi</h2>
+          <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.5, marginBottom: 24 }}>
+            Akun Anda (<strong>{profile.email}</strong>) berhasil masuk via SSO, namun memerlukan verifikasi dari Admin sebelum dapat mengakses sistem SI-RPL.
+          </p>
+          <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <p style={{ fontSize: 12, color: '#94a3b8', margin: 0 }}>
+              Silakan hubungi Administrator Akademik untuk menyetujui akun Anda.
+            </p>
+            <button 
+              onClick={() => window.location.reload()} 
+              className="btn btn-primary"
+              style={{ width: '100%', justifyContent: 'center' }}
+            >
+              Periksa Status
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   if (allowedRoles && !allowedRoles.includes(role)) {
     return <Navigate to="/dashboard" replace />
@@ -81,6 +113,9 @@ export default function AppRouter() {
           
           {/* Redirect link dari menu 'Ajukan RPL Baru' */}
           <Route path="/pengajuan/baru" element={<Navigate to="/dashboard" replace />} />
+          
+          {/* Manajemen Pengguna (Admin) */}
+          <Route path="/users" element={<ProtectedRoute allowedRoles={['admin']}><AdminUsersPage /></ProtectedRoute>} />
           
           {/* Profile & Settings */}
           <Route path="/profile" element={<PlaceholderPage title="Profil Saya" />} />
