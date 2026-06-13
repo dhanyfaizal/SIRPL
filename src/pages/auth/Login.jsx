@@ -1,131 +1,173 @@
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
-import toast from 'react-hot-toast'
+
+const ERROR_MESSAGES = {
+  domain_not_allowed: 'Email Anda tidak terdaftar dalam domain institusi yang diizinkan.',
+  callback_failed: 'Gagal menyelesaikan proses login. Silakan coba lagi.',
+  unexpected: 'Terjadi kesalahan tak terduga. Silakan coba lagi.',
+}
+
+function GoogleIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+    </svg>
+  )
+}
+
+function MiniSpinner() {
+  return (
+    <div style={{
+      width: 16, height: 16, borderRadius: '50%',
+      border: '2px solid rgba(255,255,255,.35)',
+      borderTopColor: '#fff',
+      animation: 'spin .7s linear infinite',
+      flexShrink: 0,
+    }} />
+  )
+}
 
 export default function Login() {
-  const { signInMock, signInWithGoogle, isMock } = useAuth()
-  const [mockRole, setMockRole] = useState('calon_mhs')
-  const [mockName, setMockName] = useState('Dr. Hermawan, M.T.')
+  const { signInWithGoogle } = useAuth()
+  const [searchParams] = useSearchParams()
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
 
-  // Auto-name suggestions based on role
-  const handleRoleChange = (e) => {
-    const role = e.target.value
-    setMockRole(role)
-    if (role === 'calon_mhs') setMockName('Budi Setiawan (Pendaftar)')
-    if (role === 'baak') setMockName('Riana Lestari (BAAK Officer)')
-    if (role === 'kaprodi') setMockName('Hendra Wijaya, M.T. (Ka. Prodi IF)')
-    if (role === 'asessor') setMockName('Prof. Antonius (Asessor RPL)')
-    if (role === 'admin') setMockName('Ignatius Adi (Admin Akademik)')
-  }
+  const urlError = searchParams.get('error')
+  const urlEmail = searchParams.get('email')
+  const displayError = error ?? (urlError ? (ERROR_MESSAGES[urlError] ?? 'Terjadi kesalahan.') : null)
+  const errorDetail = urlError === 'domain_not_allowed' && urlEmail
+    ? `Email yang digunakan: ${decodeURIComponent(urlEmail)}`
+    : null
 
-  const handleMockLogin = async (e) => {
-    e.preventDefault()
-    if (!mockName.trim()) {
-      toast.error('Nama lengkap simulasi wajib diisi')
-      return
-    }
-    setLoading(true)
-    try {
-      await signInMock(mockRole, mockName)
-      toast.success(`Berhasil login sebagai ${mockName}`)
-    } catch (err) {
-      console.error(err)
-      toast.error('Gagal melakukan login simulasi')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleGoogleLogin = async () => {
+  async function handleLogin() {
+    setError(null)
     setLoading(true)
     try {
       await signInWithGoogle()
     } catch (err) {
-      console.error(err)
-      toast.error('Gagal login via Google: ' + err.message)
+      setError(err.message || 'Terjadi kesalahan. Silakan coba lagi.')
       setLoading(false)
     }
   }
 
   return (
     <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
-      padding: '20px',
-      fontFamily: "'Inter', sans-serif"
+      position: 'fixed',
+      inset: 0,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      backgroundColor: '#f1f5f9',
+      padding: '0 16px',
+      fontFamily: "'Inter', system-ui, -apple-system, sans-serif",
+      WebkitFontSmoothing: 'antialiased',
+      MozOsxFontSmoothing: 'grayscale',
     }}>
-      <div style={{
-        width: '100%',
-        maxWidth: '440px',
-        background: '#ffffff',
-        borderRadius: '16px',
-        boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
-        overflow: 'hidden',
-        border: '1px solid #e2e8f0'
-      }}>
-        {/* Header Gradient Accent */}
-        <div style={{ height: '5px', background: 'linear-gradient(to right, #4f46e5, #7c3aed)' }} />
+      <div style={{ width: '100%', maxWidth: 384 }}>
 
-        {/* Card Body */}
-        <div style={{ padding: '40px 32px' }}>
-          {/* Logo & Title */}
-          <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-            <img src="/logo-sys.png" alt="STIKOM" style={{
-              width: '64px',
-              height: '64px',
-              objectFit: 'contain',
-              margin: '0 auto 16px',
-            }} onError={e => e.target.style.display='none'} />
-            <h1 style={{ fontSize: '22px', fontWeight: 800, color: '#0f172a', margin: '0 0 6px 0', letterSpacing: '-0.5px' }}>
+        {/* Accent bar atas — identik SIRASYS */}
+        <div style={{
+          height: 4,
+          borderRadius: '8px 8px 0 0',
+          background: 'linear-gradient(to right, #6366f1, #4f46e5, #4338ca)',
+        }} />
+
+        {/* Card */}
+        <div style={{
+          backgroundColor: '#ffffff',
+          border: '1px solid #e2e8f0',
+          borderTop: 'none',
+          borderRadius: '0 0 8px 8px',
+          padding: '36px 32px',
+          boxShadow: '0 1px 3px rgba(0,0,0,.07), 0 1px 2px rgba(0,0,0,.04)',
+        }}>
+
+          {/* Brand */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', marginBottom: 28 }}>
+            <img
+              src="/logo-sys.png"
+              alt="STIKOM Yos Sudarso"
+              style={{ width: 80, height: 80, objectFit: 'contain', marginBottom: 12 }}
+            />
+            <h1 style={{
+              fontSize: 24, fontWeight: 700, color: '#111827',
+              letterSpacing: '-0.3px', margin: 0,
+              fontFamily: "'Inter', system-ui, sans-serif",
+            }}>
               SI-RPL
             </h1>
-            <p style={{ fontSize: '13.5px', color: '#64748b', margin: 0, fontWeight: 500 }}>
-              Sistem Rekognisi Pembelajaran Lampau
+            <p style={{ marginTop: 6, fontSize: 14, lineHeight: 1.5, color: '#6b7280', margin: '6px 0 0' }}>
+              Sistem Informasi Rekognisi Pembelajaran Lampau
+              <br />
+              <span style={{ fontWeight: 600, color: '#374151' }}>STIKOM Yos Sudarso</span>
             </p>
-            <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px' }}>
-              STIKOM Yos Sudarso
-            </span>
           </div>
 
-          {/* Google SSO Button */}
+          {/* Divider */}
+          <div style={{ borderTop: '1px solid #f1f5f9', marginBottom: 24 }} />
+
+          {/* Description */}
+          <p style={{ textAlign: 'center', fontSize: 14, color: '#6b7280', margin: '0 0 20px' }}>
+            Masuk hanya dengan akun institusi resmi Anda.
+          </p>
+
+          {/* Error Alert */}
+          {displayError && (
+            <div style={{
+              display: 'flex', alignItems: 'flex-start', gap: 8,
+              padding: '10px 14px', borderRadius: 6,
+              border: '1px solid #fecaca', backgroundColor: '#fef2f2',
+              fontSize: 13, color: '#991b1b', marginBottom: 16,
+            }}>
+              <svg style={{ marginTop: 1, flexShrink: 0 }} width="14" height="14" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+              <div>
+                <span>{displayError}</span>
+                {errorDetail && <p style={{ marginTop: 4, fontSize: 11, color: '#b91c1c' }}>{errorDetail}</p>}
+              </div>
+            </div>
+          )}
+
+          {/* Login Button — identik SIRASYS */}
           <button
-            onClick={handleGoogleLogin}
+            id="btn-login-google"
+            onClick={handleLogin}
             disabled={loading}
-            className="btn btn-secondary"
             style={{
               width: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '10px',
-              padding: '11px 16px',
-              borderRadius: '8px',
-              fontSize: '13.5px',
-              fontWeight: 600,
-              cursor: 'pointer',
-              border: '1px solid #cbd5e1',
-              background: '#ffffff',
-              color: '#334155',
-              boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-              transition: 'background 0.15s, border-color 0.15s'
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+              padding: '10px 16px', borderRadius: 6, border: 'none',
+              backgroundColor: '#4f46e5',
+              color: '#ffffff', fontSize: 14, fontWeight: 600,
+              cursor: loading ? 'not-allowed' : 'pointer',
+              boxShadow: '0 1px 3px rgba(0,0,0,.12)',
+              transition: 'background-color .15s, box-shadow .15s',
+              opacity: loading ? .7 : 1,
+              fontFamily: "'Inter', system-ui, sans-serif",
             }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#cbd5e1'; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = '#ffffff'; e.currentTarget.style.borderColor = '#cbd5e1'; }}
+            onMouseEnter={e => { if (!loading) { e.currentTarget.style.backgroundColor = '#4338ca'; e.currentTarget.style.boxShadow = '0 4px 8px rgba(67,56,202,.35)' } }}
+            onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#4f46e5'; e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,.12)' }}
           >
-            <svg style={{ width: '18px', height: '18px' }} viewBox="0 0 24 24">
-              <path fill="#EA4335" d="M12 5.04c1.66 0 3.2.57 4.38 1.69l3.27-3.27C17.67 1.51 14.99 1 12 1 7.35 1 3.39 3.65 1.5 7.5l3.85 2.99C6.27 7.02 8.94 5.04 12 5.04z" />
-              <path fill="#4285F4" d="M23.49 12.27c0-.81-.07-1.59-.2-2.34H12v4.51h6.46c-.29 1.48-1.14 2.73-2.4 3.58l3.76 2.91c2.2-2.03 3.67-5.01 3.67-8.66z" />
-              <path fill="#FBBC05" d="M5.35 10.49c-.24-.72-.38-1.49-.38-2.29s.14-1.57.38-2.29L1.5 2.92C.54 4.84 0 7.02 0 9.3s.54 4.46 1.5 6.38l3.85-2.99z" />
-              <path fill="#34A853" d="M12 18.96c3.24 0 5.97-1.07 7.96-2.91l-3.76-2.91c-1.1.74-2.5 1.18-4.2 1.18-3.06 0-5.73-1.98-6.65-5.45L1.5 11.86c1.89 3.85 5.85 6.5 10.5 6.5z" />
-            </svg>
-            Masuk dengan Google Workspace
+            {loading ? <MiniSpinner /> : <GoogleIcon />}
+            <span>{loading ? 'Mengalihkan...' : 'Login dengan Email Institusi'}</span>
           </button>
 
+          {/* Footer note */}
+          <p style={{ marginTop: 24, textAlign: 'center', fontSize: 12, color: '#9ca3af', lineHeight: 1.6, margin: '24px 0 0' }}>
+            Hanya akun dengan domain institusi yang diizinkan.
+            <br />
+            Hubungi admin jika Anda tidak dapat masuk.
+          </p>
         </div>
+
+        {/* Copyright */}
+        <p style={{ marginTop: 16, textAlign: 'center', fontSize: 12, color: '#9ca3af' }}>
+          © {new Date().getFullYear()} STIKOM Yos Sudarso · SI-RPL
+        </p>
       </div>
     </div>
   )
