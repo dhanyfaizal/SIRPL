@@ -385,14 +385,19 @@ export default function ReportPrintPage() {
             </div>
           </div>
 
+          {/* Date Line (above the columns) */}
+          <div style={{ textAlign: 'right', fontSize: '12px', marginBottom: '16px', paddingRight: '50px' }}>
+            Purwokerto, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
+          </div>
+
           {/* Signature Area */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '40px', textAlign: 'center', fontSize: '12px', marginTop: '30px', pageBreakInside: 'avoid' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '40px', textAlign: 'center', fontSize: '12px', pageBreakInside: 'avoid' }}>
             <div>
               <p style={{ margin: '0 0 70px 0', lineHeight: 1.6 }}>Mengetahui,<br /><strong>Wakil Ketua Bidang Akademik</strong></p>
               <p style={{ margin: 0, textDecoration: 'underline', fontWeight: 700 }}>Dr. Adhi Wibowo, S.Kom., M.M., M.T.I.</p>
             </div>
             <div>
-              <p style={{ margin: '0 0 70px 0', lineHeight: 1.6 }}>Purwokerto, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}<br /><strong>Menyetujui, Ketua Sekolah Tinggi</strong></p>
+              <p style={{ margin: '0 0 70px 0', lineHeight: 1.6 }}>Menyetujui,<br /><strong>Ketua Sekolah Tinggi</strong></p>
               <p style={{ margin: 0, textDecoration: 'underline', fontWeight: 700 }}>Romanus Edy Prabowo, S.Si., M.Sc., Ph.D.</p>
             </div>
           </div>
