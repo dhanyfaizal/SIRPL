@@ -67,10 +67,11 @@ export default function ReportPrintPage() {
         @media screen {
           .report-page-container {
             background-color: #f1f5f9;
-            min-height: 100vh;
+            height: 100vh;
             display: flex;
             flex-direction: column;
             font-family: 'Inter', system-ui, sans-serif;
+            overflow: hidden;
           }
           .report-header-sticky {
             position: sticky;
@@ -140,6 +141,10 @@ export default function ReportPrintPage() {
           }
           table {
             page-break-inside: auto !important;
+          }
+          .section-page-break {
+            page-break-before: always !important;
+            break-before: page !important;
           }
           @page {
             margin: 15mm 20mm 15mm 20mm;
@@ -270,7 +275,7 @@ export default function ReportPrintPage() {
           </div>
 
           {/* Section 2: Remaining Courses Path Mapping */}
-          <div style={{ marginBottom: '28px' }}>
+          <div className="section-page-break" style={{ marginBottom: '28px' }}>
             <h4 style={{ fontSize: '13px', fontWeight: 700, textTransform: 'uppercase', borderBottom: '1px solid #cbd5e1', paddingBottom: '4px', marginBottom: '10px', color: '#4f46e5' }}>
               II. Rencana Jalur Kelas Studi Sisa
             </h4>
@@ -339,7 +344,7 @@ export default function ReportPrintPage() {
           </div>
 
           {/* Section 3: Financial Summary */}
-          <div style={{ marginBottom: '40px' }}>
+          <div className="section-page-break" style={{ marginBottom: '40px' }}>
             <h4 style={{ fontSize: '13px', fontWeight: 700, textTransform: 'uppercase', borderBottom: '1px solid #cbd5e1', paddingBottom: '4px', marginBottom: '10px', color: '#4f46e5' }}>
               III. Rincian Biaya Perkuliahan Semester
             </h4>
@@ -381,16 +386,14 @@ export default function ReportPrintPage() {
           </div>
 
           {/* Signature Area */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '40px', textAlign: 'center', fontSize: '12px', marginTop: '30px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '40px', textAlign: 'center', fontSize: '12px', marginTop: '30px', pageBreakInside: 'avoid' }}>
             <div>
-              <p style={{ margin: '0 0 60px 0' }}>Menyetujui,<br /><strong>Kepala Program Studi</strong></p>
-              <p style={{ margin: 0, textDecoration: 'underline', fontWeight: 700 }}>Hendra Wijaya, M.T.</p>
-              <p style={{ margin: 0, color: '#64748b' }}>NIDN. 0620088901</p>
+              <p style={{ margin: '0 0 70px 0', lineHeight: 1.6 }}>Mengetahui,<br /><strong>Wakil Ketua Bidang Akademik</strong></p>
+              <p style={{ margin: 0, textDecoration: 'underline', fontWeight: 700 }}>Dr. Adhi Wibowo, S.Kom., M.M., M.T.I.</p>
             </div>
             <div>
-              <p style={{ margin: '0 0 60px 0' }}>Purwokerto, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}<br /><strong>Admin Akademik</strong></p>
-              <p style={{ margin: 0, textDecoration: 'underline', fontWeight: 700 }}>Ignatius Adi</p>
-              <p style={{ margin: 0, color: '#64748b' }}>NIP. 20128910</p>
+              <p style={{ margin: '0 0 70px 0', lineHeight: 1.6 }}>Purwokerto, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}<br /><strong>Menyetujui, Ketua Sekolah Tinggi</strong></p>
+              <p style={{ margin: 0, textDecoration: 'underline', fontWeight: 700 }}>Romanus Edy Prabowo, S.Si., M.Sc., Ph.D.</p>
             </div>
           </div>
         </div>
