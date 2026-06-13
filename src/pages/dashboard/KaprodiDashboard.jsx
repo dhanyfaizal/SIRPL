@@ -143,7 +143,7 @@ function TranscriptPreview({ fileUrl, profileName, prodiName, height = 420, noBo
 }
 
 // Helper: Extract text from PDF file in Supabase Storage using pdf.js dynamically
-const extractTextFromPdf = async (fileUrl) => {
+const extractTextFromPdf = async (fileUrl, onProgress) => {
   try {
     // 1. Download file from storage as Blob
     const { data, error } = await supabase.storage
@@ -154,6 +154,7 @@ const extractTextFromPdf = async (fileUrl) => {
       throw new Error(error?.message || 'Gagal mengunduh berkas transkrip dari storage')
     }
 
+    if (onProgress) onProgress('Memuat modul PDF...')
     // 2. Load pdf.js script dynamically if not present
     if (!window.pdfjsLib) {
       await new Promise((resolve, reject) => {
@@ -176,46 +177,107 @@ const extractTextFromPdf = async (fileUrl) => {
 
     console.log(`[extractTextFromPdf] Memulai ekstraksi teks dari PDF. Jumlah halaman: ${pdf.numPages}`)
 
-    // 4. Extract text page by page, grouping items by Y-coordinate to preserve lines
+    // Check if the PDF has a selectable text layer
+    let hasTextLayer = false
     for (let i = 1; i <= pdf.numPages; i++) {
       const page = await pdf.getPage(i)
       const textContent = await page.getTextContent()
-      const items = textContent.items
-      console.log(`[extractTextFromPdf] Halaman ${i}: menemukan ${items.length} item teks.`)
-      if (items.length === 0) continue
+      if (textContent.items.length > 0) {
+        hasTextLayer = true
+        break
+      }
+    }
 
-      // Group items by Y coordinate with a tolerance of 5 pixels
-      const linesMap = {}
-      items.forEach(item => {
-        if (!item.str || item.str.trim() === '') return
-        const y = Math.round(item.transform[5])
-        const x = item.transform[4]
-        
-        let foundKey = null
-        for (const existingY of Object.keys(linesMap)) {
-          if (Math.abs(parseFloat(existingY) - y) < 5) {
-            foundKey = existingY
-            break
+    if (hasTextLayer) {
+      if (onProgress) onProgress('Membaca text layer PDF...')
+      // 4. Extract text page by page, grouping items by Y-coordinate to preserve lines
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i)
+        const textContent = await page.getTextContent()
+        const items = textContent.items
+        console.log(`[extractTextFromPdf] Halaman ${i}: menemukan ${items.length} item teks.`)
+        if (items.length === 0) continue
+
+        // Group items by Y coordinate with a tolerance of 5 pixels
+        const linesMap = {}
+        items.forEach(item => {
+          if (!item.str || item.str.trim() === '') return
+          const y = Math.round(item.transform[5])
+          const x = item.transform[4]
+          
+          let foundKey = null
+          for (const existingY of Object.keys(linesMap)) {
+            if (Math.abs(parseFloat(existingY) - y) < 5) {
+              foundKey = existingY
+              break
+            }
           }
+          
+          if (foundKey !== null) {
+            linesMap[foundKey].push({ str: item.str, x })
+          } else {
+            linesMap[y] = [{ str: item.str, x }]
+          }
+        })
+        
+        // Sort lines vertically (descending Y)
+        const sortedY = Object.keys(linesMap).map(Number).sort((a, b) => b - a)
+        
+        const pageLines = sortedY.map(y => {
+          // Sort items on the same line horizontally (ascending X)
+          const lineItems = linesMap[y].sort((a, b) => a.x - b.x)
+          return lineItems.map(item => item.str).join(' ')
+        })
+        
+        fullText += pageLines.join('\n') + '\n'
+      }
+    } else {
+      console.log('[extractTextFromPdf] PDF tidak memiliki text layer. Mengaktifkan OCR Gambar (Tesseract.js)...')
+      if (onProgress) onProgress('Memuat modul OCR Gambar (Tesseract.js)...')
+      
+      // Load Tesseract.js dynamically if not present
+      if (!window.Tesseract) {
+        await new Promise((resolve, reject) => {
+          const script = document.createElement('script')
+          script.src = 'https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.1.1/tesseract.min.js'
+          script.onload = resolve
+          script.onerror = reject
+          document.head.appendChild(script)
+        })
+      }
+
+      let ocrText = ''
+      for (let i = 1; i <= pdf.numPages; i++) {
+        if (onProgress) onProgress(`Halaman ${i}/${pdf.numPages}: Merender gambar...`)
+        const page = await pdf.getPage(i)
+        
+        const viewport = page.getViewport({ scale: 2.0 }) // Scale up for better OCR accuracy
+        const canvas = document.createElement('canvas')
+        const context = canvas.getContext('2d')
+        canvas.height = viewport.height
+        canvas.width = viewport.width
+        
+        await page.render({
+          canvasContext: context,
+          viewport: viewport
+        }).promise
+        
+        if (onProgress) onProgress(`Halaman ${i}/${pdf.numPages}: Mengekstrak tulisan dengan OCR...`)
+        console.log(`[extractTextFromPdf] Menjalankan OCR Gambar untuk halaman ${i}/${pdf.numPages}...`)
+        
+        let pageText = ''
+        try {
+          const { data: { text } } = await window.Tesseract.recognize(canvas, 'ind+eng')
+          pageText = text
+        } catch (ocrErr) {
+          console.warn('Failed OCR with ind+eng, falling back to eng:', ocrErr)
+          const { data: { text } } = await window.Tesseract.recognize(canvas, 'eng')
+          pageText = text
         }
         
-        if (foundKey !== null) {
-          linesMap[foundKey].push({ str: item.str, x })
-        } else {
-          linesMap[y] = [{ str: item.str, x }]
-        }
-      })
-      
-      // Sort lines vertically (descending Y)
-      const sortedY = Object.keys(linesMap).map(Number).sort((a, b) => b - a)
-      
-      const pageLines = sortedY.map(y => {
-        // Sort items on the same line horizontally (ascending X)
-        const lineItems = linesMap[y].sort((a, b) => a.x - b.x)
-        return lineItems.map(item => item.str).join(' ')
-      })
-      
-      fullText += pageLines.join('\n') + '\n'
+        ocrText += pageText + '\n'
+      }
+      fullText = ocrText
     }
 
     return fullText
@@ -415,26 +477,33 @@ export default function KaprodiDashboard() {
           },
           {
             role: 'user',
-            content: `Petakan transkrip berikut ke prodi ${prodiName}. 
+            content: `Anda adalah koordinator akademik SI-RPL STIKOM Yos Sudarso. Tugas Anda adalah memetakan transkrip akademik asal calon mahasiswa ke mata kuliah kurikulum Program Studi ${prodiName}.
             
-            Berikut adalah teks transkrip asal yang berhasil diekstraksi:
+            Berikut adalah teks transkrip asal (hasil pembacaan OCR):
             ---
             ${rawTranscriptText}
             ---
 
-            Kurikulum prodi ini adalah: 
-            ${JSON.stringify(curriculumCourses.map(c => ({ id: c.id, kode: c.kode_mk, nama: c.nama_mk, sks: c.sks })))}. 
+            Daftar Kurikulum resmi Program Studi ${prodiName} yang tersedia:
+            ${JSON.stringify(curriculumCourses.map(c => ({ id: c.id, kode: c.kode_mk, nama: c.nama_mk, sks: c.sks })))}
             
-            Tolong baca transkrip di atas, temukan daftar mata kuliah asal beserta SKS dan nilainya. Kemudian, bandingkan dan petakan ke mata kuliah terdekat yang ada di kurikulum prodi di atas.
+            Tolong lakukan langkah-langkah berikut:
+            1. Analisis teks transkrip di atas secara menyeluruh. Temukan semua baris mata kuliah yang sah (memiliki nama mata kuliah, SKS, dan nilai kelulusan A/B/C/D/E).
+            2. Ekstrak informasi dari setiap mata kuliah asal tersebut:
+               - Nama Mata Kuliah Asal (bersihkan dari nomor urut atau karakter aneh)
+               - Jumlah SKS Asal (biasanya angka 1-6)
+               - Nilai Huruf Asal (A, B, C, D, E, dll.)
+            3. Bandingkan nama mata kuliah asal tersebut dengan daftar kurikulum resmi yang tersedia di atas. Cari mata kuliah yang memiliki nama sama atau mirip (sinonim/ekuivalen secara makna akademik).
+            4. Petakan ke mata kuliah kurikulum tujuan yang paling cocok (masukkan ID mata kuliah kurikulum tersebut ke dalam field "mkTujuanId").
             
-            Respon harus berupa objek JSON dengan format:
+            Respon Anda HARUS berupa objek JSON dengan struktur berikut dan tidak boleh ada teks tambahan di luar JSON:
             {
               "courses": [
                 {
                   "mkAsal": "Nama Mata Kuliah Asal",
                   "sksAsal": 3,
                   "nilaiAsal": "A",
-                  "mkTujuanId": "id_dari_kurikulum_di_atas",
+                  "mkTujuanId": "ID_Mata_Kuliah_Kurikulum_Tujuan_Yang_Cocok",
                   "status": "diakui"
                 }
               ]
@@ -483,7 +552,7 @@ export default function KaprodiDashboard() {
 
       if (!isMock && selectedItem.file_transkrip_url?.includes('/')) {
         setOcrProgress('Mengunduh berkas transkrip dari storage...')
-        const text = await extractTextFromPdf(selectedItem.file_transkrip_url)
+        const text = await extractTextFromPdf(selectedItem.file_transkrip_url, (msg) => setOcrProgress(msg))
         setRawExtractedText(text)
         if (!text || text.trim() === '') {
           toast.error('Berkas PDF kosong atau berupa hasil scan gambar/scanned PDF yang tidak memiliki text layer.', { duration: 6000 })
@@ -551,10 +620,10 @@ export default function KaprodiDashboard() {
         
         if (!isMock && selectedItem.file_transkrip_url?.includes('/')) {
           setOcrProgress('Mengekstrak teks dari berkas PDF transkrip...')
-          text = await extractTextFromPdf(selectedItem.file_transkrip_url)
+          text = await extractTextFromPdf(selectedItem.file_transkrip_url, (msg) => setOcrProgress(msg))
           setRawExtractedText(text)
           if (!text || text.trim() === '') {
-            throw new Error('Berkas PDF tidak memiliki text layer (PDF berupa gambar hasil scan atau korup).')
+            throw new Error('Berkas PDF tidak memiliki text layer (PDF berupa gambar hasil scan). Mengaktifkan fallback lokal.')
           }
         } else {
           // Mock mode text
@@ -575,13 +644,18 @@ export default function KaprodiDashboard() {
         if (results && results.length > 0) {
           const parsedResults = results.map((r, idx) => {
             const matchMK = curriculumMK.find(mk => mk.id === r.mkTujuanId)
+            let similarity = 0
+            if (matchMK) {
+              const { confidence } = findBestMatch(r.mkAsal || 'Mata Kuliah', [matchMK])
+              similarity = confidence
+            }
             return {
               id: `ocr-ai-${idx}-${Date.now()}`,
               mkAsal: r.mkAsal || r.MK_Asal || 'Mata Kuliah',
               sksAsal: parseInt(r.sksAsal || r.SKS_Asal) || 3,
               nilaiAsal: r.nilaiAsal || r.Nilai || 'A',
               recommendedMkId: r.mkTujuanId || r.MK_Tujuan_ID || '',
-              confidence: matchMK ? 100 : 0
+              confidence: similarity
             }
           })
           
@@ -607,13 +681,14 @@ export default function KaprodiDashboard() {
       } catch (err) {
         console.warn('AI OCR API error (menggunakan fallback mesin OCR lokal):', err.message)
         toast.error(err.message, { duration: 6000 })
+        setRawAiResponse(`Gagal memanggil AI: ${err.message}`)
         setOcrProgress('Mengaktifkan pemrosesan pintar lokal (fallback)...')
         
         try {
           const prodiName = selectedItem.prodi?.nama || 'Teknik Informatika'
           let text = ''
           if (!isMock && selectedItem.file_transkrip_url?.includes('/')) {
-            text = await extractTextFromPdf(selectedItem.file_transkrip_url)
+            text = await extractTextFromPdf(selectedItem.file_transkrip_url, (msg) => setOcrProgress(msg))
           } else {
             text = 'Mock text'
           }
