@@ -3,6 +3,78 @@ import { dbPengajuan, dbMK, dbRekognisi } from '../../lib/db'
 import { Award, Brain, RefreshCw, FileText, CheckCircle, Save, Plus, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../contexts/AuthContext'
+import { generateMockDocSrcDoc } from '../../lib/mockDoc'
+
+// Helper: Get realistic list of transcript courses based on selected prodi
+const getOcrExtractedCourses = (prodiName) => {
+  if (prodiName.includes('Informatika') || prodiName.includes('TI') || prodiName.includes('IF')) {
+    return [
+      { nama: 'Algoritma & Pemrograman I', sks: 3, nilai: 'A' },
+      { nama: 'Struktur Data & Algoritma', sks: 3, nilai: 'B' },
+      { nama: 'Sistem Manajemen Basis Data', sks: 3, nilai: 'A' },
+      { nama: 'Pendidikan Pancasila', sks: 2, nilai: 'A' }
+    ]
+  } else if (prodiName.includes('Informasi') || prodiName.includes('SI')) {
+    return [
+      { nama: 'Pengantar Sistem Informasi', sks: 3, nilai: 'A' },
+      { nama: 'Analisis & Perancangan Sistem', sks: 3, nilai: 'B' },
+      { nama: 'Pengantar E-Business', sks: 3, nilai: 'A' },
+      { nama: 'Pendidikan Pancasila', sks: 2, nilai: 'A' }
+    ]
+  } else if (prodiName.includes('Visual') || prodiName.includes('DKV')) {
+    return [
+      { nama: 'Dasar Seni Rupa', sks: 3, nilai: 'A' },
+      { nama: 'Pengantar Tipografi', sks: 3, nilai: 'A' },
+      { nama: 'Desain Grafis Digital', sks: 4, nilai: 'B' },
+      { nama: 'Pendidikan Pancasila', sks: 2, nilai: 'A' }
+    ]
+  } else if (prodiName.includes('Akuntansi') || prodiName.includes('KA')) {
+    return [
+      { nama: 'Pengantar Akuntansi & Keuangan', sks: 3, nilai: 'A' },
+      { nama: 'Sistem Informasi Keuangan', sks: 3, nilai: 'B' },
+      { nama: 'Dasar-Dasar Perpajakan', sks: 3, nilai: 'A' },
+      { nama: 'Pendidikan Pancasila', sks: 2, nilai: 'A' }
+    ]
+  }
+  return [
+    { nama: 'Mata Kuliah Dasar', sks: 3, nilai: 'B' }
+  ]
+}
+
+// Helper: Similarity score between source and curriculum course name
+const findBestMatch = (sourceName, curriculumList) => {
+  if (!curriculumList || curriculumList.length === 0) return { bestMatch: null, confidence: 0 }
+  
+  let bestMatch = null
+  let maxScore = 0
+  
+  const clean = (str) => str.toLowerCase().replace(/[^a-z0-9]/g, ' ')
+  const wordsSource = clean(sourceName).split(/\s+/).filter(Boolean)
+  
+  for (const mk of curriculumList) {
+    const wordsTarget = clean(mk.nama_mk).split(/\s+/).filter(Boolean)
+    
+    // Hitung kemiripan kata kunci
+    let matches = 0
+    for (const w of wordsSource) {
+      if (wordsTarget.includes(w)) {
+        matches += 2
+      } else {
+        const partial = wordsTarget.find(tw => tw.includes(w) || w.includes(tw))
+        if (partial) matches += 1
+      }
+    }
+    
+    const score = matches / (wordsSource.length + wordsTarget.length)
+    if (score > maxScore) {
+      maxScore = score
+      bestMatch = mk
+    }
+  }
+  
+  const confidence = Math.min(100, Math.round(maxScore * 100))
+  return { bestMatch, confidence }
+}
 
 export default function KaprodiDashboard() {
   const { role } = useAuth()
@@ -14,11 +86,13 @@ export default function KaprodiDashboard() {
   // AI OCR Simulation States
   const [ocrRunning, setOcrRunning] = useState(false)
   const [ocrProgress, setOcrProgress] = useState('')
-  const [recognitionMethod, setRecognitionMethod] = useState('') // 'ai' or 'manual'
+  const [recognitionMethod, setRecognitionMethod] = useState('') // 'ai' or 'manual' or 'javascript'
 
   // Recognition Table Rows State
   // Row structure: { id, mkAsal, sksAsal, nilaiAsal, mkTujuanId, status }
   const [rows, setRows] = useState([])
+  const [ocrResults, setOcrResults] = useState([])
+  const [leftTab, setLeftTab] = useState('transcript') // 'transcript' | 'curriculum'
 
   const loadSubmissions = async () => {
     setLoading(true)
@@ -41,6 +115,8 @@ export default function KaprodiDashboard() {
       setSubmissions(filtered)
       setSelectedItem(null)
       setRows([])
+      setOcrResults([])
+      setLeftTab('transcript')
       setRecognitionMethod('')
     } catch (e) {
       console.error(e)
@@ -74,7 +150,7 @@ export default function KaprodiDashboard() {
   const [scanEffect, setScanEffect] = useState(null) // 'javascript' | 'ai' | null
 
   // API Call to Sumopod AI (OpenAI Compatible API)
-  const callSumopodAI = async (prodiName, curriculumCourses) => {
+  const callSumopodAI = async (prodiName, curriculumCourses, extractedCourses) => {
     const apiKey = import.meta.env.VITE_SUMOPOD_API_KEY
     const apiUrl = import.meta.env.VITE_SUMOPOD_API_URL || 'https://ai.sumopod.com/v1'
 
@@ -99,10 +175,7 @@ export default function KaprodiDashboard() {
             role: 'user',
             content: `Petakan transkrip ini ke prodi ${prodiName}. Kurikulum prodi ini adalah: ${JSON.stringify(curriculumCourses.map(c => ({ id: c.id, kode: c.kode_mk, nama: c.nama_mk, sks: c.sks })))}. 
             Tolong petakan mata kuliah berikut dari transkrip asal:
-            1. Pemrograman Dasar (A, 3 SKS)
-            2. Struktur Data & Algoritma (B, 3 SKS)
-            3. Basis Data (A, 3 SKS)
-            4. Kewarganegaraan (A, 2 SKS)
+            ${extractedCourses.map((ec, i) => `${i+1}. ${ec.nama} (${ec.nilai}, ${ec.sks} SKS)`).join('\n')}
             
             Format respon JSON harus berupa ARRAY objek saja:
             [
@@ -136,22 +209,6 @@ export default function KaprodiDashboard() {
     }
   }
 
-  // Helper: Generate dynamic mock rows from curriculum data
-  const generateDynamicMockRows = (prefix = 'js') => {
-    if (!curriculumMK || curriculumMK.length === 0) return []
-    // Take up to 4 random courses from the curriculum as "matched" courses
-    const sample = curriculumMK.slice(0, Math.min(4, curriculumMK.length))
-    const grades = ['A', 'B', 'A', 'B', 'A']
-    return sample.map((mk, idx) => ({
-      id: `row-${prefix}-${idx + 1}-${Date.now()}`,
-      mkAsal: mk.nama_mk.replace(/&/g, '&'), // simulate "source" name similar to target
-      sksAsal: mk.sks,
-      nilaiAsal: grades[idx % grades.length],
-      mkTujuanId: mk.id,
-      status: 'diakui'
-    }))
-  }
-
   // Javascript OCR Simulation (Memindai secara lokal dengan Canvas Scan Effect)
   const runJSOCR = () => {
     setOcrRunning(true)
@@ -161,12 +218,38 @@ export default function KaprodiDashboard() {
     setTimeout(() => {
       setOcrProgress('Membaca kode & nilai mata kuliah asal...')
       setTimeout(() => {
-        const parsedRows = generateDynamicMockRows('js')
-        setRows(parsedRows)
+        const prodiName = selectedItem.prodi?.nama || 'Teknik Informatika'
+        const extracted = getOcrExtractedCourses(prodiName)
+        
+        // Find best match in curriculum for each extracted course
+        const parsedResults = extracted.map((ec, idx) => {
+          const { bestMatch, confidence } = findBestMatch(ec.nama, curriculumMK)
+          return {
+            id: `ocr-${idx}-${Date.now()}`,
+            mkAsal: ec.nama,
+            sksAsal: ec.sks,
+            nilaiAsal: ec.nilai,
+            recommendedMkId: bestMatch ? bestMatch.id : '',
+            confidence: confidence
+          }
+        })
+        
+        setOcrResults(parsedResults)
+        
+        const initialRows = parsedResults.map((pr, idx) => ({
+          id: `row-js-${idx}-${Date.now()}`,
+          mkAsal: pr.mkAsal,
+          sksAsal: pr.sksAsal,
+          nilaiAsal: pr.nilaiAsal,
+          mkTujuanId: pr.recommendedMkId,
+          status: 'diakui'
+        }))
+        
+        setRows(initialRows)
         setOcrRunning(false)
         setScanEffect(null)
         setRecognitionMethod('javascript')
-        toast.success(`Javascript OCR berhasil mengekstrak ${parsedRows.length} mata kuliah dari file transkrip!`)
+        toast.success(`Javascript OCR berhasil mengekstrak ${parsedResults.length} mata kuliah dari file transkrip!`)
       }, 1000)
     }, 1000)
   }
@@ -180,25 +263,41 @@ export default function KaprodiDashboard() {
     setTimeout(async () => {
       setOcrProgress('Mengirim teks transkrip ke Sumopod AI API...')
       
+      const prodiName = selectedItem.prodi?.nama || 'Teknik Informatika'
+      const extracted = getOcrExtractedCourses(prodiName)
+      
       try {
-        const prodiName = selectedItem.prodi?.nama || 'Teknik Informatika'
-        const results = await callSumopodAI(prodiName, curriculumMK)
+        const results = await callSumopodAI(prodiName, curriculumMK, extracted)
         
         if (results && results.length > 0) {
-          const mappedRows = results.map((r, idx) => ({
+          const parsedResults = results.map((r, idx) => {
+            const matchMK = curriculumMK.find(mk => mk.id === r.mkTujuanId)
+            return {
+              id: `ocr-ai-${idx}-${Date.now()}`,
+              mkAsal: r.mkAsal || r.MK_Asal || 'Mata Kuliah',
+              sksAsal: parseInt(r.sksAsal || r.SKS_Asal) || 3,
+              nilaiAsal: r.nilaiAsal || r.Nilai || 'A',
+              recommendedMkId: r.mkTujuanId || r.MK_Tujuan_ID || '',
+              confidence: matchMK ? 100 : 0
+            }
+          })
+          
+          setOcrResults(parsedResults)
+          
+          const initialRows = parsedResults.map((pr, idx) => ({
             id: `row-ai-${idx}-${Date.now()}`,
-            mkAsal: r.mkAsal || r.MK_Asal || 'Mata Kuliah',
-            sksAsal: parseInt(r.sksAsal || r.SKS_Asal) || 3,
-            nilaiAsal: r.nilaiAsal || r.Nilai || 'A',
-            mkTujuanId: r.mkTujuanId || r.MK_Tujuan_ID || '',
-            status: r.status || r.Status || 'diakui'
+            mkAsal: pr.mkAsal,
+            sksAsal: pr.sksAsal,
+            nilaiAsal: pr.nilaiAsal,
+            mkTujuanId: pr.recommendedMkId,
+            status: 'diakui'
           }))
           
-          setRows(mappedRows)
+          setRows(initialRows)
           setOcrRunning(false)
           setScanEffect(null)
           setRecognitionMethod('ai')
-          toast.success(`AI OCR berhasil memetakan ${mappedRows.length} mata kuliah secara otomatis!`)
+          toast.success(`AI OCR berhasil memetakan ${parsedResults.length} mata kuliah secara otomatis!`)
         } else {
           throw new Error('Hasil AI kosong atau format tidak valid')
         }
@@ -207,12 +306,34 @@ export default function KaprodiDashboard() {
         setOcrProgress('Mengaktifkan pemrosesan pintar lokal (fallback)...')
         
         setTimeout(() => {
-          const mockRows = generateDynamicMockRows('ai-fallback')
+          const parsedResults = extracted.map((ec, idx) => {
+            const { bestMatch, confidence } = findBestMatch(ec.nama, curriculumMK)
+            return {
+              id: `ocr-ai-fallback-${idx}-${Date.now()}`,
+              mkAsal: ec.nama,
+              sksAsal: ec.sks,
+              nilaiAsal: ec.nilai,
+              recommendedMkId: bestMatch ? bestMatch.id : '',
+              confidence: confidence
+            }
+          })
+          
+          setOcrResults(parsedResults)
+          
+          const mockRows = parsedResults.map((pr, idx) => ({
+            id: `row-ai-fallback-${idx}-${Date.now()}`,
+            mkAsal: pr.mkAsal,
+            sksAsal: pr.sksAsal,
+            nilaiAsal: pr.nilaiAsal,
+            mkTujuanId: pr.recommendedMkId,
+            status: 'diakui'
+          }))
+          
           setRows(mockRows)
           setOcrRunning(false)
           setScanEffect(null)
           setRecognitionMethod('ai')
-          toast.success(`AI/OCR berhasil mengekstrak ${mockRows.length} mata kuliah (fallback lokal)!`)
+          toast.success(`AI/OCR berhasil mengekstrak ${mockRows.length} mata kuliah dengan rekomendasi pintar!`)
         }, 1500)
       }
     }, 1000)
@@ -223,6 +344,74 @@ export default function KaprodiDashboard() {
     setRows([
       { id: 'row-manual-1', mkAsal: '', sksAsal: 0, nilaiAsal: '', mkTujuanId: '', status: 'diakui' }
     ])
+  }
+
+  const handleCancel = () => {
+    setSelectedItem(null)
+    setRows([])
+    setOcrResults([])
+    setLeftTab('transcript')
+    setRecognitionMethod('')
+  }
+
+  const addCurriculumToMapping = (mk) => {
+    const exists = rows.find(r => r.mkTujuanId === mk.id)
+    if (exists) {
+      toast.error(`Mata kuliah ${mk.nama_mk} sudah ada di tabel pemetaan!`)
+      return
+    }
+    
+    setRows([
+      ...rows,
+      {
+        id: `row-manual-curr-${Date.now()}`,
+        mkAsal: '',
+        sksAsal: mk.sks,
+        nilaiAsal: 'A',
+        mkTujuanId: mk.id,
+        status: 'diakui'
+      }
+    ])
+    toast.success(`Mata kuliah ${mk.nama_mk} ditambahkan. Silakan isi mata kuliah asal.`)
+  }
+
+  const addOcrResultToMapping = (ocrItem) => {
+    const existsIndex = rows.findIndex(r => r.mkAsal.toLowerCase() === ocrItem.mkAsal.toLowerCase())
+    
+    const newRow = {
+      id: `row-ocr-map-${Date.now()}`,
+      mkAsal: ocrItem.mkAsal,
+      sksAsal: ocrItem.sksAsal,
+      nilaiAsal: ocrItem.nilaiAsal,
+      mkTujuanId: ocrItem.recommendedMkId,
+      status: 'diakui'
+    }
+    
+    if (existsIndex !== -1) {
+      const updatedRows = [...rows]
+      updatedRows[existsIndex] = newRow
+      setRows(updatedRows)
+      toast.success(`Pemetaan untuk "${ocrItem.mkAsal}" diperbarui.`)
+    } else {
+      setRows([...rows, newRow])
+      toast.success(`"${ocrItem.mkAsal}" ditambahkan ke pemetaan.`)
+    }
+  }
+
+  const addAllOcrRecommendations = () => {
+    if (ocrResults.length === 0) return
+    
+    const newRows = ocrResults.map((pr, idx) => ({
+      id: `row-all-ocr-${idx}-${Date.now()}`,
+      mkAsal: pr.mkAsal,
+      sksAsal: pr.sksAsal,
+      nilaiAsal: pr.nilaiAsal,
+      mkTujuanId: pr.recommendedMkId,
+      status: 'diakui'
+    }))
+    
+    setRows(newRows)
+    toast.success(`Semua ${newRows.length} rekomendasi hasil OCR dimasukkan ke tabel pemetaan!`)
   }
 
   // Row Manipulation Helpers
@@ -378,7 +567,7 @@ export default function KaprodiDashboard() {
                 <p style={{ fontSize: 12.5, color: 'var(--gray-600)', margin: 0 }}>Prodi Tujuan: {selectedItem.prodi?.nama}</p>
               </div>
               <div style={{ display: 'flex', gap: 10 }}>
-                <button onClick={() => setSelectedItem(null)} className="btn btn-secondary btn-sm">Batal</button>
+                <button onClick={handleCancel} className="btn btn-secondary btn-sm">Batal</button>
               </div>
             </div>
           </div>
@@ -535,131 +724,305 @@ export default function KaprodiDashboard() {
 
           {/* Recognition Working Grid (Side-by-side editing panel) */}
           {recognitionMethod && (
-            <div style={{ display: 'grid', gridTemplateColumns: '400px 1fr', gap: 20 }}>
-              {/* Left Column: Transcript Document View */}
-              <div className="card">
-                <div className="card-header">
-                  <h3 style={{ fontSize: 13, fontWeight: 700 }}>Dokumen Transkrip Asal</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: '420px 1fr', gap: 20, alignItems: 'start' }}>
+              {/* Left Column: Transcript Document & Curriculum Tabs */}
+              <div className="card" style={{ height: 'fit-content' }}>
+                <div className="card-header" style={{ padding: '8px 12px', display: 'flex', gap: 8, background: '#f8fafc', borderBottom: '1px solid var(--gray-200)' }}>
+                  <button
+                    onClick={() => setLeftTab('transcript')}
+                    className="btn btn-sm"
+                    style={{
+                      flex: 1,
+                      fontWeight: 700,
+                      background: leftTab === 'transcript' ? 'var(--indigo-600)' : 'transparent',
+                      color: leftTab === 'transcript' ? '#fff' : 'var(--gray-600)',
+                      border: leftTab === 'transcript' ? '1px solid var(--indigo-600)' : '1px solid transparent',
+                    }}
+                  >
+                    📄 Transkrip Asal
+                  </button>
+                  <button
+                    onClick={() => setLeftTab('curriculum')}
+                    className="btn btn-sm"
+                    style={{
+                      flex: 1,
+                      fontWeight: 700,
+                      background: leftTab === 'curriculum' ? 'var(--indigo-600)' : 'transparent',
+                      color: leftTab === 'curriculum' ? '#fff' : 'var(--gray-600)',
+                      border: leftTab === 'curriculum' ? '1px solid var(--indigo-600)' : '1px solid transparent',
+                    }}
+                  >
+                    📚 Kurikulum Prodi
+                  </button>
                 </div>
                 <div className="card-body" style={{ padding: 12 }}>
-                  <div style={{ border: '1px solid var(--gray-200)', borderRadius: 8, overflow: 'hidden', height: 480 }}>
-                    <iframe 
-                      title="Document Transcript Working Preview"
-                      srcDoc={generateMockDocSrcDoc(
-                        'transkrip', 
-                        selectedItem.file_transkrip_url,
-                        selectedItem.profile?.nama_lengkap || 'Calon Mahasiswa',
-                        selectedItem.prodi?.nama || '-'
-                      )}
-                      style={{ width: '100%', height: '100%', border: 'none' }}
-                    />
-                  </div>
+                  {leftTab === 'transcript' ? (
+                    <div style={{ border: '1px solid var(--gray-200)', borderRadius: 8, overflow: 'hidden', height: 480 }}>
+                      <iframe 
+                        title="Document Transcript Working Preview"
+                        srcDoc={generateMockDocSrcDoc(
+                          'transkrip', 
+                          selectedItem.file_transkrip_url,
+                          selectedItem.profile?.nama_lengkap || 'Calon Mahasiswa',
+                          selectedItem.prodi?.nama || '-'
+                        )}
+                        style={{ width: '100%', height: '100%', border: 'none' }}
+                      />
+                    </div>
+                  ) : (
+                    <div style={{ maxHeight: 480, overflowY: 'auto' }}>
+                      <h4 style={{ fontSize: 12, fontWeight: 700, marginBottom: 10, color: 'var(--gray-700)' }}>Daftar Kurikulum {selectedItem.prodi?.nama}</h4>
+                      <div className="table-wrap">
+                        <table style={{ minWidth: 'auto', width: '100%' }}>
+                          <thead>
+                            <tr>
+                              <th style={{ padding: '6px 8px', fontSize: 11 }}>Kode/MK</th>
+                              <th style={{ padding: '6px 8px', fontSize: 11, width: 60 }}>SKS</th>
+                              <th style={{ padding: '6px 8px', fontSize: 11, width: 50 }}>Aksi</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {curriculumMK.map(mk => (
+                              <tr key={mk.id}>
+                                <td style={{ padding: '6px 8px', fontSize: 11.5 }}>
+                                  <strong>{mk.kode_mk}</strong><br />
+                                  <span style={{ color: 'var(--gray-600)' }}>{mk.nama_mk}</span>
+                                </td>
+                                <td style={{ padding: '6px 8px', fontSize: 11.5, textAlign: 'center' }}>
+                                  {mk.sks} SKS
+                                </td>
+                                <td style={{ padding: '6px 8px', textAlign: 'center' }}>
+                                  <button
+                                    onClick={() => addCurriculumToMapping(mk)}
+                                    className="btn btn-secondary"
+                                    style={{
+                                      padding: '2px 6px',
+                                      fontSize: 11,
+                                      background: '#ecfdf5',
+                                      color: '#047857',
+                                      borderColor: '#a7f3d0'
+                                    }}
+                                    title="Tambahkan ke Pemetaan"
+                                  >
+                                    + Map
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 
-              {/* Right Column: Table of Recognition Courses */}
-              <div className="card">
-                <div className="card-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <h3 style={{ fontSize: 14, fontWeight: 700 }}>Tabel Pemetaan Rekognisi Mata Kuliah</h3>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button onClick={addRow} className="btn btn-secondary btn-sm" style={{ gap: 4 }}>
-                      <Plus size={14} /> Tambah Pemetaan
-                    </button>
-                    <button onClick={handleSubmitToAsessor} className="btn btn-primary btn-sm" style={{ gap: 4 }}>
-                      <CheckCircle size={14} /> Selesaikan Pemetaan
-                    </button>
+              {/* Right Column: OCR Results (if any) & Table of Recognition Courses */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                
+                {/* OCR results and AI Recommendations panel (if Javascript or AI OCR selected) */}
+                {ocrResults.length > 0 && (
+                  <div className="card" style={{ borderColor: 'var(--emerald-200)', background: '#fafdfb' }}>
+                    <div className="card-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid var(--emerald-100)' }}>
+                      <div>
+                        <h3 style={{ fontSize: 13, fontWeight: 700, color: '#047857', display: 'flex', alignItems: 'center', gap: 6 }}>
+                          ✨ Hasil Ekstraksi OCR & Rekomendasi AI
+                        </h3>
+                        <p style={{ margin: 0, fontSize: 11, color: '#065f46' }}>
+                          Mata kuliah hasil scan transkrip disandingkan dengan rekomendasi kurikulum terdekat
+                        </p>
+                      </div>
+                      <button
+                        onClick={addAllOcrRecommendations}
+                        className="btn"
+                        style={{
+                          padding: '6px 12px',
+                          fontSize: 11.5,
+                          background: '#047857',
+                          color: '#fff',
+                          border: 'none',
+                          fontWeight: 700,
+                          borderRadius: 6
+                        }}
+                      >
+                        ⚡ Tambahkan Semua Hasil OCR
+                      </button>
+                    </div>
+                    <div className="card-body" style={{ padding: '12px 16px' }}>
+                      <div className="table-wrap">
+                        <table style={{ background: '#fff' }}>
+                          <thead>
+                            <tr>
+                              <th style={{ padding: '8px 10px', fontSize: 11.5, background: '#f0fdf4' }}>Mata Kuliah Asal (Transkrip)</th>
+                              <th style={{ padding: '8px 10px', fontSize: 11.5, background: '#f0fdf4', width: 80, textAlign: 'center' }}>SKS/Nilai</th>
+                              <th style={{ padding: '8px 10px', fontSize: 11.5, background: '#f0fdf4' }}>Rekomendasi AI / Kemiripan</th>
+                              <th style={{ padding: '8px 10px', fontSize: 11.5, background: '#f0fdf4', width: 90, textAlign: 'center' }}>Aksi</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {ocrResults.map(ocrItem => {
+                              const recommendedMk = curriculumMK.find(mk => mk.id === ocrItem.recommendedMkId)
+                              // Check if currently mapped in rows
+                              const isMapped = rows.some(r => r.mkAsal.toLowerCase() === ocrItem.mkAsal.toLowerCase() && r.mkTujuanId === ocrItem.recommendedMkId)
+                              
+                              return (
+                                <tr key={ocrItem.id} style={{ opacity: isMapped ? 0.75 : 1 }}>
+                                  <td style={{ padding: '8px 10px', fontSize: 12 }}>
+                                    <strong>{ocrItem.mkAsal}</strong>
+                                  </td>
+                                  <td style={{ padding: '8px 10px', fontSize: 12, textAlign: 'center' }}>
+                                    {ocrItem.sksAsal} SKS / <strong style={{ color: 'var(--indigo-600)' }}>{ocrItem.nilaiAsal}</strong>
+                                  </td>
+                                  <td style={{ padding: '8px 10px', fontSize: 12 }}>
+                                    {recommendedMk ? (
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                                        <span style={{ fontWeight: 600, color: 'var(--gray-800)' }}>{recommendedMk.kode_mk} - {recommendedMk.nama_mk}</span>
+                                        <span style={{ fontSize: 10.5, display: 'inline-flex', width: 'fit-content', padding: '1px 5px', borderRadius: 4, background: ocrItem.confidence > 75 ? '#d1fae5' : '#fef3c7', color: ocrItem.confidence > 75 ? '#065f46' : '#92400e', fontWeight: 700 }}>
+                                          Match: {ocrItem.confidence}%
+                                        </span>
+                                      </div>
+                                    ) : (
+                                      <span style={{ color: 'var(--gray-400)', fontStyle: 'italic' }}>Tidak ada kecocokan dekat</span>
+                                    )}
+                                  </td>
+                                  <td style={{ padding: '8px 10px', textAlign: 'center' }}>
+                                    {isMapped ? (
+                                      <span style={{ fontSize: 11.5, color: '#047857', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                                        ✓ Mapped
+                                      </span>
+                                    ) : (
+                                      <button
+                                        onClick={() => addOcrResultToMapping(ocrItem)}
+                                        className="btn btn-secondary"
+                                        style={{
+                                          padding: '4px 8px',
+                                          fontSize: 11,
+                                          background: 'var(--indigo-50)',
+                                          color: 'var(--indigo-700)',
+                                          borderColor: 'var(--indigo-200)'
+                                        }}
+                                      >
+                                        Map & Tambah
+                                      </button>
+                                    )}
+                                  </td>
+                                </tr>
+                              )
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
                   </div>
-                </div>
-                <div className="card-body" style={{ padding: 0 }}>
-                  <div className="table-wrap">
-                    <table>
-                      <thead>
-                        <tr>
-                          <th style={{ background: '#f8fafc', color: 'var(--indigo-700)', fontWeight: 800, borderBottom: '2px solid var(--indigo-100)', width: '35%' }}>Mata Kuliah Asal (Transkrip)</th>
-                          <th style={{ background: '#f8fafc', color: 'var(--indigo-700)', fontWeight: 800, borderBottom: '2px solid var(--indigo-100)', width: '10%' }}>SKS Asal</th>
-                          <th style={{ background: '#f8fafc', color: 'var(--indigo-700)', fontWeight: 800, borderBottom: '2px solid var(--indigo-100)', width: '10%' }}>Nilai</th>
-                          <th style={{ background: '#f8fafc', color: 'var(--indigo-700)', fontWeight: 800, borderBottom: '2px solid var(--indigo-100)', width: '35%' }}>Disandingkan ke MK Kurikulum</th>
-                          <th style={{ background: '#f8fafc', color: 'var(--indigo-700)', fontWeight: 800, borderBottom: '2px solid var(--indigo-100)', width: '10%' }}>Aksi</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {rows.map(row => (
-                          <tr key={row.id}>
-                            {/* MK Asal */}
-                            <td>
-                              <input
-                                type="text"
-                                value={row.mkAsal}
-                                onChange={(e) => updateRow(row.id, 'mkAsal', e.target.value)}
-                                placeholder="cth: Dasar Pemrograman I"
-                                className="input"
-                                style={{ padding: '6px 10px' }}
-                              />
-                            </td>
+                )}
 
-                            {/* SKS Asal */}
-                            <td>
-                              <input
-                                type="number"
-                                value={row.sksAsal || ''}
-                                onChange={(e) => updateRow(row.id, 'sksAsal', e.target.value)}
-                                placeholder="cth: 3"
-                                className="input"
-                                style={{ padding: '6px 10px' }}
-                              />
-                            </td>
-
-                            {/* Nilai Asal */}
-                            <td>
-                              <input
-                                type="text"
-                                value={row.nilaiAsal}
-                                onChange={(e) => updateRow(row.id, 'nilaiAsal', e.target.value.toUpperCase())}
-                                placeholder="cth: A"
-                                className="input"
-                                style={{ padding: '6px 10px' }}
-                              />
-                            </td>
-
-                            {/* Target MK Kurikulum */}
-                            <td>
-                              <select
-                                value={row.mkTujuanId}
-                                onChange={(e) => updateRow(row.id, 'mkTujuanId', e.target.value)}
-                                style={{
-                                  width: '100%',
-                                  padding: '6px 10px',
-                                  borderRadius: '6px',
-                                  border: '1px solid var(--gray-200)',
-                                  background: 'var(--surface)',
-                                  fontSize: '13px',
-                                  outline: 'none'
-                                }}
-                              >
-                                <option value="">-- Pilih MK Kurikulum --</option>
-                                {curriculumMK.map(mk => (
-                                  <option key={mk.id} value={mk.id}>
-                                    {mk.kode_mk} - {mk.nama_mk} ({mk.sks} SKS, {mk.jenis.toUpperCase()})
-                                  </option>
-                                ))}
-                              </select>
-                            </td>
-
-                            {/* Aksi Hapus */}
-                            <td>
-                              <button
-                                onClick={() => deleteRow(row.id)}
-                                className="btn btn-ghost btn-icon"
-                                style={{ color: 'var(--danger)' }}
-                                title="Hapus baris"
-                              >
-                                <Trash2 size={16} />
-                              </button>
-                            </td>
+                {/* Final Recognition Mapping Table */}
+                <div className="card">
+                  <div className="card-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div>
+                      <h3 style={{ fontSize: 14, fontWeight: 700 }}>Tabel Pemetaan Rekognisi Mata Kuliah</h3>
+                      <p style={{ margin: 0, fontSize: 11.5, color: 'var(--gray-500)' }}>Penyandingan akhir untuk diserahkan ke Asessor RPL</p>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button onClick={addRow} className="btn btn-secondary btn-sm" style={{ gap: 4 }}>
+                        <Plus size={14} /> Tambah Pemetaan
+                      </button>
+                      <button onClick={handleSubmitToAsessor} className="btn btn-primary btn-sm" style={{ gap: 4 }}>
+                        <CheckCircle size={14} /> Selesaikan Pemetaan
+                      </button>
+                    </div>
+                  </div>
+                  <div className="card-body" style={{ padding: 0 }}>
+                    <div className="table-wrap">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th style={{ background: '#f8fafc', color: 'var(--indigo-700)', fontWeight: 800, borderBottom: '2px solid var(--indigo-100)', width: '35%' }}>Mata Kuliah Asal (Transkrip)</th>
+                            <th style={{ background: '#f8fafc', color: 'var(--indigo-700)', fontWeight: 800, borderBottom: '2px solid var(--indigo-100)', width: '10%' }}>SKS Asal</th>
+                            <th style={{ background: '#f8fafc', color: 'var(--indigo-700)', fontWeight: 800, borderBottom: '2px solid var(--indigo-100)', width: '10%' }}>Nilai</th>
+                            <th style={{ background: '#f8fafc', color: 'var(--indigo-700)', fontWeight: 800, borderBottom: '2px solid var(--indigo-100)', width: '35%' }}>Disandingkan ke MK Kurikulum</th>
+                            <th style={{ background: '#f8fafc', color: 'var(--indigo-700)', fontWeight: 800, borderBottom: '2px solid var(--indigo-100)', width: '10%' }}>Aksi</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody>
+                          {rows.map(row => (
+                            <tr key={row.id}>
+                              {/* MK Asal */}
+                              <td>
+                                <input
+                                  type="text"
+                                  value={row.mkAsal}
+                                  onChange={(e) => updateRow(row.id, 'mkAsal', e.target.value)}
+                                  placeholder="cth: Dasar Pemrograman I"
+                                  className="input"
+                                  style={{ padding: '6px 10px' }}
+                                />
+                              </td>
+
+                              {/* SKS Asal */}
+                              <td>
+                                <input
+                                  type="number"
+                                  value={row.sksAsal || ''}
+                                  onChange={(e) => updateRow(row.id, 'sksAsal', e.target.value)}
+                                  placeholder="cth: 3"
+                                  className="input"
+                                  style={{ padding: '6px 10px' }}
+                                />
+                              </td>
+
+                              {/* Nilai Asal */}
+                              <td>
+                                <input
+                                  type="text"
+                                  value={row.nilaiAsal}
+                                  onChange={(e) => updateRow(row.id, 'nilaiAsal', e.target.value.toUpperCase())}
+                                  placeholder="cth: A"
+                                  className="input"
+                                  style={{ padding: '6px 10px' }}
+                                />
+                              </td>
+
+                              {/* Target MK Kurikulum */}
+                              <td>
+                                <select
+                                  value={row.mkTujuanId}
+                                  onChange={(e) => updateRow(row.id, 'mkTujuanId', e.target.value)}
+                                  style={{
+                                    width: '100%',
+                                    padding: '6px 10px',
+                                    borderRadius: '6px',
+                                    border: '1px solid var(--gray-200)',
+                                    background: 'var(--surface)',
+                                    fontSize: '13px',
+                                    outline: 'none'
+                                  }}
+                                >
+                                  <option value="">-- Pilih MK Kurikulum --</option>
+                                  {curriculumMK.map(mk => (
+                                    <option key={mk.id} value={mk.id}>
+                                      {mk.kode_mk} - {mk.nama_mk} ({mk.sks} SKS, {mk.jenis.toUpperCase()})
+                                    </option>
+                                  ))}
+                                </select>
+                              </td>
+
+                              {/* Aksi Hapus */}
+                              <td>
+                                <button
+                                  onClick={() => deleteRow(row.id)}
+                                  className="btn btn-ghost btn-icon"
+                                  style={{ color: 'var(--danger)' }}
+                                  title="Hapus baris"
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 </div>
               </div>
