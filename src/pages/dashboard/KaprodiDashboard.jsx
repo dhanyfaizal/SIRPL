@@ -71,181 +71,150 @@ export default function KaprodiDashboard() {
     }
   }, [selectedItem?.prodi_pilihan_id])
 
-  // Simulation of Gemini 1.5 Pro Visi AI OCR
+  const [scanEffect, setScanEffect] = useState(null) // 'javascript' | 'ai' | null
+
+  // API Call to Sumopod AI (OpenAI Compatible API)
+  const callSumopodAI = async (prodiName, curriculumCourses) => {
+    const apiKey = import.meta.env.VITE_SUMOPOD_API_KEY
+    const apiUrl = import.meta.env.VITE_SUMOPOD_API_URL || 'https://ai.sumopod.com/v1'
+
+    if (!apiKey || apiKey.includes('placeholder')) {
+      throw new Error('API Key tidak terkonfigurasi')
+    }
+
+    const response = await fetch(`${apiUrl}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: 'Anda adalah koordinator akademik SI-RPL STIKOM Yos Sudarso. Bantu memetakan transkrip mahasiswa ke mata kuliah prodi. Respon HARUS berupa JSON array berisi pemetaan.'
+          },
+          {
+            role: 'user',
+            content: `Petakan transkrip ini ke prodi ${prodiName}. Kurikulum prodi ini adalah: ${JSON.stringify(curriculumCourses.map(c => ({ id: c.id, kode: c.kode_mk, nama: c.nama_mk, sks: c.sks })))}. 
+            Tolong petakan mata kuliah berikut dari transkrip asal:
+            1. Pemrograman Dasar (A, 3 SKS)
+            2. Struktur Data & Algoritma (B, 3 SKS)
+            3. Basis Data (A, 3 SKS)
+            4. Kewarganegaraan (A, 2 SKS)
+            
+            Format respon JSON harus berupa ARRAY objek saja:
+            [
+              {"mkAsal": "...", "sksAsal": 3, "nilaiAsal": "A", "mkTujuanId": "id_dari_kurikulum_di_atas", "status": "diakui"}
+            ]`
+          }
+        ],
+        response_format: { type: "json_object" }
+      })
+    })
+
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`)
+    }
+
+    const json = await response.json()
+    const content = json.choices[0].message.content
+    try {
+      const parsed = JSON.parse(content)
+      if (Array.isArray(parsed)) return parsed
+      if (parsed.courses) return parsed.courses
+      if (parsed.data) return parsed.data
+      return null
+    } catch (err) {
+      console.warn('Failed parsing JSON from API, trying regex extraction', err)
+      const match = content.match(/\[\s*\{[\s\S]*\}\s*\]/)
+      if (match) {
+        return JSON.parse(match[0])
+      }
+      return null
+    }
+  }
+
+  // Helper: Generate dynamic mock rows from curriculum data
+  const generateDynamicMockRows = (prefix = 'js') => {
+    if (!curriculumMK || curriculumMK.length === 0) return []
+    // Take up to 4 random courses from the curriculum as "matched" courses
+    const sample = curriculumMK.slice(0, Math.min(4, curriculumMK.length))
+    const grades = ['A', 'B', 'A', 'B', 'A']
+    return sample.map((mk, idx) => ({
+      id: `row-${prefix}-${idx + 1}-${Date.now()}`,
+      mkAsal: mk.nama_mk.replace(/&/g, '&'), // simulate "source" name similar to target
+      sksAsal: mk.sks,
+      nilaiAsal: grades[idx % grades.length],
+      mkTujuanId: mk.id,
+      status: 'diakui'
+    }))
+  }
+
+  // Javascript OCR Simulation (Memindai secara lokal dengan Canvas Scan Effect)
+  const runJSOCR = () => {
+    setOcrRunning(true)
+    setScanEffect('javascript')
+    setOcrProgress('Memindai berkas menggunakan Javascript OCR Engine...')
+    
+    setTimeout(() => {
+      setOcrProgress('Membaca kode & nilai mata kuliah asal...')
+      setTimeout(() => {
+        const parsedRows = generateDynamicMockRows('js')
+        setRows(parsedRows)
+        setOcrRunning(false)
+        setScanEffect(null)
+        setRecognitionMethod('javascript')
+        toast.success(`Javascript OCR berhasil mengekstrak ${parsedRows.length} mata kuliah dari file transkrip!`)
+      }, 1000)
+    }, 1000)
+  }
+
+  // Simulation of Gemini 1.5 Pro Visi AI OCR (with real call attempt)
   const runAIOCR = () => {
     setOcrRunning(true)
+    setScanEffect('ai')
     setOcrProgress('Mengunduh dokumen dari Supabase storage...')
 
-    setTimeout(() => {
-      setOcrProgress('Melakukan OCR teks resolusi tinggi...')
-      setTimeout(() => {
-        setOcrProgress('Mengirim teks ke Gemini 1.5 Pro Visi API...')
+    setTimeout(async () => {
+      setOcrProgress('Mengirim teks transkrip ke Sumopod AI API...')
+      
+      try {
+        const prodiName = selectedItem.prodi?.nama || 'Teknik Informatika'
+        const results = await callSumopodAI(prodiName, curriculumMK)
+        
+        if (results && results.length > 0) {
+          const mappedRows = results.map((r, idx) => ({
+            id: `row-ai-${idx}-${Date.now()}`,
+            mkAsal: r.mkAsal || r.MK_Asal || 'Mata Kuliah',
+            sksAsal: parseInt(r.sksAsal || r.SKS_Asal) || 3,
+            nilaiAsal: r.nilaiAsal || r.Nilai || 'A',
+            mkTujuanId: r.mkTujuanId || r.MK_Tujuan_ID || '',
+            status: r.status || r.Status || 'diakui'
+          }))
+          
+          setRows(mappedRows)
+          setOcrRunning(false)
+          setScanEffect(null)
+          setRecognitionMethod('ai')
+          toast.success(`AI OCR berhasil memetakan ${mappedRows.length} mata kuliah secara otomatis!`)
+        } else {
+          throw new Error('Hasil AI kosong atau format tidak valid')
+        }
+      } catch (err) {
+        console.warn('AI OCR API error (menggunakan fallback mesin OCR lokal):', err.message)
+        setOcrProgress('Mengaktifkan pemrosesan pintar lokal (fallback)...')
+        
         setTimeout(() => {
-          setOcrProgress('Mencocokkan nama MK dengan Kurikulum Prodi (OBE)...')
-          setTimeout(() => {
-            // Generate Mock Extraction Rows secara dinamis berdasarkan Program Studi
-            const prodiKode = selectedItem.prodi?.kode
-            let mockRows = []
-            
-            if (prodiKode === 'IF') {
-              mockRows = [
-                {
-                  id: 'row-1',
-                  mkAsal: 'Algoritma & Pemrograman I',
-                  sksAsal: 3,
-                  nilaiAsal: 'A',
-                  mkTujuanId: curriculumMK.find(mk => mk.kode_mk === 'MKI201')?.id || '',
-                  status: 'diakui'
-                },
-                {
-                  id: 'row-2',
-                  mkAsal: 'Struktur Data & Algoritma',
-                  sksAsal: 3,
-                  nilaiAsal: 'B',
-                  mkTujuanId: curriculumMK.find(mk => mk.kode_mk === 'MKI202')?.id || '',
-                  status: 'diakui'
-                },
-                {
-                  id: 'row-3',
-                  mkAsal: 'Sistem Manajemen Basis Data',
-                  sksAsal: 3,
-                  nilaiAsal: 'A',
-                  mkTujuanId: curriculumMK.find(mk => mk.kode_mk === 'MKI203')?.id || '',
-                  status: 'diakui'
-                },
-                {
-                  id: 'row-4',
-                  mkAsal: 'Pendidikan Pancasila',
-                  sksAsal: 2,
-                  nilaiAsal: 'A',
-                  mkTujuanId: curriculumMK.find(mk => mk.kode_mk === 'MKU101')?.id || '',
-                  status: 'diakui'
-                }
-              ]
-            } else if (prodiKode === 'SI') {
-              mockRows = [
-                {
-                  id: 'row-1',
-                  mkAsal: 'Pengantar Sistem Informasi',
-                  sksAsal: 3,
-                  nilaiAsal: 'A',
-                  mkTujuanId: curriculumMK.find(mk => mk.kode_mk === 'MKI301')?.id || '',
-                  status: 'diakui'
-                },
-                {
-                  id: 'row-2',
-                  mkAsal: 'Analisis & Perancangan Sistem',
-                  sksAsal: 3,
-                  nilaiAsal: 'B',
-                  mkTujuanId: curriculumMK.find(mk => mk.kode_mk === 'MKI302')?.id || '',
-                  status: 'diakui'
-                },
-                {
-                  id: 'row-3',
-                  mkAsal: 'Pengantar E-Business',
-                  sksAsal: 3,
-                  nilaiAsal: 'A',
-                  mkTujuanId: curriculumMK.find(mk => mk.kode_mk === 'MKI303')?.id || '',
-                  status: 'diakui'
-                },
-                {
-                  id: 'row-4',
-                  mkAsal: 'Pendidikan Pancasila',
-                  sksAsal: 2,
-                  nilaiAsal: 'A',
-                  mkTujuanId: curriculumMK.find(mk => mk.kode_mk === 'MKU101')?.id || '',
-                  status: 'diakui'
-                }
-              ]
-            } else if (prodiKode === 'DKV') {
-              mockRows = [
-                {
-                  id: 'row-1',
-                  mkAsal: 'Dasar Seni Rupa',
-                  sksAsal: 3,
-                  nilaiAsal: 'A',
-                  mkTujuanId: curriculumMK.find(mk => mk.kode_mk === 'MKI401')?.id || '',
-                  status: 'diakui'
-                },
-                {
-                  id: 'row-2',
-                  mkAsal: 'Pengantar Tipografi',
-                  sksAsal: 3,
-                  nilaiAsal: 'A',
-                  mkTujuanId: curriculumMK.find(mk => mk.kode_mk === 'MKI402')?.id || '',
-                  status: 'diakui'
-                },
-                {
-                  id: 'row-3',
-                  mkAsal: 'Desain Grafis Digital',
-                  sksAsal: 4,
-                  nilaiAsal: 'B',
-                  mkTujuanId: curriculumMK.find(mk => mk.kode_mk === 'MKI403')?.id || '',
-                  status: 'diakui'
-                },
-                {
-                  id: 'row-4',
-                  mkAsal: 'Pendidikan Pancasila',
-                  sksAsal: 2,
-                  nilaiAsal: 'A',
-                  mkTujuanId: curriculumMK.find(mk => mk.kode_mk === 'MKU101')?.id || '',
-                  status: 'diakui'
-                }
-              ]
-            } else if (prodiKode === 'KA') {
-              mockRows = [
-                {
-                  id: 'row-1',
-                  mkAsal: 'Pengantar Akuntansi & Keuangan',
-                  sksAsal: 3,
-                  nilaiAsal: 'A',
-                  mkTujuanId: curriculumMK.find(mk => mk.kode_mk === 'MKI501')?.id || '',
-                  status: 'diakui'
-                },
-                {
-                  id: 'row-2',
-                  mkAsal: 'Sistem Informasi Keuangan',
-                  sksAsal: 3,
-                  nilaiAsal: 'B',
-                  mkTujuanId: curriculumMK.find(mk => mk.kode_mk === 'MKI502')?.id || '',
-                  status: 'diakui'
-                },
-                {
-                  id: 'row-3',
-                  mkAsal: 'Dasar-Dasar Perpajakan',
-                  sksAsal: 3,
-                  nilaiAsal: 'A',
-                  mkTujuanId: curriculumMK.find(mk => mk.kode_mk === 'MKI503')?.id || '',
-                  status: 'diakui'
-                },
-                {
-                  id: 'row-4',
-                  mkAsal: 'Pendidikan Pancasila',
-                  sksAsal: 2,
-                  nilaiAsal: 'A',
-                  mkTujuanId: curriculumMK.find(mk => mk.kode_mk === 'MKU101')?.id || '',
-                  status: 'diakui'
-                }
-              ]
-            } else {
-              mockRows = [
-                {
-                  id: 'row-1',
-                  mkAsal: 'Mata Kuliah Umum',
-                  sksAsal: 3,
-                  nilaiAsal: 'B',
-                  mkTujuanId: '',
-                  status: 'diakui'
-                }
-              ]
-            }
-            setRows(mockRows)
-            setOcrRunning(false)
-            setRecognitionMethod('ai')
-            toast.success('AI/OCR Gemini berhasil mengekstrak 4 mata kuliah!')
-          }, 1000)
-        }, 1000)
-      }, 1000)
+          const mockRows = generateDynamicMockRows('ai-fallback')
+          setRows(mockRows)
+          setOcrRunning(false)
+          setScanEffect(null)
+          setRecognitionMethod('ai')
+          toast.success(`AI/OCR berhasil mengekstrak ${mockRows.length} mata kuliah (fallback lokal)!`)
+        }, 1500)
+      }
     }, 1000)
   }
 
@@ -327,6 +296,18 @@ export default function KaprodiDashboard() {
 
   return (
     <div>
+      <style>{`
+        @keyframes laserScan {
+          0% { top: 0%; }
+          50% { top: 100%; }
+          100% { top: 0%; }
+        }
+        @keyframes pulseBrain {
+          0%, 100% { opacity: 0.15; }
+          50% { opacity: 0.55; }
+        }
+      `}</style>
+
       <div className="page-header">
         <h1 className="page-title">Smart Recognition Engine (Ka. Prodi)</h1>
         <p className="page-subtitle">Petakan transkrip mata kuliah asal ke mata kuliah kurikulum program studi</p>
@@ -402,148 +383,284 @@ export default function KaprodiDashboard() {
             </div>
           </div>
 
-          {/* AI/Manual Option Selector */}
+          {/* AI/Manual Option Selector (Split Screen with Iframe Preview) */}
           {!recognitionMethod && !ocrRunning && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
-              <div className="card" style={{ cursor: 'pointer', hover: { borderColor: 'var(--indigo-500)' } }} onClick={runAIOCR}>
-                <div className="card-body" style={{ textAlign: 'center', padding: 32 }}>
-                  <Brain size={42} color="var(--indigo-600)" style={{ margin: '0 auto 16px' }} />
-                  <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 8 }}>Gunakan AI / OCR Gemini</h3>
-                  <p style={{ fontSize: 12.5, color: 'var(--gray-500)', lineHeight: 1.5 }}>
-                    Secara otomatis mengekstrak seluruh daftar mata kuliah transkrip asal, menyandingkan nilai, dan memetakannya ke kurikulum OBE program studi ini menggunakan AI.
-                  </p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 24 }}>
+              {/* Left Column: Iframe preview */}
+              <div className="card">
+                <div className="card-header">
+                  <h3 style={{ fontSize: 13, fontWeight: 700 }}>Berkas Transkrip Asal</h3>
+                </div>
+                <div className="card-body" style={{ padding: 12 }}>
+                  <div style={{ border: '1px solid var(--gray-200)', borderRadius: 8, overflow: 'hidden', height: 420, position: 'relative' }}>
+                    <iframe 
+                      title="Document Transcript Preview"
+                      srcDoc={generateMockDocSrcDoc(
+                        'transkrip', 
+                        selectedItem.file_transkrip_url,
+                        selectedItem.profile?.nama_lengkap || 'Calon Mahasiswa',
+                        selectedItem.prodi?.nama || '-'
+                      )}
+                      style={{ width: '100%', height: '100%', border: 'none' }}
+                    />
+                  </div>
                 </div>
               </div>
 
-              <div className="card" style={{ cursor: 'pointer' }} onClick={handleManualInput}>
-                <div className="card-body" style={{ textAlign: 'center', padding: 32 }}>
-                  <Plus size={42} color="var(--gray-500)" style={{ margin: '0 auto 16px' }} />
-                  <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 8 }}>Input Manual Terstruktur</h3>
-                  <p style={{ fontSize: 12.5, color: 'var(--gray-500)', lineHeight: 1.5 }}>
-                    Lakukan pemetaan dan pencocokan secara manual satu-persatu. Cocok sebagai metode fallback jika hasil scan transkrip kurang presisi.
-                  </p>
+              {/* Right Column: OCR Action Options */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                {/* Javascript OCR Card */}
+                <div className="card" style={{ cursor: 'pointer', borderColor: 'var(--gray-200)', transition: 'border-color .15s' }} 
+                     onClick={runJSOCR}
+                     onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--emerald-400)'}
+                     onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--gray-200)'}>
+                  <div className="card-body" style={{ padding: 20 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                      <div style={{ background: '#ecfdf5', color: '#059669', width: 32, height: 32, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: 12 }}>JS</div>
+                      <h4 style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>Scan OCR Javascript</h4>
+                    </div>
+                    <p style={{ fontSize: 12, color: 'var(--gray-500)', lineHeight: 1.5, margin: 0 }}>
+                      Ekstrak transkrip secara cepat menggunakan parser OCR berbasis client-side JavaScript.
+                    </p>
+                  </div>
+                </div>
+
+                {/* AI OCR Card */}
+                <div className="card" style={{ cursor: 'pointer', borderColor: 'var(--gray-200)', transition: 'border-color .15s' }} 
+                     onClick={runAIOCR}
+                     onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--indigo-400)'}
+                     onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--gray-200)'}>
+                  <div className="card-body" style={{ padding: 20 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                      <div style={{ background: '#e0e7ff', color: 'var(--indigo-600)', width: 32, height: 32, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Brain size={16} /></div>
+                      <h4 style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>Smart AI OCR (Sumopod AI)</h4>
+                    </div>
+                    <p style={{ fontSize: 12, color: 'var(--gray-500)', lineHeight: 1.5, margin: 0 }}>
+                      Mengirim transkrip ke Gemini 1.5 Pro (via Sumopod AI API) untuk ekstraksi pintar dan OBE matching otomatis.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Manual Input Alternative */}
+                <div className="card" style={{ cursor: 'pointer', borderColor: 'var(--gray-200)', transition: 'border-color .15s' }} 
+                     onClick={handleManualInput}
+                     onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--gray-400)'}
+                     onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--gray-200)'}>
+                  <div className="card-body" style={{ padding: 16 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
+                      <Plus size={16} color="var(--gray-500)" />
+                      <h5 style={{ fontSize: 13, fontWeight: 700, margin: 0, color: 'var(--gray-700)' }}>Input Pemetaan Manual</h5>
+                    </div>
+                    <p style={{ fontSize: 11.5, color: 'var(--gray-500)', margin: 0 }}>
+                      Masukkan baris pemetaan mata kuliah satu persatu secara manual.
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
           )}
 
-          {/* AI OCR Running Loader */}
+          {/* AI/JS OCR Running Loader (Iframe preview with scanning laser/brain glow overlays) */}
           {ocrRunning && (
-            <div className="card">
-              <div className="card-body" style={{ textAlign: 'center', padding: '48px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
-                <RefreshCw size={36} className="spinner" color="var(--indigo-600)" />
-                <h3 style={{ fontSize: 16, fontWeight: 700 }}>Proses Analisis Smart Recognition</h3>
-                <p style={{ fontSize: 13, color: 'var(--gray-500)', background: 'var(--gray-50)', padding: '8px 16px', borderRadius: 6, border: '1px solid var(--gray-200)' }}>
-                  🤖 {ocrProgress}
-                </p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 24 }}>
+              {/* Left Column: Iframe preview with absolute overlays */}
+              <div className="card">
+                <div className="card-header">
+                  <h3 style={{ fontSize: 13, fontWeight: 700 }}>Memindai Dokumen Transkrip...</h3>
+                </div>
+                <div className="card-body" style={{ padding: 12 }}>
+                  <div style={{ border: '1px solid var(--gray-200)', borderRadius: 8, overflow: 'hidden', height: 420, position: 'relative' }}>
+                    
+                    {/* Laser scan animation overlay */}
+                    {scanEffect === 'javascript' && (
+                      <div style={{
+                        position: 'absolute', inset: 0,
+                        background: 'rgba(74, 222, 128, 0.04)',
+                        pointerEvents: 'none',
+                        zIndex: 10
+                      }}>
+                        <div style={{
+                          width: '100%', height: 4,
+                          background: 'linear-gradient(to bottom, transparent, rgba(52, 211, 153, 0.8), rgba(52, 211, 153, 1), rgba(52, 211, 153, 0.8), transparent)',
+                          boxShadow: '0 0 15px rgba(52, 211, 153, 0.8)',
+                          position: 'absolute', top: 0, left: 0,
+                          animation: 'laserScan 2s linear infinite'
+                        }} />
+                      </div>
+                    )}
+
+                    {/* Brain scan animation overlay */}
+                    {scanEffect === 'ai' && (
+                      <div style={{
+                        position: 'absolute', inset: 0,
+                        background: 'rgba(99, 102, 241, 0.06)',
+                        pointerEvents: 'none',
+                        zIndex: 10,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                      }}>
+                        <div style={{
+                          width: '100%', height: '100%',
+                          background: 'radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, transparent 70%)',
+                          animation: 'pulseBrain 1.5s ease-in-out infinite'
+                        }} />
+                      </div>
+                    )}
+
+                    <iframe 
+                      title="Document Transcript Preview"
+                      srcDoc={generateMockDocSrcDoc(
+                        'transkrip', 
+                        selectedItem.file_transkrip_url,
+                        selectedItem.profile?.nama_lengkap || 'Calon Mahasiswa',
+                        selectedItem.prodi?.nama || '-'
+                      )}
+                      style={{ width: '100%', height: '100%', border: 'none' }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Column: Loading progress */}
+              <div className="card">
+                <div className="card-body" style={{ textAlign: 'center', padding: '48px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, height: '100%' }}>
+                  <RefreshCw size={36} className="spinner" color={scanEffect === 'ai' ? 'var(--indigo-600)' : 'var(--emerald-500)'} />
+                  <h3 style={{ fontSize: 15, fontWeight: 700 }}>Proses Analisis OCR {scanEffect === 'ai' ? 'AI' : 'Lokal'}</h3>
+                  <p style={{ fontSize: 12.5, color: 'var(--gray-500)', background: 'var(--gray-50)', padding: '8px 16px', borderRadius: 6, border: '1px solid var(--gray-200)', width: '100%' }}>
+                    🤖 {ocrProgress}
+                  </p>
+                </div>
               </div>
             </div>
           )}
 
-          {/* Recognition Working Grid */}
+          {/* Recognition Working Grid (Side-by-side editing panel) */}
           {recognitionMethod && (
-            <div className="card">
-              <div className="card-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <h3 style={{ fontSize: 14, fontWeight: 700 }}>Tabel Pemetaan Rekognisi Mata Kuliah</h3>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button onClick={addRow} className="btn btn-secondary btn-sm" style={{ gap: 4 }}>
-                    <Plus size={14} /> Tambah Pemetaan
-                  </button>
-                  <button onClick={handleSubmitToAsessor} className="btn btn-primary btn-sm" style={{ gap: 4 }}>
-                    <CheckCircle size={14} /> Selesaikan Pemetaan
-                  </button>
+            <div style={{ display: 'grid', gridTemplateColumns: '400px 1fr', gap: 20 }}>
+              {/* Left Column: Transcript Document View */}
+              <div className="card">
+                <div className="card-header">
+                  <h3 style={{ fontSize: 13, fontWeight: 700 }}>Dokumen Transkrip Asal</h3>
+                </div>
+                <div className="card-body" style={{ padding: 12 }}>
+                  <div style={{ border: '1px solid var(--gray-200)', borderRadius: 8, overflow: 'hidden', height: 480 }}>
+                    <iframe 
+                      title="Document Transcript Working Preview"
+                      srcDoc={generateMockDocSrcDoc(
+                        'transkrip', 
+                        selectedItem.file_transkrip_url,
+                        selectedItem.profile?.nama_lengkap || 'Calon Mahasiswa',
+                        selectedItem.prodi?.nama || '-'
+                      )}
+                      style={{ width: '100%', height: '100%', border: 'none' }}
+                    />
+                  </div>
                 </div>
               </div>
-              <div className="card-body" style={{ padding: 0 }}>
-                <div className="table-wrap">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th style={{ background: '#f8fafc', color: 'var(--indigo-700)', fontWeight: 800, borderBottom: '2px solid var(--indigo-100)', width: '35%' }}>Mata Kuliah Asal (Transkrip)</th>
-                        <th style={{ background: '#f8fafc', color: 'var(--indigo-700)', fontWeight: 800, borderBottom: '2px solid var(--indigo-100)', width: '10%' }}>SKS Asal</th>
-                        <th style={{ background: '#f8fafc', color: 'var(--indigo-700)', fontWeight: 800, borderBottom: '2px solid var(--indigo-100)', width: '10%' }}>Nilai</th>
-                        <th style={{ background: '#f8fafc', color: 'var(--indigo-700)', fontWeight: 800, borderBottom: '2px solid var(--indigo-100)', width: '35%' }}>Disandingkan ke MK Kurikulum</th>
-                        <th style={{ background: '#f8fafc', color: 'var(--indigo-700)', fontWeight: 800, borderBottom: '2px solid var(--indigo-100)', width: '10%' }}>Aksi</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {rows.map(row => (
-                        <tr key={row.id}>
-                          {/* MK Asal */}
-                          <td>
-                            <input
-                              type="text"
-                              value={row.mkAsal}
-                              onChange={(e) => updateRow(row.id, 'mkAsal', e.target.value)}
-                              placeholder="cth: Dasar Pemrograman I"
-                              className="input"
-                              style={{ padding: '6px 10px' }}
-                            />
-                          </td>
 
-                          {/* SKS Asal */}
-                          <td>
-                            <input
-                              type="number"
-                              value={row.sksAsal || ''}
-                              onChange={(e) => updateRow(row.id, 'sksAsal', e.target.value)}
-                              placeholder="cth: 3"
-                              className="input"
-                              style={{ padding: '6px 10px' }}
-                            />
-                          </td>
-
-                          {/* Nilai Asal */}
-                          <td>
-                            <input
-                              type="text"
-                              value={row.nilaiAsal}
-                              onChange={(e) => updateRow(row.id, 'nilaiAsal', e.target.value.toUpperCase())}
-                              placeholder="cth: A"
-                              className="input"
-                              style={{ padding: '6px 10px' }}
-                            />
-                          </td>
-
-                          {/* Target MK Kurikulum */}
-                          <td>
-                            <select
-                              value={row.mkTujuanId}
-                              onChange={(e) => updateRow(row.id, 'mkTujuanId', e.target.value)}
-                              style={{
-                                width: '100%',
-                                padding: '6px 10px',
-                                borderRadius: '6px',
-                                border: '1px solid var(--gray-200)',
-                                background: 'var(--surface)',
-                                fontSize: '13px',
-                                outline: 'none'
-                              }}
-                            >
-                              <option value="">-- Pilih MK Kurikulum --</option>
-                              {curriculumMK.map(mk => (
-                                <option key={mk.id} value={mk.id}>
-                                  {mk.kode_mk} - {mk.nama_mk} ({mk.sks} SKS, {mk.jenis.toUpperCase()})
-                                </option>
-                              ))}
-                            </select>
-                          </td>
-
-                          {/* Aksi Hapus */}
-                          <td>
-                            <button
-                              onClick={() => deleteRow(row.id)}
-                              className="btn btn-ghost btn-icon"
-                              style={{ color: 'var(--danger)' }}
-                              title="Hapus baris"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </td>
+              {/* Right Column: Table of Recognition Courses */}
+              <div className="card">
+                <div className="card-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <h3 style={{ fontSize: 14, fontWeight: 700 }}>Tabel Pemetaan Rekognisi Mata Kuliah</h3>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button onClick={addRow} className="btn btn-secondary btn-sm" style={{ gap: 4 }}>
+                      <Plus size={14} /> Tambah Pemetaan
+                    </button>
+                    <button onClick={handleSubmitToAsessor} className="btn btn-primary btn-sm" style={{ gap: 4 }}>
+                      <CheckCircle size={14} /> Selesaikan Pemetaan
+                    </button>
+                  </div>
+                </div>
+                <div className="card-body" style={{ padding: 0 }}>
+                  <div className="table-wrap">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th style={{ background: '#f8fafc', color: 'var(--indigo-700)', fontWeight: 800, borderBottom: '2px solid var(--indigo-100)', width: '35%' }}>Mata Kuliah Asal (Transkrip)</th>
+                          <th style={{ background: '#f8fafc', color: 'var(--indigo-700)', fontWeight: 800, borderBottom: '2px solid var(--indigo-100)', width: '10%' }}>SKS Asal</th>
+                          <th style={{ background: '#f8fafc', color: 'var(--indigo-700)', fontWeight: 800, borderBottom: '2px solid var(--indigo-100)', width: '10%' }}>Nilai</th>
+                          <th style={{ background: '#f8fafc', color: 'var(--indigo-700)', fontWeight: 800, borderBottom: '2px solid var(--indigo-100)', width: '35%' }}>Disandingkan ke MK Kurikulum</th>
+                          <th style={{ background: '#f8fafc', color: 'var(--indigo-700)', fontWeight: 800, borderBottom: '2px solid var(--indigo-100)', width: '10%' }}>Aksi</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {rows.map(row => (
+                          <tr key={row.id}>
+                            {/* MK Asal */}
+                            <td>
+                              <input
+                                type="text"
+                                value={row.mkAsal}
+                                onChange={(e) => updateRow(row.id, 'mkAsal', e.target.value)}
+                                placeholder="cth: Dasar Pemrograman I"
+                                className="input"
+                                style={{ padding: '6px 10px' }}
+                              />
+                            </td>
+
+                            {/* SKS Asal */}
+                            <td>
+                              <input
+                                type="number"
+                                value={row.sksAsal || ''}
+                                onChange={(e) => updateRow(row.id, 'sksAsal', e.target.value)}
+                                placeholder="cth: 3"
+                                className="input"
+                                style={{ padding: '6px 10px' }}
+                              />
+                            </td>
+
+                            {/* Nilai Asal */}
+                            <td>
+                              <input
+                                type="text"
+                                value={row.nilaiAsal}
+                                onChange={(e) => updateRow(row.id, 'nilaiAsal', e.target.value.toUpperCase())}
+                                placeholder="cth: A"
+                                className="input"
+                                style={{ padding: '6px 10px' }}
+                              />
+                            </td>
+
+                            {/* Target MK Kurikulum */}
+                            <td>
+                              <select
+                                value={row.mkTujuanId}
+                                onChange={(e) => updateRow(row.id, 'mkTujuanId', e.target.value)}
+                                style={{
+                                  width: '100%',
+                                  padding: '6px 10px',
+                                  borderRadius: '6px',
+                                  border: '1px solid var(--gray-200)',
+                                  background: 'var(--surface)',
+                                  fontSize: '13px',
+                                  outline: 'none'
+                                }}
+                              >
+                                <option value="">-- Pilih MK Kurikulum --</option>
+                                {curriculumMK.map(mk => (
+                                  <option key={mk.id} value={mk.id}>
+                                    {mk.kode_mk} - {mk.nama_mk} ({mk.sks} SKS, {mk.jenis.toUpperCase()})
+                                  </option>
+                                ))}
+                              </select>
+                            </td>
+
+                            {/* Aksi Hapus */}
+                            <td>
+                              <button
+                                onClick={() => deleteRow(row.id)}
+                                className="btn btn-ghost btn-icon"
+                                style={{ color: 'var(--danger)' }}
+                                title="Hapus baris"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
             </div>

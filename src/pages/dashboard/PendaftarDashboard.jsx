@@ -1,11 +1,69 @@
 import { useState, useEffect } from 'react'
 import { dbPengajuan, dbProdi } from '../../lib/db'
+import { supabase, isMock } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import { FileUp, Clipboard, Award, Shield, CheckCircle, FileText } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { generateMockDocSrcDoc } from '../../lib/mockDoc'
+
+// Helper: Preview component that supports both real PDF (Supabase Storage) and mock HTML
+function DocPreview({ pengajuan, previewType, profileName, prodiName }) {
+  const [signedUrl, setSignedUrl] = useState(null)
+  const [loadingUrl, setLoadingUrl] = useState(false)
+
+  const filePath = previewType === 'ijazah' ? pengajuan.file_ijazah_url : pengajuan.file_transkrip_url
+  const isStoragePath = filePath && filePath.includes('/')
+
+  useEffect(() => {
+    if (!isMock && isStoragePath) {
+      setLoadingUrl(true)
+      supabase.storage
+        .from('rpl-documents')
+        .createSignedUrl(filePath, 3600) // 1 hour expiry
+        .then(({ data, error }) => {
+          if (!error && data?.signedUrl) setSignedUrl(data.signedUrl)
+          else setSignedUrl(null)
+        })
+        .finally(() => setLoadingUrl(false))
+    } else {
+      setSignedUrl(null)
+    }
+  }, [filePath, isStoragePath])
+
+  if (loadingUrl) {
+    return (
+      <div style={{ border: '1px solid var(--gray-200)', borderRadius: 8, height: 420, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="spinner" />
+      </div>
+    )
+  }
+
+  if (!isMock && isStoragePath && signedUrl) {
+    return (
+      <div style={{ border: '1px solid var(--gray-200)', borderRadius: 8, overflow: 'hidden', height: 420, background: '#fff' }}>
+        <iframe
+          title="Pratinjau Dokumen PDF"
+          src={signedUrl}
+          style={{ width: '100%', height: '100%', border: 'none' }}
+        />
+      </div>
+    )
+  }
+
+  // Fallback: mock document preview
+  return (
+    <div style={{ border: '1px solid var(--gray-200)', borderRadius: 8, overflow: 'hidden', height: 420, background: '#fff' }}>
+      <iframe
+        title="Pratinjau Dokumen Calon"
+        srcDoc={generateMockDocSrcDoc(previewType, filePath, profileName, prodiName)}
+        style={{ width: '100%', height: '100%', border: 'none' }}
+      />
+    </div>
+  )
+}
 
 export default function PendaftarDashboard() {
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
   const [prodis, setProdis] = useState([])
   const [pengajuan, setPengajuan] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -14,7 +72,11 @@ export default function PendaftarDashboard() {
   const [selectedProdi, setSelectedProdi] = useState('')
   const [ijazahName, setIjazahName] = useState('')
   const [transkripName, setTranskripName] = useState('')
+  const [ijazahFile, setIjazahFile] = useState(null)
+  const [transkripFile, setTranskripFile] = useState(null)
   const [submitting, setSubmitting] = useState(false)
+  const [previewType, setPreviewType] = useState('ijazah')
+  const [previewUrl, setPreviewUrl] = useState(null)
 
   const loadData = async () => {
     setLoading(true)
@@ -47,8 +109,12 @@ export default function PendaftarDashboard() {
         toast.error('Hanya berkas PDF yang diperbolehkan')
         return
       }
-      if (type === 'ijazah') setIjazahName(file.name)
-      if (type === 'transkrip') setTranskripName(file.name)
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('Ukuran file maksimal 5MB')
+        return
+      }
+      if (type === 'ijazah') { setIjazahName(file.name); setIjazahFile(file) }
+      if (type === 'transkrip') { setTranskripName(file.name); setTranskripFile(file) }
     }
   }
 
@@ -65,11 +131,34 @@ export default function PendaftarDashboard() {
 
     setSubmitting(true)
     try {
+      let ijazahUrl = ijazahName
+      let transkripUrl = transkripName
+
+      // Upload file riil ke Supabase Storage jika bukan mode mock
+      if (!isMock && ijazahFile && transkripFile) {
+        const ts = Date.now()
+        const ijazahPath = `${user.id}/ijazah_${ts}.pdf`
+        const transkripPath = `${user.id}/transkrip_${ts}.pdf`
+
+        const { error: errIjazah } = await supabase.storage
+          .from('rpl-documents')
+          .upload(ijazahPath, ijazahFile, { contentType: 'application/pdf', upsert: true })
+        if (errIjazah) throw new Error('Gagal mengunggah ijazah: ' + errIjazah.message)
+
+        const { error: errTranskrip } = await supabase.storage
+          .from('rpl-documents')
+          .upload(transkripPath, transkripFile, { contentType: 'application/pdf', upsert: true })
+        if (errTranskrip) throw new Error('Gagal mengunggah transkrip: ' + errTranskrip.message)
+
+        ijazahUrl = ijazahPath
+        transkripUrl = transkripPath
+      }
+
       const payload = {
         user_id: user.id,
         prodi_pilihan_id: selectedProdi,
-        file_ijazah_url: ijazahName,
-        file_transkrip_url: transkripName,
+        file_ijazah_url: ijazahUrl,
+        file_transkrip_url: transkripUrl,
       }
 
       await dbPengajuan.create(payload)
@@ -77,7 +166,7 @@ export default function PendaftarDashboard() {
       loadData()
     } catch (e) {
       console.error(e)
-      toast.error('Gagal mengirimkan pengajuan')
+      toast.error(e.message || 'Gagal mengirimkan pengajuan')
     } finally {
       setSubmitting(false)
     }
@@ -213,70 +302,101 @@ export default function PendaftarDashboard() {
       ) : (
         /* Status Tracker & Timeline */
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 24 }}>
-          {/* Timeline Details */}
-          <div className="card">
-            <div className="card-header">
-              <h3 style={{ fontSize: 15, fontWeight: 700 }}>Status Pelacakan Berkas RPL</h3>
-              <span className={`badge-pill status-${pengajuan.status}`}>
-                {pengajuan.status.toUpperCase()}
-              </span>
+          {/* Timeline Details & Document Preview */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <div className="card">
+              <div className="card-header">
+                <h3 style={{ fontSize: 15, fontWeight: 700 }}>Status Pelacakan Berkas RPL</h3>
+                <span className={`badge-pill status-${pengajuan.status}`}>
+                  {pengajuan.status.toUpperCase()}
+                </span>
+              </div>
+              <div className="card-body">
+                <div className="stepper-timeline">
+                  {/* Step 1 */}
+                  <div className={`step-item ${stepIndex >= 1 ? (stepIndex > 1 ? 'completed' : 'active') : ''}`}>
+                    <div className="step-node" />
+                    <div className="step-title">Fase 1: Berkas Dikirim</div>
+                    <div className="step-desc">Calon mahasiswa berhasil mengirim berkas pendaftaran (Ijazah & Transkrip) untuk divalidasi.</div>
+                    {stepIndex === 1 && <div style={{ fontSize: 11.5, color: 'var(--indigo-600)', marginTop: 4, fontWeight: 600 }}>⏳ Menunggu validasi oleh petugas BAAK.</div>}
+                  </div>
+
+                  {/* Step 2 */}
+                  <div className={`step-item ${stepIndex >= 2 ? (stepIndex > 2 ? 'completed' : 'active') : ''}`}>
+                    <div className="step-node" />
+                    <div className="step-title">Fase 2: Validasi Dokumen (BAAK)</div>
+                    <div className="step-desc">Pemeriksaan keaslian dan resolusi berkas transkrip nilai oleh administrasi BAAK.</div>
+                    {stepIndex === 2 && <div style={{ fontSize: 11.5, color: 'var(--indigo-600)', marginTop: 4, fontWeight: 600 }}>⏳ Berkas valid! Menunggu proses pencocokan mata kuliah oleh Ka. Prodi.</div>}
+                  </div>
+
+                  {/* Step 3 */}
+                  <div className={`step-item ${stepIndex >= 3 ? (stepIndex > 3 ? 'completed' : 'active') : ''}`}>
+                    <div className="step-node" />
+                    <div className="step-title">Fase 3: Smart Recognition (Ka. Prodi)</div>
+                    <div className="step-desc">Pencocokan mata kuliah transkrip asal dengan mata kuliah kurikulum menggunakan AI/OCR.</div>
+                    {stepIndex === 3 && <div style={{ fontSize: 11.5, color: 'var(--indigo-600)', marginTop: 4, fontWeight: 600 }}>⏳ Rekognisi selesai oleh Ka. Prodi! Menunggu asesmen portofolio dan biaya dari Asessor.</div>}
+                  </div>
+
+                  {/* Step 4 */}
+                  <div className={`step-item ${stepIndex >= 4 ? (stepIndex > 4 ? 'completed' : 'active') : ''}`}>
+                    <div className="step-node" />
+                    <div className="step-title">Fase 4: Asesmen Akademik & Biaya (Asessor)</div>
+                    <div className="step-desc">Verifikasi akademik akhir, penambahan mata kuliah diakui, dan kalkulasi biaya awal.</div>
+                    {stepIndex === 4 && <div style={{ fontSize: 11.5, color: 'var(--indigo-600)', marginTop: 4, fontWeight: 600 }}>⏳ Asesmen portofolio selesai! Menunggu penetapan jalur kelas dan pencetakan rencana studi oleh Admin.</div>}
+                  </div>
+
+                  {/* Step 5 */}
+                  <div className={`step-item ${stepIndex >= 5 ? 'completed' : ''}`}>
+                    <div className="step-node" />
+                    <div className="step-title">Fase 5: Pemetaan Jalur & Finalisasi (Admin)</div>
+                    <div className="step-desc">Pemisahan jalur kuliah (MOOCs Asinkron & Tatap Muka Sinkron) serta penyusunan Rencana Studi resmi.</div>
+                    {stepIndex === 5 && (
+                      <div style={{
+                        marginTop: 12,
+                        padding: 12,
+                        background: '#d1fae5',
+                        color: '#065f46',
+                        borderRadius: 8,
+                        fontSize: 12.5,
+                        fontWeight: 600,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8
+                      }}>
+                        <CheckCircle size={16} /> Proses evaluasi RPL selesai! Silakan cetak lembar Rencana Studi Mahasiswa RPL.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
-            <div className="card-body">
-              <div className="stepper-timeline">
-                {/* Step 1 */}
-                <div className={`step-item ${stepIndex >= 1 ? (stepIndex > 1 ? 'completed' : 'active') : ''}`}>
-                  <div className="step-node" />
-                  <div className="step-title">Fase 1: Berkas Dikirim</div>
-                  <div className="step-desc">Calon mahasiswa berhasil mengirim berkas pendaftaran (Ijazah & Transkrip) untuk divalidasi.</div>
-                  {stepIndex === 1 && <div style={{ fontSize: 11.5, color: 'var(--indigo-600)', marginTop: 4, fontWeight: 600 }}>⏳ Menunggu validasi oleh petugas BAAK.</div>}
-                </div>
 
-                {/* Step 2 */}
-                <div className={`step-item ${stepIndex >= 2 ? (stepIndex > 2 ? 'completed' : 'active') : ''}`}>
-                  <div className="step-node" />
-                  <div className="step-title">Fase 2: Validasi Dokumen (BAAK)</div>
-                  <div className="step-desc">Pemeriksaan keaslian dan resolusi berkas transkrip nilai oleh administrasi BAAK.</div>
-                  {stepIndex === 2 && <div style={{ fontSize: 11.5, color: 'var(--indigo-600)', marginTop: 4, fontWeight: 600 }}>⏳ Berkas valid! Menunggu proses pencocokan mata kuliah oleh Ka. Prodi.</div>}
+            {/* Pratinjau Berkas */}
+            <div className="card">
+              <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h3 style={{ fontSize: 14, fontWeight: 700 }}>Pratinjau Berkas yang Diunggah</h3>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button 
+                    onClick={() => setPreviewType('ijazah')} 
+                    className={`btn btn-sm ${previewType === 'ijazah' ? 'btn-primary' : 'btn-secondary'}`}
+                  >
+                    Ijazah
+                  </button>
+                  <button 
+                    onClick={() => setPreviewType('transkrip')} 
+                    className={`btn btn-sm ${previewType === 'transkrip' ? 'btn-primary' : 'btn-secondary'}`}
+                  >
+                    Transkrip
+                  </button>
                 </div>
-
-                {/* Step 3 */}
-                <div className={`step-item ${stepIndex >= 3 ? (stepIndex > 3 ? 'completed' : 'active') : ''}`}>
-                  <div className="step-node" />
-                  <div className="step-title">Fase 3: Smart Recognition (Ka. Prodi)</div>
-                  <div className="step-desc">Pencocokan mata kuliah transkrip asal dengan mata kuliah kurikulum menggunakan AI/OCR.</div>
-                  {stepIndex === 3 && <div style={{ fontSize: 11.5, color: 'var(--indigo-600)', marginTop: 4, fontWeight: 600 }}>⏳ Rekognisi selesai oleh Ka. Prodi! Menunggu asesmen portofolio dan biaya dari Asessor.</div>}
-                </div>
-
-                {/* Step 4 */}
-                <div className={`step-item ${stepIndex >= 4 ? (stepIndex > 4 ? 'completed' : 'active') : ''}`}>
-                  <div className="step-node" />
-                  <div className="step-title">Fase 4: Asesmen Akademik & Biaya (Asessor)</div>
-                  <div className="step-desc">Verifikasi akademik akhir, penambahan mata kuliah diakui, dan kalkulasi biaya awal.</div>
-                  {stepIndex === 4 && <div style={{ fontSize: 11.5, color: 'var(--indigo-600)', marginTop: 4, fontWeight: 600 }}>⏳ Asesmen portofolio selesai! Menunggu penetapan jalur kelas dan pencetakan rencana studi oleh Admin.</div>}
-                </div>
-
-                {/* Step 5 */}
-                <div className={`step-item ${stepIndex >= 5 ? 'completed' : ''}`}>
-                  <div className="step-node" />
-                  <div className="step-title">Fase 5: Pemetaan Jalur & Finalisasi (Admin)</div>
-                  <div className="step-desc">Pemisahan jalur kuliah (MOOCs Asinkron & Tatap Muka Sinkron) serta penyusunan Rencana Studi resmi.</div>
-                  {stepIndex === 5 && (
-                    <div style={{
-                      marginTop: 12,
-                      padding: 12,
-                      background: '#d1fae5',
-                      color: '#065f46',
-                      borderRadius: 8,
-                      fontSize: 12.5,
-                      fontWeight: 600,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 8
-                    }}>
-                      <CheckCircle size={16} /> Proses evaluasi RPL selesai! Silakan cetak lembar Rencana Studi Mahasiswa RPL.
-                    </div>
-                  )}
-                </div>
+              </div>
+              <div className="card-body" style={{ padding: 12 }}>
+                <DocPreview
+                  pengajuan={pengajuan}
+                  previewType={previewType}
+                  profileName={profile?.nama_lengkap || user?.email?.split('@')[0] || 'Calon Mahasiswa'}
+                  prodiName={pengajuan.prodi?.nama || '-'}
+                />
               </div>
             </div>
           </div>

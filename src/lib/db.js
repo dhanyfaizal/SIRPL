@@ -88,12 +88,59 @@ export const dbProdi = {
 
 // ── 2. Mata Kuliah Kurikulum ───────────────────────────────────
 export const dbMK = {
+  getAll: async () => {
+    if (isMock) {
+      return { data: getLocalData('si_rpl_mata_kuliah'), error: null }
+    }
+    return supabase.from('mata_kuliah_kurikulum').select('*, prodi:program_studi!prodi_id(id, kode, nama)').order('kode_mk')
+  },
+
   getByProdi: async (prodiId) => {
     if (isMock) {
       const data = getLocalData('si_rpl_mata_kuliah').filter(mk => mk.prodi_id === prodiId)
       return { data, error: null }
     }
     return supabase.from('mata_kuliah_kurikulum').select('*').eq('prodi_id', prodiId).order('kode_mk')
+  },
+
+  create: async (payload) => {
+    if (isMock) {
+      const list = getLocalData('si_rpl_mata_kuliah')
+      const newItem = {
+        ...payload,
+        id: 'mk-' + Math.random().toString(36).slice(2, 10),
+        created_at: new Date().toISOString()
+      }
+      list.push(newItem)
+      saveLocalData('si_rpl_mata_kuliah', list)
+      return { data: newItem, error: null }
+    }
+    return supabase.from('mata_kuliah_kurikulum').insert(payload).select().single()
+  },
+
+  createBatch: async (items) => {
+    if (isMock) {
+      const list = getLocalData('si_rpl_mata_kuliah')
+      const newItems = items.map(item => ({
+        ...item,
+        id: 'mk-' + Math.random().toString(36).slice(2, 10),
+        created_at: new Date().toISOString()
+      }))
+      list.push(...newItems)
+      saveLocalData('si_rpl_mata_kuliah', list)
+      return { data: newItems, error: null }
+    }
+    return supabase.from('mata_kuliah_kurikulum').insert(items).select()
+  },
+
+  delete: async (id) => {
+    if (isMock) {
+      const list = getLocalData('si_rpl_mata_kuliah')
+      const filtered = list.filter(mk => mk.id !== id)
+      saveLocalData('si_rpl_mata_kuliah', filtered)
+      return { data: { id }, error: null }
+    }
+    return supabase.from('mata_kuliah_kurikulum').delete().eq('id', id)
   }
 }
 

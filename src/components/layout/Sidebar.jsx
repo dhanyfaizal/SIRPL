@@ -103,6 +103,7 @@ export default function Sidebar() {
             <div className="sidebar-section-label">Studi & Keuangan</div>
             <NavItem label="Rencana Studi & Biaya" icon={BookOpen} to="/dashboard" />
             <div className="sidebar-section-label">Pengaturan Sistem</div>
+            <NavItem label="Manajemen Kurikulum" icon={BookOpen} to="/curriculum" />
             <NavItem label="Manajemen Pengguna" icon={Shield} to="/users" />
           </>
         )}

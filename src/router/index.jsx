@@ -11,6 +11,7 @@ import AuthCallback from '../pages/auth/AuthCallback'
 // Dashboard Router
 import DashboardRouter from '../pages/dashboard/DashboardRouter'
 import AdminUsersPage from '../pages/dashboard/AdminUsersPage'
+import AdminCurriculumPage from '../pages/dashboard/AdminCurriculumPage'
 
 // Print page
 import ReportPrintPage from '../pages/public/ReportPrintPage'
@@ -116,6 +117,7 @@ export default function AppRouter() {
           
           {/* Manajemen Pengguna (Admin) */}
           <Route path="/users" element={<ProtectedRoute allowedRoles={['admin']}><AdminUsersPage /></ProtectedRoute>} />
+          <Route path="/curriculum" element={<ProtectedRoute allowedRoles={['admin']}><AdminCurriculumPage /></ProtectedRoute>} />
           
           {/* Profile & Settings */}
           <Route path="/profile" element={<PlaceholderPage title="Profil Saya" />} />
