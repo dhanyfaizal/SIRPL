@@ -44,31 +44,20 @@ export default function AdminDashboard() {
     loadSubmissions()
   }, [])
 
-  const loadCurriculum = async (prodiId) => {
+  const loadPenetapanInitial = async (pengajuanId, prodiId) => {
     try {
-      const { data } = await dbMK.getByProdi(prodiId)
-      setCurriculumMK(data || [])
-    } catch (e) {
-      console.error(e)
-    }
-  }
+      // 1. Ambil kurikulum prodi terlebih dahulu
+      const { data: currData } = await dbMK.getByProdi(prodiId)
+      const curriculum = currData || []
+      setCurriculumMK(curriculum)
 
-  useEffect(() => {
-    if (selectedItem) {
-      loadCurriculum(selectedItem.prodi_pilihan_id)
-      loadPenetapanInitial(selectedItem.id)
-    }
-  }, [selectedItem])
-
-  const loadPenetapanInitial = async (pengajuanId) => {
-    try {
-      // 1. Ambil rekognisi matkul diakui
+      // 2. Ambil rekognisi matkul diakui
       const { data: recData } = await dbRekognisi.getByPengajuanId(pengajuanId)
       const diakuiIds = (recData?.data_mapping_mk || [])
         .filter(m => m.Status === 'diakui')
         .map(m => m.MK_Tujuan_ID)
 
-      // 2. Ambil biaya asesmen
+      // 3. Ambil biaya asesmen
       const { data: penData } = await dbPenetapan.getByPengajuanId(pengajuanId)
       if (penData) {
         setTotalSksDiakui(penData.total_sks_diakui)
@@ -78,12 +67,11 @@ export default function AdminDashboard() {
         setCatatanPotongan(penData.catatan_potongan || '')
       }
 
-      // 3. Map sisa mata kuliah ke Jalur (MOOCs/Tatap Muka)
+      // 4. Map sisa mata kuliah ke Jalur (MOOCs/Tatap Muka)
       // Auto mapping rule:
       // - jenis 'umum' -> 'asinkron' (MOOCs)
       // - jenis 'inti' -> 'sinkron' (Tatap Muka)
-      const remainingMK = curriculumMK.filter(mk => !diakuiIds.includes(mk.id))
-      const initialMapping = curriculumMK
+      const initialMapping = curriculum
         .filter(mk => !diakuiIds.includes(mk.id))
         .map((mk, idx) => ({
           mkId: mk.id,
@@ -101,29 +89,11 @@ export default function AdminDashboard() {
     }
   }
 
-  // Auto remap remaining courses if curriculum details change in render timing
   useEffect(() => {
-    if (selectedItem && curriculumMK.length > 0) {
-      dbRekognisi.getByPengajuanId(selectedItem.id).then(({ data: recData }) => {
-        const diakuiIds = (recData?.data_mapping_mk || [])
-          .filter(m => m.Status === 'diakui')
-          .map(m => m.MK_Tujuan_ID)
-
-        const initialMapping = curriculumMK
-          .filter(mk => !diakuiIds.includes(mk.id))
-          .map((mk, idx) => ({
-            mkId: mk.id,
-            kode: mk.kode_mk,
-            nama: mk.nama_mk,
-            sks: mk.sks,
-            jenis: mk.jenis,
-            jalur: mk.jenis === 'umum' ? 'asinkron' : 'sinkron',
-            semester: Math.floor(idx / 4) + 1
-          }))
-        setMappedCourses(initialMapping)
-      })
+    if (selectedItem) {
+      loadPenetapanInitial(selectedItem.id, selectedItem.prodi_pilihan_id)
     }
-  }, [curriculumMK])
+  }, [selectedItem])
 
   const updateCourseJalur = (mkId, jalur) => {
     setMappedCourses(mappedCourses.map(c => c.mkId === mkId ? { ...c, jalur } : c))
