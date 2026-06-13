@@ -4,6 +4,7 @@ import { Award, Brain, RefreshCw, FileText, CheckCircle, Save, Plus, Trash2 } fr
 import toast from 'react-hot-toast'
 import { useAuth } from '../../contexts/AuthContext'
 import { generateMockDocSrcDoc } from '../../lib/mockDoc'
+import { supabase, isMock } from '../../lib/supabase'
 
 // Helper: Get realistic list of transcript courses based on selected prodi
 const getOcrExtractedCourses = (prodiName) => {
@@ -74,6 +75,71 @@ const findBestMatch = (sourceName, curriculumList) => {
   
   const confidence = Math.min(100, Math.round(maxScore * 100))
   return { bestMatch, confidence }
+}
+
+// Component: Loads real PDF with Signed URL or falls back to mock HTML
+function TranscriptPreview({ fileUrl, profileName, prodiName, height = 420, noBorder = false }) {
+  const [signedUrl, setSignedUrl] = useState(null)
+  const [loadingUrl, setLoadingUrl] = useState(false)
+  const isStoragePath = fileUrl && fileUrl.includes('/')
+
+  useEffect(() => {
+    if (!isMock && isStoragePath) {
+      setLoadingUrl(true)
+      supabase.storage
+        .from('rpl-documents')
+        .createSignedUrl(fileUrl, 3600)
+        .then(({ data, error }) => {
+          if (!error && data?.signedUrl) setSignedUrl(data.signedUrl)
+          else setSignedUrl(null)
+        })
+        .finally(() => setLoadingUrl(false))
+    } else {
+      setSignedUrl(null)
+    }
+  }, [fileUrl, isStoragePath])
+
+  if (loadingUrl) {
+    return (
+      <div style={noBorder ? { width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' } : { border: '1px solid var(--gray-200)', borderRadius: 8, height, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fff' }}>
+        <div className="spinner" />
+      </div>
+    )
+  }
+
+  if (!isMock && isStoragePath && signedUrl) {
+    return noBorder ? (
+      <iframe
+        title="Transcript PDF Preview"
+        src={signedUrl}
+        style={{ width: '100%', height: '100%', border: 'none' }}
+      />
+    ) : (
+      <div style={{ border: '1px solid var(--gray-200)', borderRadius: 8, overflow: 'hidden', height, background: '#fff' }}>
+        <iframe
+          title="Transcript PDF Preview"
+          src={signedUrl}
+          style={{ width: '100%', height: '100%', border: 'none' }}
+        />
+      </div>
+    )
+  }
+
+  return noBorder ? (
+    <iframe
+      title="Document Transcript Preview"
+      srcDoc={generateMockDocSrcDoc('transkrip', fileUrl, profileName, prodiName)}
+      style={{ width: '100%', height: '100%', border: 'none' }}
+    />
+  ) : (
+    <div style={{ border: '1px solid var(--gray-200)', borderRadius: 8, overflow: 'hidden', height, background: '#fff' }}>
+      <iframe
+        title="Document Transcript Preview"
+        srcDoc={generateMockDocSrcDoc('transkrip', fileUrl, profileName, prodiName)}
+        style={{ width: '100%', height: '100%', border: 'none' }}
+      />
+    </div>
+  )
 }
 
 export default function KaprodiDashboard() {
@@ -165,7 +231,7 @@ export default function KaprodiDashboard() {
         'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'gemini/gemini-2.5-flash',
         messages: [
           {
             role: 'system',
@@ -188,7 +254,8 @@ export default function KaprodiDashboard() {
     })
 
     if (!response.ok) {
-      throw new Error(`API error: ${response.status}`)
+      const errText = await response.text()
+      throw new Error(`API error: ${response.status} - ${errText}`)
     }
 
     const json = await response.json()
@@ -581,18 +648,12 @@ export default function KaprodiDashboard() {
                   <h3 style={{ fontSize: 13, fontWeight: 700 }}>Berkas Transkrip Asal</h3>
                 </div>
                 <div className="card-body" style={{ padding: 12 }}>
-                  <div style={{ border: '1px solid var(--gray-200)', borderRadius: 8, overflow: 'hidden', height: 420, position: 'relative' }}>
-                    <iframe 
-                      title="Document Transcript Preview"
-                      srcDoc={generateMockDocSrcDoc(
-                        'transkrip', 
-                        selectedItem.file_transkrip_url,
-                        selectedItem.profile?.nama_lengkap || 'Calon Mahasiswa',
-                        selectedItem.prodi?.nama || '-'
-                      )}
-                      style={{ width: '100%', height: '100%', border: 'none' }}
-                    />
-                  </div>
+                  <TranscriptPreview
+                    fileUrl={selectedItem.file_transkrip_url}
+                    profileName={selectedItem.profile?.nama_lengkap || 'Calon Mahasiswa'}
+                    prodiName={selectedItem.prodi?.nama || '-'}
+                    height={420}
+                  />
                 </div>
               </div>
 
@@ -695,15 +756,12 @@ export default function KaprodiDashboard() {
                       </div>
                     )}
 
-                    <iframe 
-                      title="Document Transcript Preview"
-                      srcDoc={generateMockDocSrcDoc(
-                        'transkrip', 
-                        selectedItem.file_transkrip_url,
-                        selectedItem.profile?.nama_lengkap || 'Calon Mahasiswa',
-                        selectedItem.prodi?.nama || '-'
-                      )}
-                      style={{ width: '100%', height: '100%', border: 'none' }}
+                    <TranscriptPreview
+                      fileUrl={selectedItem.file_transkrip_url}
+                      profileName={selectedItem.profile?.nama_lengkap || 'Calon Mahasiswa'}
+                      prodiName={selectedItem.prodi?.nama || '-'}
+                      height={420}
+                      noBorder={true}
                     />
                   </div>
                 </div>
@@ -757,18 +815,13 @@ export default function KaprodiDashboard() {
                 </div>
                 <div className="card-body" style={{ padding: 12 }}>
                   {leftTab === 'transcript' ? (
-                    <div style={{ border: '1px solid var(--gray-200)', borderRadius: 8, overflow: 'hidden', height: 480 }}>
-                      <iframe 
-                        title="Document Transcript Working Preview"
-                        srcDoc={generateMockDocSrcDoc(
-                          'transkrip', 
-                          selectedItem.file_transkrip_url,
-                          selectedItem.profile?.nama_lengkap || 'Calon Mahasiswa',
-                          selectedItem.prodi?.nama || '-'
-                        )}
-                        style={{ width: '100%', height: '100%', border: 'none' }}
+                      <TranscriptPreview
+                        fileUrl={selectedItem.file_transkrip_url}
+                        profileName={selectedItem.profile?.nama_lengkap || 'Calon Mahasiswa'}
+                        prodiName={selectedItem.prodi?.nama || '-'}
+                        height={480}
+                        noBorder={true}
                       />
-                    </div>
                   ) : (
                     <div style={{ maxHeight: 480, overflowY: 'auto' }}>
                       <h4 style={{ fontSize: 12, fontWeight: 700, marginBottom: 10, color: 'var(--gray-700)' }}>Daftar Kurikulum {selectedItem.prodi?.nama}</h4>
