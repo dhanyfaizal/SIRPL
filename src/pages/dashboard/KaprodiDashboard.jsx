@@ -174,11 +174,14 @@ const extractTextFromPdf = async (fileUrl) => {
     const pdf = await loadingTask.promise
     let fullText = ''
 
+    console.log(`[extractTextFromPdf] Memulai ekstraksi teks dari PDF. Jumlah halaman: ${pdf.numPages}`)
+
     // 4. Extract text page by page, grouping items by Y-coordinate to preserve lines
     for (let i = 1; i <= pdf.numPages; i++) {
       const page = await pdf.getPage(i)
       const textContent = await page.getTextContent()
       const items = textContent.items
+      console.log(`[extractTextFromPdf] Halaman ${i}: menemukan ${items.length} item teks.`)
       if (items.length === 0) continue
 
       // Group items by Y coordinate with a tolerance of 5 pixels
@@ -482,8 +485,14 @@ export default function KaprodiDashboard() {
         setOcrProgress('Mengunduh berkas transkrip dari storage...')
         const text = await extractTextFromPdf(selectedItem.file_transkrip_url)
         setRawExtractedText(text)
+        if (!text || text.trim() === '') {
+          toast.error('Berkas PDF kosong atau berupa hasil scan gambar/scanned PDF yang tidak memiliki text layer.', { duration: 6000 })
+        }
         setOcrProgress('Membaca kode & nilai mata kuliah asal...')
         extracted = parseLocalOcrText(text, curriculumMK, prodiName)
+        if (text && extracted.length === 0) {
+          toast.error('Tidak menemukan baris mata kuliah asal yang cocok di PDF. Gunakan PDF digital.', { duration: 6000 })
+        }
       } else {
         // Fallback for mock mode
         await new Promise(resolve => setTimeout(resolve, 1500))
@@ -544,6 +553,9 @@ export default function KaprodiDashboard() {
           setOcrProgress('Mengekstrak teks dari berkas PDF transkrip...')
           text = await extractTextFromPdf(selectedItem.file_transkrip_url)
           setRawExtractedText(text)
+          if (!text || text.trim() === '') {
+            throw new Error('Berkas PDF tidak memiliki text layer (PDF berupa gambar hasil scan atau korup).')
+          }
         } else {
           // Mock mode text
           text = `TRANSKRIP NILAI AKADEMIK ASAL
@@ -594,6 +606,7 @@ export default function KaprodiDashboard() {
         }
       } catch (err) {
         console.warn('AI OCR API error (menggunakan fallback mesin OCR lokal):', err.message)
+        toast.error(err.message, { duration: 6000 })
         setOcrProgress('Mengaktifkan pemrosesan pintar lokal (fallback)...')
         
         try {
@@ -633,7 +646,7 @@ export default function KaprodiDashboard() {
           setOcrRunning(false)
           setScanEffect(null)
           setRecognitionMethod('ai')
-          toast.success(`AI/OCR berhasil mengekstrak ${mockRows.length} mata kuliah dengan rekomendasi pintar (lokal)!`)
+          toast.success(`Selesai memproses (menggunakan data template prodi sebagai fallback karena PDF berupa scan/gambar).`, { duration: 5000 })
         } catch (fallbackErr) {
           console.error(fallbackErr)
           toast.error('Gagal memproses berkas transkrip: ' + fallbackErr.message)
@@ -1323,7 +1336,7 @@ export default function KaprodiDashboard() {
           )}
 
           {/* Debug Panel Container */}
-          {(rawExtractedText || rawAiResponse) && (
+          {recognitionMethod && (
             <div className="card" style={{ marginTop: 24, borderColor: 'var(--gray-300)' }}>
               <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', padding: '10px 16px', borderBottom: '1px solid var(--gray-200)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -1342,13 +1355,13 @@ export default function KaprodiDashboard() {
               </div>
               
               {showDebugPanel && (
-                <div className="card-body" style={{ padding: 16, display: 'grid', gridTemplateColumns: rawAiResponse ? '1fr 1fr' : '1fr', gap: 16, background: '#f8fafc' }}>
+                <div className="card-body" style={{ padding: 16, display: 'grid', gridTemplateColumns: recognitionMethod === 'ai' ? '1fr 1fr' : '1fr', gap: 16, background: '#f8fafc' }}>
                   {/* Box 1: Raw Extracted PDF Text */}
-                  {rawExtractedText && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                      <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--gray-600)' }}>
-                        📄 Teks Mentah Hasil Ekstraksi PDF (pdf.js):
-                      </span>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--gray-600)' }}>
+                      📄 Teks Mentah Hasil Ekstraksi PDF (pdf.js):
+                    </span>
+                    {rawExtractedText ? (
                       <pre style={{ 
                         margin: 0, 
                         padding: 12, 
@@ -1364,30 +1377,46 @@ export default function KaprodiDashboard() {
                       }}>
                         {rawExtractedText}
                       </pre>
-                    </div>
-                  )}
+                    ) : (
+                      <div style={{ padding: 12, borderRadius: 6, background: '#fff2f2', border: '1px solid #ffcccc', color: '#cc0000', fontSize: 12, lineHeight: 1.6 }}>
+                        ⚠️ <strong>Teks Kosong / Tidak Terdeteksi</strong><br />
+                        Komponen pembaca PDF tidak menemukan teks di dalam file ini. Ini biasanya terjadi jika:
+                        <ul style={{ margin: '4px 0 0 20px', padding: 0 }}>
+                          <li>File PDF merupakan hasil scan gambar (Scanned PDF) yang tidak memiliki text layer (bukan digital PDF).</li>
+                          <li>File PDF dilindungi kata sandi (password-protected).</li>
+                          <li>Terjadi kegagalan saat mengunduh berkas dari storage.</li>
+                        </ul>
+                      </div>
+                    )}
+                  </div>
 
                   {/* Box 2: Raw AI JSON Response */}
-                  {rawAiResponse && (
+                  {recognitionMethod === 'ai' && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                       <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--gray-600)' }}>
                         🤖 Respon Mentah dari DeepSeek AI:
                       </span>
-                      <pre style={{ 
-                        margin: 0, 
-                        padding: 12, 
-                        background: '#0f172a', 
-                        color: '#34d399', 
-                        borderRadius: 6, 
-                        fontSize: 11, 
-                        fontFamily: 'monospace', 
-                        maxHeight: 250, 
-                        overflowY: 'auto',
-                        whiteSpace: 'pre-wrap',
-                        wordBreak: 'break-all'
-                      }}>
-                        {rawAiResponse}
-                      </pre>
+                      {rawAiResponse ? (
+                        <pre style={{ 
+                          margin: 0, 
+                          padding: 12, 
+                          background: '#0f172a', 
+                          color: '#34d399', 
+                          borderRadius: 6, 
+                          fontSize: 11, 
+                          fontFamily: 'monospace', 
+                          maxHeight: 250, 
+                          overflowY: 'auto',
+                          whiteSpace: 'pre-wrap',
+                          wordBreak: 'break-all'
+                        }}>
+                          {rawAiResponse}
+                        </pre>
+                      ) : (
+                        <div style={{ padding: 12, borderRadius: 6, background: '#fffbe6', border: '1px solid #ffe58f', color: '#d46b08', fontSize: 12 }}>
+                          ⏳ Menunggu respon dari DeepSeek AI...
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
