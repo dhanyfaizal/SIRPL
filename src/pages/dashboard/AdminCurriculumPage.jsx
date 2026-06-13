@@ -3,11 +3,11 @@ import { dbMK, dbProdi } from '../../lib/db'
 import { BookOpen, Upload, Trash2, Plus, Download, Filter, FileSpreadsheet } from 'lucide-react'
 import toast from 'react-hot-toast'
 
-const TEMPLATE_EXAMPLE = `MKU101\tPancasila\t2\tumum
-MKU102\tKewarganegaraan\t2\tumum
-MKI201\tDasar-Dasar Pemrograman\t4\tinti
-MKI202\tStruktur Data & Algoritma\t4\tinti
-MKI203\tBasis Data Terdistribusi\t3\tinti`
+const TEMPLATE_EXAMPLE = `MKU101,Pancasila,2,Institusi
+MKU102,Kewarganegaraan,2,Institusi
+MKI201,Dasar-Dasar Pemrograman,4,Program Studi
+MKI202,Struktur Data & Algoritma,4,Program Studi
+MKI203,Basis Data Terdistribusi,3,Program Studi`
 
 export default function AdminCurriculumPage() {
   const [prodis, setProdis] = useState([])
@@ -94,19 +94,26 @@ export default function AdminCurriculumPage() {
 
     const lines = text.trim().split('\n').filter(l => l.trim())
     const parsed = lines.map((line, idx) => {
-      // Support tab or semicolon separated
-      const parts = line.includes('\t') ? line.split('\t') : line.split(';')
+      // CSV: comma separated
+      const parts = line.split(',')
       if (parts.length < 3) {
         return { idx: idx + 1, valid: false, raw: line, error: 'Minimal 3 kolom (Kode, Nama, SKS)' }
       }
       const kode = (parts[0] || '').trim().toUpperCase()
       const nama = (parts[1] || '').trim()
       const sks = parseInt((parts[2] || '').trim())
-      const jenis = (parts[3] || 'inti').trim().toLowerCase()
+      const jenisRaw = (parts[3] || 'Program Studi').trim()
+
+      // Map user-friendly labels to db values
+      let jenis = 'inti'
+      if (jenisRaw.toLowerCase() === 'institusi' || jenisRaw.toLowerCase() === 'umum') {
+        jenis = 'umum'
+      } else if (jenisRaw.toLowerCase() === 'program studi' || jenisRaw.toLowerCase() === 'prodi' || jenisRaw.toLowerCase() === 'inti') {
+        jenis = 'inti'
+      }
 
       if (!kode || !nama) return { idx: idx + 1, valid: false, raw: line, error: 'Kode atau Nama kosong' }
       if (isNaN(sks) || sks < 1 || sks > 8) return { idx: idx + 1, valid: false, raw: line, error: 'SKS tidak valid (1-8)' }
-      if (!['inti', 'umum'].includes(jenis)) return { idx: idx + 1, valid: false, raw: line, error: `Jenis "${jenis}" tidak valid (inti/umum)` }
 
       return { idx: idx + 1, valid: true, kode, nama, sks, jenis }
     })
@@ -167,15 +174,15 @@ export default function AdminCurriculumPage() {
     }
   }
 
-  // ── Download Template ───────────────────────────────────────
+  // ── Download Template CSV ───────────────────────────────────
   const downloadTemplate = () => {
-    const header = 'Kode MK\tNama MK\tSKS\tJenis (inti/umum)\n'
-    const rows = 'MKI001\tContoh Mata Kuliah Inti\t3\tinti\nMKU001\tContoh Mata Kuliah Institusi\t2\tumum\n'
-    const blob = new Blob([header + rows], { type: 'text/tab-separated-values' })
+    const header = 'Kode MK,Nama MK,SKS,Jenis\n'
+    const rows = 'MKI001,Contoh Mata Kuliah Prodi,3,Program Studi\nMKU001,Contoh Mata Kuliah Institusi,2,Institusi\n'
+    const blob = new Blob([header + rows], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = 'template_kurikulum.tsv'
+    a.download = 'template_kurikulum.csv'
     a.click()
     URL.revokeObjectURL(url)
   }
@@ -203,7 +210,7 @@ export default function AdminCurriculumPage() {
     <div>
       <div className="page-header">
         <h1 className="page-title">Manajemen Kurikulum</h1>
-        <p className="page-subtitle">Kelola mata kuliah kurikulum per Program Studi — input tunggal atau impor masal dari Excel</p>
+        <p className="page-subtitle">Kelola mata kuliah kurikulum per Program Studi — input tunggal atau impor masal dari CSV</p>
       </div>
 
       {/* Top Action Bar */}
@@ -214,10 +221,10 @@ export default function AdminCurriculumPage() {
           style={{ gap: 6 }}
         >
           <FileSpreadsheet size={15} />
-          {showImport ? 'Tutup Panel Impor' : 'Impor dari Excel / CSV'}
+          {showImport ? 'Tutup Panel Impor' : 'Impor dari CSV'}
         </button>
         <button onClick={downloadTemplate} className="btn btn-secondary" style={{ gap: 6 }}>
-          <Download size={15} /> Unduh Template TSV
+          <Download size={15} /> Unduh Template CSV
         </button>
       </div>
 
@@ -234,9 +241,9 @@ export default function AdminCurriculumPage() {
             <div style={{ background: 'var(--gray-50)', padding: 14, borderRadius: 8, border: '1px solid var(--gray-200)', fontSize: 12.5, lineHeight: 1.6 }}>
               <strong>Petunjuk:</strong>
               <ol style={{ paddingLeft: 18, margin: '6px 0 0' }}>
-                <li>Buka file Excel/Google Sheets Anda yang berisi data kurikulum.</li>
-                <li>Pastikan kolom berurutan: <code>Kode MK</code> | <code>Nama MK</code> | <code>SKS</code> | <code>Jenis</code> (inti/umum).</li>
-                <li>Seleksi semua baris data (tanpa header), kemudian <strong>Copy (Ctrl+C)</strong>.</li>
+                <li>Siapkan file CSV Anda, atau klik <strong>"Unduh Template CSV"</strong> untuk mendapatkan contoh format.</li>
+                <li>Format kolom: <code>Kode MK</code>, <code>Nama MK</code>, <code>SKS</code>, <code>Jenis</code> (Program Studi / Institusi).</li>
+                <li>Buka file CSV dengan Notepad/teks editor, lalu <strong>Copy (Ctrl+A → Ctrl+C)</strong> seluruh isi.</li>
                 <li>Tempelkan <strong>(Ctrl+V)</strong> ke textarea di bawah ini.</li>
               </ol>
             </div>
@@ -257,7 +264,7 @@ export default function AdminCurriculumPage() {
             </div>
 
             <div className="input-group">
-              <label className="input-label">Data Kurikulum (Tab/Semicolon Separated)</label>
+              <label className="input-label">Data Kurikulum (CSV — Koma Separated)</label>
               <textarea
                 value={importText}
                 onChange={(e) => setImportText(e.target.value)}
@@ -266,7 +273,7 @@ export default function AdminCurriculumPage() {
                 rows={8}
                 style={{ fontFamily: "'Fira Code', 'Consolas', monospace", fontSize: 12, resize: 'vertical', padding: '10px 14px', lineHeight: 1.7 }}
               />
-              <span className="input-hint">Tempelkan data dari Excel. Format: Kode MK [Tab] Nama MK [Tab] SKS [Tab] Jenis</span>
+              <span className="input-hint">Format per baris: Kode MK, Nama MK, SKS, Jenis (Program Studi / Institusi)</span>
             </div>
 
             {/* Preview parsed rows */}
