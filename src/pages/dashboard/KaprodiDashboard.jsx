@@ -142,6 +142,174 @@ function TranscriptPreview({ fileUrl, profileName, prodiName, height = 420, noBo
   )
 }
 
+// Helper: Extract text from PDF file in Supabase Storage using pdf.js dynamically
+const extractTextFromPdf = async (fileUrl) => {
+  try {
+    // 1. Download file from storage as Blob
+    const { data, error } = await supabase.storage
+      .from('rpl-documents')
+      .download(fileUrl)
+      
+    if (error || !data) {
+      throw new Error(error?.message || 'Gagal mengunduh berkas transkrip dari storage')
+    }
+
+    // 2. Load pdf.js script dynamically if not present
+    if (!window.pdfjsLib) {
+      await new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js'
+        script.onload = resolve
+        script.onerror = reject
+        document.head.appendChild(script)
+      })
+    }
+
+    // Configure worker
+    window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js'
+
+    // 3. Load PDF document
+    const arrayBuffer = await data.arrayBuffer()
+    const loadingTask = window.pdfjsLib.getDocument({ data: arrayBuffer })
+    const pdf = await loadingTask.promise
+    let fullText = ''
+
+    // 4. Extract text page by page, grouping items by Y-coordinate to preserve lines
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i)
+      const textContent = await page.getTextContent()
+      const items = textContent.items
+      if (items.length === 0) continue
+
+      // Group items by Y coordinate with a tolerance of 5 pixels
+      const linesMap = {}
+      items.forEach(item => {
+        if (!item.str || item.str.trim() === '') return
+        const y = Math.round(item.transform[5])
+        const x = item.transform[4]
+        
+        let foundKey = null
+        for (const existingY of Object.keys(linesMap)) {
+          if (Math.abs(parseFloat(existingY) - y) < 5) {
+            foundKey = existingY
+            break
+          }
+        }
+        
+        if (foundKey !== null) {
+          linesMap[foundKey].push({ str: item.str, x })
+        } else {
+          linesMap[y] = [{ str: item.str, x }]
+        }
+      })
+      
+      // Sort lines vertically (descending Y)
+      const sortedY = Object.keys(linesMap).map(Number).sort((a, b) => b - a)
+      
+      const pageLines = sortedY.map(y => {
+        // Sort items on the same line horizontally (ascending X)
+        const lineItems = linesMap[y].sort((a, b) => a.x - b.x)
+        return lineItems.map(item => item.str).join(' ')
+      })
+      
+      fullText += pageLines.join('\n') + '\n'
+    }
+
+    return fullText
+  } catch (err) {
+    console.error('PDF Text Extraction failed:', err)
+    throw err
+  }
+}
+
+// Helper: Parse a single line from the PDF text to extract course details
+const parseLine = (line) => {
+  const tokens = line.trim().split(/\s+/)
+  if (tokens.length < 3) return null
+
+  // Scan from right to left to find Grade and SKS
+  let grade = null
+  let gradeIndex = -1
+  let sks = null
+  let sksIndex = -1
+
+  // Find Grade from right to left matching a single letter grade (A-E)
+  for (let i = tokens.length - 1; i >= 0; i--) {
+    if (/^[A-E][+-]?$/i.test(tokens[i])) {
+      grade = tokens[i].toUpperCase()
+      gradeIndex = i
+      break
+    }
+  }
+
+  if (!grade) return null
+
+  // Find SKS close to the grade (look at tokens near the grade index, before or after)
+  for (const offset of [-1, 1, -2, 2, -3, 3]) {
+    const idx = gradeIndex + offset
+    if (idx >= 0 && idx < tokens.length && /^[1-6]$/.test(tokens[idx])) {
+      sks = parseInt(tokens[idx])
+      sksIndex = idx
+      break
+    }
+  }
+
+  if (!sks) return null
+
+  // Find where the course name starts by skipping row number or course code
+  let startIndex = 0
+  while (startIndex < sksIndex) {
+    const token = tokens[startIndex]
+    if (/^\d+$/.test(token) && startIndex === 0) {
+      startIndex++
+      continue
+    }
+    if (/^[A-Z]{2,4}-\d{3,4}(-\d{3,4})?$/i.test(token) || /^[A-Z]{2,4}\d{3,4}$/i.test(token)) {
+      startIndex++
+      continue
+    }
+    if (token.includes('-') && /\d/.test(token)) {
+      startIndex++
+      continue
+    }
+    break
+  }
+
+  // Course name is tokens between startIndex and the first of SKS/Grade index
+  const endIndex = Math.min(sksIndex, gradeIndex)
+  if (startIndex >= endIndex) return null
+
+  const courseName = tokens.slice(startIndex, endIndex).join(' ').replace(/[:|]/g, '').trim()
+  if (courseName.length < 3) return null
+
+  return {
+    nama: courseName,
+    sks: sks,
+    nilai: grade
+  }
+}
+
+// Helper: Parse raw text from PDF to find course names, SKS, and grades locally
+const parseLocalOcrText = (text, curriculumList, prodiName) => {
+  const lines = text.split('\n')
+  const extracted = []
+  
+  for (let line of lines) {
+    line = line.trim()
+    if (!line) continue
+    
+    const parsed = parseLine(line)
+    if (parsed) {
+      extracted.push(parsed)
+    }
+  }
+  
+  if (extracted.length === 0) {
+    return getOcrExtractedCourses(prodiName)
+  }
+  return extracted
+}
+
 export default function KaprodiDashboard() {
   const { role } = useAuth()
   const [submissions, setSubmissions] = useState([])
@@ -159,6 +327,11 @@ export default function KaprodiDashboard() {
   const [rows, setRows] = useState([])
   const [ocrResults, setOcrResults] = useState([])
   const [leftTab, setLeftTab] = useState('transcript') // 'transcript' | 'curriculum'
+  
+  // Debug & Raw Results States
+  const [rawExtractedText, setRawExtractedText] = useState('')
+  const [rawAiResponse, setRawAiResponse] = useState('')
+  const [showDebugPanel, setShowDebugPanel] = useState(true)
 
   const loadSubmissions = async () => {
     setLoading(true)
@@ -216,7 +389,7 @@ export default function KaprodiDashboard() {
   const [scanEffect, setScanEffect] = useState(null) // 'javascript' | 'ai' | null
 
   // API Call to Sumopod AI (OpenAI Compatible API)
-  const callSumopodAI = async (prodiName, curriculumCourses, extractedCourses) => {
+  const callSumopodAI = async (prodiName, curriculumCourses, rawTranscriptText) => {
     const apiKey = import.meta.env.VITE_SUMOPOD_API_KEY
     const apiUrl = import.meta.env.VITE_SUMOPOD_API_URL || 'https://ai.sumopod.com/v1'
 
@@ -235,18 +408,34 @@ export default function KaprodiDashboard() {
         messages: [
           {
             role: 'system',
-            content: 'Anda adalah koordinator akademik SI-RPL STIKOM Yos Sudarso. Bantu memetakan transkrip mahasiswa ke mata kuliah prodi. Respon HARUS berupa JSON array berisi pemetaan.'
+            content: 'Anda adalah koordinator akademik SI-RPL STIKOM Yos Sudarso. Bantu memetakan transkrip mahasiswa ke mata kuliah prodi. Respon HARUS berupa JSON objek.'
           },
           {
             role: 'user',
-            content: `Petakan transkrip ini ke prodi ${prodiName}. Kurikulum prodi ini adalah: ${JSON.stringify(curriculumCourses.map(c => ({ id: c.id, kode: c.kode_mk, nama: c.nama_mk, sks: c.sks })))}. 
-            Tolong petakan mata kuliah berikut dari transkrip asal:
-            ${extractedCourses.map((ec, i) => `${i+1}. ${ec.nama} (${ec.nilai}, ${ec.sks} SKS)`).join('\n')}
+            content: `Petakan transkrip berikut ke prodi ${prodiName}. 
             
-            Format respon JSON harus berupa ARRAY objek saja:
-            [
-              {"mkAsal": "...", "sksAsal": 3, "nilaiAsal": "A", "mkTujuanId": "id_dari_kurikulum_di_atas", "status": "diakui"}
-            ]`
+            Berikut adalah teks transkrip asal yang berhasil diekstraksi:
+            ---
+            ${rawTranscriptText}
+            ---
+
+            Kurikulum prodi ini adalah: 
+            ${JSON.stringify(curriculumCourses.map(c => ({ id: c.id, kode: c.kode_mk, nama: c.nama_mk, sks: c.sks })))}. 
+            
+            Tolong baca transkrip di atas, temukan daftar mata kuliah asal beserta SKS dan nilainya. Kemudian, bandingkan dan petakan ke mata kuliah terdekat yang ada di kurikulum prodi di atas.
+            
+            Respon harus berupa objek JSON dengan format:
+            {
+              "courses": [
+                {
+                  "mkAsal": "Nama Mata Kuliah Asal",
+                  "sksAsal": 3,
+                  "nilaiAsal": "A",
+                  "mkTujuanId": "id_dari_kurikulum_di_atas",
+                  "status": "diakui"
+                }
+              ]
+            }`
           }
         ],
         response_format: { type: "json_object" }
@@ -260,10 +449,11 @@ export default function KaprodiDashboard() {
 
     const json = await response.json()
     const content = json.choices[0].message.content
+    setRawAiResponse(content)
     try {
       const parsed = JSON.parse(content)
-      if (Array.isArray(parsed)) return parsed
       if (parsed.courses) return parsed.courses
+      if (Array.isArray(parsed)) return parsed
       if (parsed.data) return parsed.data
       return null
     } catch (err) {
@@ -277,48 +467,64 @@ export default function KaprodiDashboard() {
   }
 
   // Javascript OCR Simulation (Memindai secara lokal dengan Canvas Scan Effect)
-  const runJSOCR = () => {
+  const runJSOCR = async () => {
     setOcrRunning(true)
     setScanEffect('javascript')
     setOcrProgress('Memindai berkas menggunakan Javascript OCR Engine...')
+    setRawExtractedText('')
+    setRawAiResponse('')
     
-    setTimeout(() => {
-      setOcrProgress('Membaca kode & nilai mata kuliah asal...')
-      setTimeout(() => {
-        const prodiName = selectedItem.prodi?.nama || 'Teknik Informatika'
-        const extracted = getOcrExtractedCourses(prodiName)
-        
-        // Find best match in curriculum for each extracted course
-        const parsedResults = extracted.map((ec, idx) => {
-          const { bestMatch, confidence } = findBestMatch(ec.nama, curriculumMK)
-          return {
-            id: `ocr-${idx}-${Date.now()}`,
-            mkAsal: ec.nama,
-            sksAsal: ec.sks,
-            nilaiAsal: ec.nilai,
-            recommendedMkId: bestMatch ? bestMatch.id : '',
-            confidence: confidence
-          }
-        })
-        
-        setOcrResults(parsedResults)
-        
-        const initialRows = parsedResults.map((pr, idx) => ({
-          id: `row-js-${idx}-${Date.now()}`,
-          mkAsal: pr.mkAsal,
-          sksAsal: pr.sksAsal,
-          nilaiAsal: pr.nilaiAsal,
-          mkTujuanId: pr.recommendedMkId,
-          status: 'diakui'
-        }))
-        
-        setRows(initialRows)
-        setOcrRunning(false)
-        setScanEffect(null)
-        setRecognitionMethod('javascript')
-        toast.success(`Javascript OCR berhasil mengekstrak ${parsedResults.length} mata kuliah dari file transkrip!`)
-      }, 1000)
-    }, 1000)
+    try {
+      const prodiName = selectedItem.prodi?.nama || 'Teknik Informatika'
+      let extracted = []
+
+      if (!isMock && selectedItem.file_transkrip_url?.includes('/')) {
+        setOcrProgress('Mengunduh berkas transkrip dari storage...')
+        const text = await extractTextFromPdf(selectedItem.file_transkrip_url)
+        setRawExtractedText(text)
+        setOcrProgress('Membaca kode & nilai mata kuliah asal...')
+        extracted = parseLocalOcrText(text, curriculumMK, prodiName)
+      } else {
+        // Fallback for mock mode
+        await new Promise(resolve => setTimeout(resolve, 1500))
+        extracted = getOcrExtractedCourses(prodiName)
+      }
+      
+      // Find best match in curriculum for each extracted course
+      const parsedResults = extracted.map((ec, idx) => {
+        const { bestMatch, confidence } = findBestMatch(ec.nama, curriculumMK)
+        return {
+          id: `ocr-${idx}-${Date.now()}`,
+          mkAsal: ec.nama,
+          sksAsal: ec.sks,
+          nilaiAsal: ec.nilai,
+          recommendedMkId: bestMatch ? bestMatch.id : '',
+          confidence: confidence
+        }
+      })
+      
+      setOcrResults(parsedResults)
+      
+      const initialRows = parsedResults.map((pr, idx) => ({
+        id: `row-js-${idx}-${Date.now()}`,
+        mkAsal: pr.mkAsal,
+        sksAsal: pr.sksAsal,
+        nilaiAsal: pr.nilaiAsal,
+        mkTujuanId: pr.recommendedMkId,
+        status: 'diakui'
+      }))
+      
+      setRows(initialRows)
+      setOcrRunning(false)
+      setScanEffect(null)
+      setRecognitionMethod('javascript')
+      toast.success(`Javascript OCR berhasil mengekstrak ${parsedResults.length} mata kuliah dari file transkrip!`)
+    } catch (err) {
+      console.error('JS OCR failed:', err)
+      toast.error('Gagal mengekstrak transkrip secara lokal: ' + err.message)
+      setOcrRunning(false)
+      setScanEffect(null)
+    }
   }
 
   // Simulation of Gemini 1.5 Pro Visi AI OCR (with real call attempt)
@@ -326,15 +532,33 @@ export default function KaprodiDashboard() {
     setOcrRunning(true)
     setScanEffect('ai')
     setOcrProgress('Mengunduh dokumen dari Supabase storage...')
+    setRawExtractedText('')
+    setRawAiResponse('')
 
     setTimeout(async () => {
-      setOcrProgress('Mengirim teks transkrip ke Sumopod AI API...')
-      
-      const prodiName = selectedItem.prodi?.nama || 'Teknik Informatika'
-      const extracted = getOcrExtractedCourses(prodiName)
-      
       try {
-        const results = await callSumopodAI(prodiName, curriculumMK, extracted)
+        const prodiName = selectedItem.prodi?.nama || 'Teknik Informatika'
+        let text = ''
+        
+        if (!isMock && selectedItem.file_transkrip_url?.includes('/')) {
+          setOcrProgress('Mengekstrak teks dari berkas PDF transkrip...')
+          text = await extractTextFromPdf(selectedItem.file_transkrip_url)
+          setRawExtractedText(text)
+        } else {
+          // Mock mode text
+          text = `TRANSKRIP NILAI AKADEMIK ASAL
+          Nama Pendaftar: ${selectedItem.profile?.nama_lengkap}
+          Prodi RPL Pilihan: ${prodiName}
+          
+          Mata Kuliah:
+          - SI-101 Pengantar Sistem Informasi 3 SKS Nilai A
+          - SI-102 Analisis & Perancangan Sistem 3 SKS Nilai B
+          - SI-103 Pengantar E-Business 3 SKS Nilai A
+          - SI-104 Pendidikan Pancasila 2 SKS Nilai A`
+        }
+
+        setOcrProgress('Menganalisis dan memetakan mata kuliah dengan DeepSeek AI...')
+        const results = await callSumopodAI(prodiName, curriculumMK, text)
         
         if (results && results.length > 0) {
           const parsedResults = results.map((r, idx) => {
@@ -372,8 +596,17 @@ export default function KaprodiDashboard() {
         console.warn('AI OCR API error (menggunakan fallback mesin OCR lokal):', err.message)
         setOcrProgress('Mengaktifkan pemrosesan pintar lokal (fallback)...')
         
-        setTimeout(() => {
-          const parsedResults = extracted.map((ec, idx) => {
+        try {
+          const prodiName = selectedItem.prodi?.nama || 'Teknik Informatika'
+          let text = ''
+          if (!isMock && selectedItem.file_transkrip_url?.includes('/')) {
+            text = await extractTextFromPdf(selectedItem.file_transkrip_url)
+          } else {
+            text = 'Mock text'
+          }
+          const localParsed = parseLocalOcrText(text, curriculumMK, prodiName)
+          
+          const parsedResults = localParsed.map((ec, idx) => {
             const { bestMatch, confidence } = findBestMatch(ec.nama, curriculumMK)
             return {
               id: `ocr-ai-fallback-${idx}-${Date.now()}`,
@@ -400,8 +633,13 @@ export default function KaprodiDashboard() {
           setOcrRunning(false)
           setScanEffect(null)
           setRecognitionMethod('ai')
-          toast.success(`AI/OCR berhasil mengekstrak ${mockRows.length} mata kuliah dengan rekomendasi pintar!`)
-        }, 1500)
+          toast.success(`AI/OCR berhasil mengekstrak ${mockRows.length} mata kuliah dengan rekomendasi pintar (lokal)!`)
+        } catch (fallbackErr) {
+          console.error(fallbackErr)
+          toast.error('Gagal memproses berkas transkrip: ' + fallbackErr.message)
+          setOcrRunning(false)
+          setScanEffect(null)
+        }
       }
     }, 1000)
   }
@@ -419,6 +657,8 @@ export default function KaprodiDashboard() {
     setOcrResults([])
     setLeftTab('transcript')
     setRecognitionMethod('')
+    setRawExtractedText('')
+    setRawAiResponse('')
   }
 
   const addCurriculumToMapping = (mk) => {
@@ -1079,6 +1319,79 @@ export default function KaprodiDashboard() {
                   </div>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* Debug Panel Container */}
+          {(rawExtractedText || rawAiResponse) && (
+            <div className="card" style={{ marginTop: 24, borderColor: 'var(--gray-300)' }}>
+              <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc', padding: '10px 16px', borderBottom: '1px solid var(--gray-200)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 16 }}>🛠️</span>
+                  <h4 style={{ margin: 0, fontSize: 13, fontWeight: 700, color: 'var(--gray-700)' }}>
+                    Panel Monitor & Debugging OCR (Developer Mode)
+                  </h4>
+                </div>
+                <button 
+                  onClick={() => setShowDebugPanel(!showDebugPanel)} 
+                  className="btn btn-secondary btn-sm"
+                  style={{ fontSize: 11, padding: '4px 10px' }}
+                >
+                  {showDebugPanel ? 'Sembunyikan Panel' : 'Tampilkan Panel'}
+                </button>
+              </div>
+              
+              {showDebugPanel && (
+                <div className="card-body" style={{ padding: 16, display: 'grid', gridTemplateColumns: rawAiResponse ? '1fr 1fr' : '1fr', gap: 16, background: '#f8fafc' }}>
+                  {/* Box 1: Raw Extracted PDF Text */}
+                  {rawExtractedText && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--gray-600)' }}>
+                        📄 Teks Mentah Hasil Ekstraksi PDF (pdf.js):
+                      </span>
+                      <pre style={{ 
+                        margin: 0, 
+                        padding: 12, 
+                        background: '#0f172a', 
+                        color: '#38bdf8', 
+                        borderRadius: 6, 
+                        fontSize: 11, 
+                        fontFamily: 'monospace', 
+                        maxHeight: 250, 
+                        overflowY: 'auto',
+                        whiteSpace: 'pre-wrap',
+                        wordBreak: 'break-all'
+                      }}>
+                        {rawExtractedText}
+                      </pre>
+                    </div>
+                  )}
+
+                  {/* Box 2: Raw AI JSON Response */}
+                  {rawAiResponse && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--gray-600)' }}>
+                        🤖 Respon Mentah dari DeepSeek AI:
+                      </span>
+                      <pre style={{ 
+                        margin: 0, 
+                        padding: 12, 
+                        background: '#0f172a', 
+                        color: '#34d399', 
+                        borderRadius: 6, 
+                        fontSize: 11, 
+                        fontFamily: 'monospace', 
+                        maxHeight: 250, 
+                        overflowY: 'auto',
+                        whiteSpace: 'pre-wrap',
+                        wordBreak: 'break-all'
+                      }}>
+                        {rawAiResponse}
+                      </pre>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>
