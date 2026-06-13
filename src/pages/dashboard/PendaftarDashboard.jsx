@@ -159,6 +159,7 @@ export default function PendaftarDashboard() {
         prodi_pilihan_id: selectedProdi,
         file_ijazah_url: ijazahUrl,
         file_transkrip_url: transkripUrl,
+        status: 'submitted',
       }
 
       await dbPengajuan.create(payload)

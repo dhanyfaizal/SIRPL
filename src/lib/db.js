@@ -217,7 +217,7 @@ export const dbPengajuan = {
       saveLocalData('si_rpl_pengajuan', list)
       return { data: newItem, error: null }
     }
-    return supabase.from('pengajuan_rpl').insert(data).select().single()
+    return supabase.from('pengajuan_rpl').insert({ status: 'submitted', ...data }).select().single()
   },
 
   updateStatus: async (id, status) => {
