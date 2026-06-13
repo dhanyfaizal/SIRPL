@@ -77,13 +77,22 @@ export default function AuthProvider({ children }) {
     const meta = authUser.user_metadata ?? {}
     const nama = meta.full_name || meta.name || authUser.email?.split('@')[0] || 'Pengguna'
     
-    // Default role untuk user pertama bisa calon_mhs, tapi kita bisa update di dashboard jika perlu
-    const { data, error } = await dbProfiles.getOrCreateProfile(
+    const userRole = authUser.email === 'danizsheila@gmail.com' ? 'admin' : 'calon_mhs'
+
+    let { data, error } = await dbProfiles.getOrCreateProfile(
       authUser.id,
       authUser.email,
       nama,
-      'calon_mhs'
+      userRole
     )
+
+    // Paksa update ke role admin jika user login adalah danizsheila@gmail.com namun perannya di database masih calon_mhs
+    if (data && authUser.email === 'danizsheila@gmail.com' && data.role !== 'admin') {
+      const { data: updated } = await dbProfiles.updateRole(authUser.id, 'admin')
+      if (updated) {
+        data = updated
+      }
+    }
 
     if (!error && data) {
       setProfile(data)

@@ -64,36 +64,6 @@ export default function Header() {
         SI-RPL
       </span>
 
-      {/* Mock Role Switcher (Hanya aktif dalam Mode Mock) */}
-      {isMock && (
-        <div style={{ marginLeft: 24, display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span className="badge-pill badge-indigo" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            <ShieldAlert size={12} /> Mode Simulasi
-          </span>
-          <select 
-            value={role || ''} 
-            onChange={(e) => handleRoleSwitch(e.target.value)}
-            style={{
-              padding: '4px 8px',
-              fontSize: '12px',
-              borderRadius: '6px',
-              border: '1px solid var(--gray-200)',
-              background: 'var(--surface)',
-              color: 'var(--gray-700)',
-              fontWeight: 600,
-              outline: 'none',
-              cursor: 'pointer'
-            }}
-          >
-            <option value="calon_mhs">Pendaftar (Calon Mhs)</option>
-            <option value="baak">BAAK (Validasi)</option>
-            <option value="kaprodi">Ka. Prodi (AI/OCR)</option>
-            <option value="asessor">Asessor (Kalkulasi)</option>
-            <option value="admin">Admin (Pemetaan & Cetak)</option>
-          </select>
-        </div>
-      )}
-
       {/* Actions */}
       <div className="header-actions">
         {/* Theme toggle */}

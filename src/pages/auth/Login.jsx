@@ -111,7 +111,6 @@ export default function Login() {
               background: '#ffffff',
               color: '#334155',
               boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-              marginBottom: '24px',
               transition: 'background 0.15s, border-color 0.15s'
             }}
             onMouseEnter={(e) => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.borderColor = '#cbd5e1'; }}
@@ -126,105 +125,6 @@ export default function Login() {
             Masuk dengan Google Workspace
           </button>
 
-          {/* Divider */}
-          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '24px' }}>
-            <div style={{ flex: 1, height: '1px', background: '#e2e8f0' }} />
-            <span style={{ fontSize: '11px', color: '#94a3b8', padding: '0 12px', fontWeight: 600 }}>ATAU</span>
-            <div style={{ flex: 1, height: '1px', background: '#e2e8f0' }} />
-          </div>
-
-          {/* Mock Login Section */}
-          <form onSubmit={handleMockLogin} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            <div style={{
-              background: '#f8fafc',
-              border: '1px solid #e2e8f0',
-              borderRadius: '8px',
-              padding: '16px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '12px'
-            }}>
-              <span style={{
-                fontSize: '11px',
-                fontWeight: 700,
-                color: '#4f46e5',
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px',
-                display: 'block'
-              }}>
-                🔑 Simulasi Login Peran
-              </span>
-
-              {/* Select Role */}
-              <div className="input-group">
-                <label className="input-label">Pilih Peran Penguji</label>
-                <select
-                  value={mockRole}
-                  onChange={handleRoleChange}
-                  style={{
-                    width: '100%',
-                    padding: '8px 12px',
-                    borderRadius: '6px',
-                    border: '1px solid #cbd5e1',
-                    background: '#ffffff',
-                    fontSize: '12.5px',
-                    color: '#334155',
-                    fontWeight: 500,
-                    outline: 'none'
-                  }}
-                >
-                  <option value="calon_mhs">Pendaftar (Calon Mhs)</option>
-                  <option value="baak">BAAK (Verifikator Berkas)</option>
-                  <option value="kaprodi">Ka. Prodi (Smart Recognition)</option>
-                  <option value="asessor">Asessor RPL (Justifikasi Akademik)</option>
-                  <option value="admin">Admin Akademik (Pemetaan & Cetak)</option>
-                </select>
-              </div>
-
-              {/* Input Full Name */}
-              <div className="input-group">
-                <label className="input-label">Nama Lengkap Simulasi</label>
-                <input
-                  type="text"
-                  value={mockName}
-                  onChange={(e) => setMockName(e.target.value)}
-                  placeholder="Masukkan nama lengkap..."
-                  className="input"
-                  style={{ fontSize: '12.5px' }}
-                />
-              </div>
-            </div>
-
-            {/* Submit Mock Login */}
-            <button
-              type="submit"
-              disabled={loading}
-              className="btn btn-primary"
-              style={{
-                width: '100%',
-                padding: '11px 16px',
-                fontSize: '13.5px',
-                fontWeight: 600,
-                justifyContent: 'center',
-                borderRadius: '8px',
-                boxShadow: '0 4px 10px rgba(79, 70, 229, 0.15)'
-              }}
-            >
-              {loading ? 'Menghubungkan...' : 'Masuk sebagai Penguji'}
-            </button>
-          </form>
-        </div>
-
-        {/* Footer */}
-        <div style={{
-          background: '#f8fafc',
-          padding: '16px 32px',
-          borderTop: '1px solid #e2e8f0',
-          textAlign: 'center',
-          fontSize: '11.5px',
-          color: '#64748b'
-        }}>
-          Simulasi didukung oleh local storage untuk kemudahan evaluasi offline.
         </div>
       </div>
     </div>
