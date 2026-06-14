@@ -36,32 +36,24 @@ export default function AuthProvider({ children }) {
     // 2. Jika bukan mock, gunakan Supabase Auth asli
     let active = true
 
-    async function initializeAuth() {
-      try {
-        const { data: { session } } = await supabase.auth.getSession()
-        if (session?.user && active) {
-          setUser(session.user)
-          await syncProfile(session.user)
-        }
-      } catch (err) {
-        console.error('Error during auth initialization:', err)
-      } finally {
-        if (active) setLoading(false)
-      }
-    }
-
-    initializeAuth()
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
+        if (!active) return
+
         if (session?.user) {
           setUser(session.user)
-          await syncProfile(session.user)
+          try {
+            await syncProfile(session.user)
+          } catch (err) {
+            console.error('Error syncing profile during auth state change:', err)
+          }
         } else {
           setUser(null)
           setProfile(null)
           setRole(null)
         }
+
+        setLoading(false)
       }
     )
 
