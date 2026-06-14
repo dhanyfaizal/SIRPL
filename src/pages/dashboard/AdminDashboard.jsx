@@ -230,6 +230,27 @@ export default function AdminDashboard() {
     }
   }
 
+  const handleAllowResubmission = async () => {
+    const confirmAction = window.confirm('Apakah Anda yakin ingin membuka kembali pengajuan ini agar calon pendaftar dapat mengunggah berkas baru?')
+    if (!confirmAction) return
+
+    setSubmitting(true)
+    try {
+      await dbPengajuan.updateStatus(
+        selectedItem.id,
+        'returned_baak',
+        'Dibuka kembali oleh Admin Akademik agar Anda dapat mengajukan berkas baru atau melakukan revisi.'
+      )
+      toast.success('Pengajuan berhasil dibuka kembali untuk Calon Pendaftar!')
+      loadSubmissions()
+    } catch (e) {
+      console.error(e)
+      toast.error('Gagal membuka kembali pengajuan')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   const getStatusInfo = (status) => {
     switch (status) {
       case 'submitted':
@@ -729,6 +750,36 @@ export default function AdminDashboard() {
                   </div>
                 </div>
               )}
+
+              {/* Buka Akses Pengajuan Baru Card */}
+              <div className="card" style={{ border: '1px solid var(--amber-500)', background: '#fffbeb', marginTop: 12 }}>
+                <div className="card-header" style={{ borderBottom: '1px solid #fef3c7' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#b45309' }}>
+                    <RotateCcw size={16} />
+                    <h3 style={{ fontSize: 13, fontWeight: 700 }}>Buka Akses Pengajuan Baru</h3>
+                  </div>
+                </div>
+                <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <p style={{ fontSize: 12, color: 'var(--gray-600)', lineHeight: 1.4 }}>
+                    Gunakan fitur ini untuk mengembalikan status berkas calon pendaftar ke **Revisi Dokumen (Calon Pendaftar)**. Calon pendaftar akan dapat mengedit formulir, mengunggah ijazah/transkrip baru, serta memperbarui berkas sertifikat dan pengalaman kerja mereka.
+                  </p>
+                  <button
+                    onClick={handleAllowResubmission}
+                    className="btn btn-warning btn-sm"
+                    style={{ 
+                      justifyContent: 'center', 
+                      fontWeight: 700, 
+                      background: '#d97706', 
+                      color: '#fff', 
+                      border: 'none',
+                      padding: '8px 12px'
+                    }}
+                    disabled={submitting}
+                  >
+                    {submitting ? 'Memproses...' : 'Buka Pengajuan Baru (Reset)'}
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>

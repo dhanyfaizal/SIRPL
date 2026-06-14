@@ -386,7 +386,7 @@ export default function PendaftarDashboard() {
                   ⚠️ Pengajuan Dikembalikan untuk Revisi
                 </h4>
                 <p style={{ color: '#742a2a', fontSize: '13px', marginTop: 8, marginBottom: 0 }}>
-                  Catatan Revisi dari BAAK: <strong>{pengajuan.catatan_revisi || 'Harap perbaiki dokumen Anda.'}</strong>
+                  Catatan Pengembalian/Revisi: <strong>{pengajuan.catatan_revisi || 'Harap perbaiki dokumen Anda.'}</strong>
                 </p>
               </div>
             </div>
