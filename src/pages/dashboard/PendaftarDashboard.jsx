@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { dbPengajuan, dbProdi } from '../../lib/db'
 import { supabase, isMock } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
-import { FileUp, Clipboard, Award, Shield, CheckCircle, FileText, Trash2, Plus } from 'lucide-react'
+import { FileUp, Clipboard, Award, Shield, CheckCircle, FileText, Trash2, Plus, Eye } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { generateMockDocSrcDoc } from '../../lib/mockDoc'
 
@@ -11,11 +11,14 @@ function DocPreview({ fileUrl, previewType, profileName, prodiName }) {
   const [signedUrl, setSignedUrl] = useState(null)
   const [loadingUrl, setLoadingUrl] = useState(false)
 
-  const isStoragePath = fileUrl && fileUrl.includes('/')
+  const isBlobUrl = fileUrl && fileUrl.startsWith('blob:')
+  const isStoragePath = fileUrl && fileUrl.includes('/') && !isBlobUrl
 
   useEffect(() => {
     setSignedUrl(null)
-    if (!isMock && isStoragePath) {
+    if (isBlobUrl) {
+      setSignedUrl(fileUrl)
+    } else if (!isMock && isStoragePath) {
       setLoadingUrl(true)
       supabase.storage
         .from('rpl-documents')
@@ -26,7 +29,7 @@ function DocPreview({ fileUrl, previewType, profileName, prodiName }) {
         })
         .finally(() => setLoadingUrl(false))
     }
-  }, [fileUrl, isStoragePath])
+  }, [fileUrl, isStoragePath, isBlobUrl])
 
   if (loadingUrl) {
     return (
@@ -36,12 +39,13 @@ function DocPreview({ fileUrl, previewType, profileName, prodiName }) {
     )
   }
 
-  if (!isMock && isStoragePath && signedUrl) {
+  if (isBlobUrl || (!isMock && isStoragePath && signedUrl)) {
+    const srcUrl = isBlobUrl ? fileUrl : signedUrl
     return (
       <div style={{ border: '1px solid var(--gray-200)', borderRadius: 8, overflow: 'hidden', height: 420, background: '#fff' }}>
         <iframe
           title="Pratinjau Dokumen PDF"
-          src={signedUrl}
+          src={srcUrl}
           style={{ width: '100%', height: '100%', border: 'none' }}
         />
       </div>
@@ -80,6 +84,62 @@ export default function PendaftarDashboard() {
   const [submitting, setSubmitting] = useState(false)
   const [previewType, setPreviewType] = useState('ijazah')
   const [previewUrl, setPreviewUrl] = useState('')
+
+  const [viewModal, setViewModal] = useState({
+    isOpen: false,
+    fileUrl: '',
+    previewType: '',
+    title: ''
+  })
+
+  const handleViewFile = (type, index = null) => {
+    let fileUrl = ''
+    let title = ''
+    let previewType = type
+
+    if (type === 'ijazah') {
+      title = 'Pratinjau Ijazah Wajib'
+      if (ijazahFile) {
+        fileUrl = URL.createObjectURL(ijazahFile)
+      } else {
+        fileUrl = ijazahName
+      }
+    } else if (type === 'transkrip') {
+      title = 'Pratinjau Transkrip Nilai'
+      if (transkripFile) {
+        fileUrl = URL.createObjectURL(transkripFile)
+      } else {
+        fileUrl = transkripName
+      }
+    } else if (type === 'sertifikat') {
+      const cert = sertifikats[index]
+      title = `Pratinjau Sertifikat: ${cert.nama || 'Tanpa Nama'}`
+      if (cert.fileObj) {
+        fileUrl = URL.createObjectURL(cert.fileObj)
+      } else {
+        fileUrl = cert.fileUrl
+      }
+    } else if (type === 'pengalaman') {
+      const expr = pengalamans[index]
+      title = `Pratinjau Pengalaman Kerja: ${expr.perusahaan || 'Tanpa Nama'}`
+      if (expr.fileObj) {
+        fileUrl = URL.createObjectURL(expr.fileObj)
+      } else {
+        fileUrl = expr.fileUrl
+      }
+    }
+
+    if (fileUrl) {
+      setViewModal({
+        isOpen: true,
+        fileUrl,
+        previewType,
+        title
+      })
+    } else {
+      toast.error('Tidak ada berkas untuk ditampilkan')
+    }
+  }
 
   const loadData = async () => {
     setLoading(true)
@@ -424,55 +484,81 @@ export default function PendaftarDashboard() {
                 </div>
 
                 <div className="form-grid-2 form-grid">
-                  {/* Upload Ijazah */}
-                  <div style={{
-                    border: '2px dashed var(--gray-200)',
-                    borderRadius: '10px',
-                    padding: '24px',
-                    textAlign: 'center',
-                    background: 'var(--surface-alt)',
-                    cursor: 'pointer',
-                    position: 'relative'
-                  }}>
-                    <input
-                      type="file"
-                      accept=".pdf"
-                      onChange={(e) => handleFileChange(e, 'ijazah')}
-                      style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }}
-                    />
-                    <FileUp size={32} color="var(--indigo-600)" style={{ margin: '0 auto 12px' }} />
-                    <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4 }}>Unggah Ijazah Wajib</div>
-                    <div style={{ fontSize: 11, color: 'var(--gray-400)' }}>Format PDF (Maks. 5MB)</div>
+                  {/* Upload Ijazah Wrapper */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <div style={{
+                      border: '2px dashed var(--gray-200)',
+                      borderRadius: '10px',
+                      padding: '24px',
+                      textAlign: 'center',
+                      background: 'var(--surface-alt)',
+                      cursor: 'pointer',
+                      position: 'relative',
+                      flexGrow: 1
+                    }}>
+                      <input
+                        type="file"
+                        accept=".pdf"
+                        onChange={(e) => handleFileChange(e, 'ijazah')}
+                        style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }}
+                      />
+                      <FileUp size={32} color="var(--indigo-600)" style={{ margin: '0 auto 12px' }} />
+                      <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4 }}>Unggah Ijazah Wajib</div>
+                      <div style={{ fontSize: 11, color: 'var(--gray-400)' }}>Format PDF (Maks. 5MB)</div>
+                      {ijazahName && (
+                        <div style={{ marginTop: 12, padding: '4px 8px', background: '#d1fae5', color: '#065f46', borderRadius: 4, fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                          <CheckCircle size={12} /> {ijazahName.split('/').pop()}
+                        </div>
+                      )}
+                    </div>
                     {ijazahName && (
-                      <div style={{ marginTop: 12, padding: '4px 8px', background: '#d1fae5', color: '#065f46', borderRadius: 4, fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                        <CheckCircle size={12} /> {ijazahName.split('/').pop()}
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleViewFile('ijazah')}
+                        className="btn btn-secondary btn-sm"
+                        style={{ alignSelf: 'center', display: 'flex', alignItems: 'center', gap: 6, width: 'fit-content', fontWeight: 600 }}
+                      >
+                        <Eye size={14} /> Lihat Berkas Ijazah
+                      </button>
                     )}
                   </div>
 
-                  {/* Upload Transkrip */}
-                  <div style={{
-                    border: '2px dashed var(--gray-200)',
-                    borderRadius: '10px',
-                    padding: '24px',
-                    textAlign: 'center',
-                    background: 'var(--surface-alt)',
-                    cursor: 'pointer',
-                    position: 'relative'
-                  }}>
-                    <input
-                      type="file"
-                      accept=".pdf"
-                      onChange={(e) => handleFileChange(e, 'transkrip')}
-                      style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }}
-                    />
-                    <FileUp size={32} color="var(--indigo-600)" style={{ margin: '0 auto 12px' }} />
-                    <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4 }}>Unggah Transkrip Nilai (Hi-Res)</div>
-                    <div style={{ fontSize: 11, color: 'var(--gray-400)' }}>Format PDF (Maks. 5MB)</div>
+                  {/* Upload Transkrip Wrapper */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <div style={{
+                      border: '2px dashed var(--gray-200)',
+                      borderRadius: '10px',
+                      padding: '24px',
+                      textAlign: 'center',
+                      background: 'var(--surface-alt)',
+                      cursor: 'pointer',
+                      position: 'relative',
+                      flexGrow: 1
+                    }}>
+                      <input
+                        type="file"
+                        accept=".pdf"
+                        onChange={(e) => handleFileChange(e, 'transkrip')}
+                        style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }}
+                      />
+                      <FileUp size={32} color="var(--indigo-600)" style={{ margin: '0 auto 12px' }} />
+                      <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4 }}>Unggah Transkrip Nilai (Hi-Res)</div>
+                      <div style={{ fontSize: 11, color: 'var(--gray-400)' }}>Format PDF (Maks. 5MB)</div>
+                      {transkripName && (
+                        <div style={{ marginTop: 12, padding: '4px 8px', background: '#d1fae5', color: '#065f46', borderRadius: 4, fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                          <CheckCircle size={12} /> {transkripName.split('/').pop()}
+                        </div>
+                      )}
+                    </div>
                     {transkripName && (
-                      <div style={{ marginTop: 12, padding: '4px 8px', background: '#d1fae5', color: '#065f46', borderRadius: 4, fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                        <CheckCircle size={12} /> {transkripName.split('/').pop()}
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleViewFile('transkrip')}
+                        className="btn btn-secondary btn-sm"
+                        style={{ alignSelf: 'center', display: 'flex', alignItems: 'center', gap: 6, width: 'fit-content', fontWeight: 600 }}
+                      >
+                        <Eye size={14} /> Lihat Berkas Transkrip
+                      </button>
                     )}
                   </div>
                 </div>
@@ -493,8 +579,8 @@ export default function PendaftarDashboard() {
                     <p style={{ fontSize: 12, color: 'var(--gray-400)', fontStyle: 'italic' }}>Belum ada sertifikat kompetensi yang ditambahkan.</p>
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                      {sertifikats.map((cert) => (
-                        <div key={cert.id} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 100px 180px auto', gap: 10, background: 'var(--gray-50)', padding: 12, borderRadius: 8, border: '1px solid var(--gray-200)', alignItems: 'center' }}>
+                      {sertifikats.map((cert, idx) => (
+                        <div key={cert.id} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 90px 180px 40px 40px', gap: 10, background: 'var(--gray-50)', padding: 12, borderRadius: 8, border: '1px solid var(--gray-200)', alignItems: 'center' }}>
                           <input
                             type="text"
                             value={cert.nama}
@@ -533,6 +619,19 @@ export default function PendaftarDashboard() {
                               style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }}
                             />
                           </div>
+                          {cert.fileName || cert.fileUrl ? (
+                            <button
+                              type="button"
+                              onClick={() => handleViewFile('sertifikat', idx)}
+                              className="btn btn-ghost btn-icon"
+                              style={{ color: 'var(--indigo-600)' }}
+                              title="Lihat Berkas"
+                            >
+                              <Eye size={16} />
+                            </button>
+                          ) : (
+                            <div />
+                          )}
                           <button type="button" onClick={() => removeSertifikat(cert.id)} className="btn btn-ghost btn-icon" style={{ color: 'var(--danger)' }}>
                             <Trash2 size={16} />
                           </button>
@@ -592,7 +691,7 @@ export default function PendaftarDashboard() {
                               <Trash2 size={16} />
                             </button>
                           </div>
-                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 200px', gap: 10, alignItems: 'center' }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 200px 40px', gap: 10, alignItems: 'center' }}>
                             <textarea
                               value={expr.deskripsi}
                               onChange={(e) => handlePengalamanChange(expr.id, 'deskripsi', e.target.value)}
@@ -612,6 +711,19 @@ export default function PendaftarDashboard() {
                                 style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }}
                               />
                             </div>
+                            {expr.fileName || expr.fileUrl ? (
+                              <button
+                                type="button"
+                                onClick={() => handleViewFile('pengalaman', idx)}
+                                className="btn btn-ghost btn-icon"
+                                style={{ color: 'var(--indigo-600)' }}
+                                title="Lihat Berkas"
+                              >
+                                <Eye size={16} />
+                              </button>
+                            ) : (
+                              <div />
+                            )}
                           </div>
                         </div>
                       ))}
@@ -856,6 +968,42 @@ export default function PendaftarDashboard() {
                 <FileText size={16} /> Cetak Rencana Studi (PDF)
               </button>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal Pratinjau Dokumen Calon (Revisi/Form Baru) */}
+      {viewModal.isOpen && (
+        <div className="modal-overlay" onClick={() => setViewModal({ ...viewModal, isOpen: false })}>
+          <div className="modal" style={{ width: '800px', maxWidth: '95%' }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3 style={{ fontSize: 15, fontWeight: 700 }}>{viewModal.title}</h3>
+              <button 
+                type="button" 
+                className="btn-close" 
+                onClick={() => setViewModal({ ...viewModal, isOpen: false })}
+                style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: 'var(--gray-500)' }}
+              >
+                ✕
+              </button>
+            </div>
+            <div className="modal-body" style={{ padding: 12 }}>
+              <DocPreview
+                fileUrl={viewModal.fileUrl}
+                previewType={viewModal.previewType}
+                profileName={profile?.nama_lengkap || user?.email?.split('@')[0] || 'Calon Mahasiswa'}
+                prodiName={prodis.find(p => p.id === selectedProdi)?.nama || '-'}
+              />
+            </div>
+            <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setViewModal({ ...viewModal, isOpen: false })}
+              >
+                Tutup
+              </button>
+            </div>
           </div>
         </div>
       )}
