@@ -101,9 +101,11 @@ export default function Header() {
               <button className="dropdown-item" onClick={() => { navigate('/profile'); setDropOpen(false) }}>
                 <User size={14} /> Profil Saya
               </button>
-              <button className="dropdown-item" onClick={() => { navigate('/settings/ai'); setDropOpen(false) }}>
-                <KeyRound size={14} /> Pengaturan AI Key
-              </button>
+              {role === 'admin' && (
+                <button className="dropdown-item" onClick={() => { navigate('/settings/ai'); setDropOpen(false) }}>
+                  <KeyRound size={14} /> Pengaturan AI Key
+                </button>
+              )}
 
               <div className="dropdown-sep" />
 

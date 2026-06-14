@@ -86,7 +86,13 @@ export default function PendaftarDashboard() {
 
       const { data: pengajuanData } = await dbPengajuan.getByUserId(user.id)
       if (pengajuanData && pengajuanData.length > 0) {
-        setPengajuan(pengajuanData[0]) // Ambil pengajuan terbaru
+        const activePengajuan = pengajuanData[0]
+        setPengajuan(activePengajuan) // Ambil pengajuan terbaru
+        if (activePengajuan.status === 'returned_baak') {
+          setSelectedProdi(activePengajuan.prodi_pilihan_id || '')
+          setIjazahName(activePengajuan.file_ijazah_url || '')
+          setTranskripName(activePengajuan.file_transkrip_url || '')
+        }
       } else {
         setPengajuan(null)
       }
@@ -134,36 +140,43 @@ export default function PendaftarDashboard() {
       let ijazahUrl = ijazahName
       let transkripUrl = transkripName
 
+      const ts = Date.now()
       // Upload file riil ke Supabase Storage jika bukan mode mock
-      if (!isMock && ijazahFile && transkripFile) {
-        const ts = Date.now()
-        const ijazahPath = `${user.id}/ijazah_${ts}.pdf`
-        const transkripPath = `${user.id}/transkrip_${ts}.pdf`
+      if (!isMock) {
+        if (ijazahFile) {
+          const ijazahPath = `${user.id}/ijazah_${ts}.pdf`
+          const { error: errIjazah } = await supabase.storage
+            .from('rpl-documents')
+            .upload(ijazahPath, ijazahFile, { contentType: 'application/pdf', upsert: true })
+          if (errIjazah) throw new Error('Gagal mengunggah ijazah: ' + errIjazah.message)
+          ijazahUrl = ijazahPath
+        }
 
-        const { error: errIjazah } = await supabase.storage
-          .from('rpl-documents')
-          .upload(ijazahPath, ijazahFile, { contentType: 'application/pdf', upsert: true })
-        if (errIjazah) throw new Error('Gagal mengunggah ijazah: ' + errIjazah.message)
-
-        const { error: errTranskrip } = await supabase.storage
-          .from('rpl-documents')
-          .upload(transkripPath, transkripFile, { contentType: 'application/pdf', upsert: true })
-        if (errTranskrip) throw new Error('Gagal mengunggah transkrip: ' + errTranskrip.message)
-
-        ijazahUrl = ijazahPath
-        transkripUrl = transkripPath
+        if (transkripFile) {
+          const transkripPath = `${user.id}/transkrip_${ts}.pdf`
+          const { error: errTranskrip } = await supabase.storage
+            .from('rpl-documents')
+            .upload(transkripPath, transkripFile, { contentType: 'application/pdf', upsert: true })
+          if (errTranskrip) throw new Error('Gagal mengunggah transkrip: ' + errTranskrip.message)
+          transkripUrl = transkripPath
+        }
       }
 
       const payload = {
-        user_id: user.id,
         prodi_pilihan_id: selectedProdi,
         file_ijazah_url: ijazahUrl,
         file_transkrip_url: transkripUrl,
         status: 'submitted',
+        catatan_revisi: null // reset catatan revisi setelah dikirim ulang
       }
 
-      await dbPengajuan.create(payload)
-      toast.success('Pengajuan RPL berhasil dikirim!')
+      if (pengajuan) {
+        await dbPengajuan.update(pengajuan.id, payload)
+        toast.success('Pengajuan RPL berhasil dikirim ulang!')
+      } else {
+        await dbPengajuan.create({ user_id: user.id, ...payload })
+        toast.success('Pengajuan RPL berhasil dikirim!')
+      }
       loadData()
     } catch (e) {
       console.error(e)
@@ -203,13 +216,28 @@ export default function PendaftarDashboard() {
         <p className="page-subtitle">Ajukan rekognisi mata kuliah dari studi/pengalaman lampau Anda</p>
       </div>
 
-      {!pengajuan ? (
+      {!pengajuan || pengajuan.status === 'returned_baak' ? (
         /* Form Pengajuan */
-        <div className="card">
-          <div className="card-header">
-            <h3 style={{ fontSize: 15, fontWeight: 700 }}>Formulir Pengajuan RPL</h3>
-          </div>
-          <form onSubmit={handleSubmit}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          {pengajuan?.status === 'returned_baak' && (
+            <div className="card" style={{ borderLeft: '4px solid var(--danger)', backgroundColor: '#fff5f5' }}>
+              <div className="card-body">
+                <h4 style={{ color: '#c53030', display: 'flex', alignItems: 'center', gap: 8, margin: 0, fontSize: '14px', fontWeight: 700 }}>
+                  ⚠️ Pengajuan Dikembalikan untuk Revisi
+                </h4>
+                <p style={{ color: '#742a2a', fontSize: '13px', marginTop: 8, marginBottom: 0 }}>
+                  Catatan Revisi dari BAAK: <strong>{pengajuan.catatan_revisi || 'Harap perbaiki dokumen Anda.'}</strong>
+                </p>
+              </div>
+            </div>
+          )}
+          <div className="card">
+            <div className="card-header">
+              <h3 style={{ fontSize: 15, fontWeight: 700 }}>
+                {pengajuan?.status === 'returned_baak' ? 'Revisi Formulir Pengajuan RPL' : 'Formulir Pengajuan RPL'}
+              </h3>
+            </div>
+            <form onSubmit={handleSubmit}>
             <div className="card-body form-grid">
               <div className="input-group">
                 <label className="input-label">Program Studi Pilihan</label>
@@ -300,6 +328,7 @@ export default function PendaftarDashboard() {
             </div>
           </form>
         </div>
+      </div>
       ) : (
         /* Status Tracker & Timeline */
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 24 }}>

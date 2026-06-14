@@ -114,7 +114,9 @@ export default function Sidebar() {
             <div className="sidebar-divider" />
             <div className="sidebar-section-label">Profil</div>
             <NavItem label="Profil Saya" icon={GraduationCap} to="/profile" />
-            <NavItem label="Pengaturan AI Key" icon={Settings} to="/settings/ai" />
+            {role === 'admin' && (
+              <NavItem label="Pengaturan AI Key" icon={Settings} to="/settings/ai" />
+            )}
           </>
         )}
       </nav>

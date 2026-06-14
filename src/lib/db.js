@@ -220,19 +220,38 @@ export const dbPengajuan = {
     return supabase.from('pengajuan_rpl').insert({ status: 'submitted', ...data }).select().single()
   },
 
-  updateStatus: async (id, status) => {
+  updateStatus: async (id, status, catatanRevisi = null) => {
     if (isMock) {
       const list = getLocalData('si_rpl_pengajuan')
       const idx = list.findIndex(x => x.id === id)
       if (idx !== -1) {
         list[idx].status = status
+        list[idx].catatan_revisi = catatanRevisi
         list[idx].updated_at = new Date().toISOString()
         saveLocalData('si_rpl_pengajuan', list)
         return { data: list[idx], error: null }
       }
       return { data: null, error: new Error('Pengajuan tidak ditemukan') }
     }
-    return supabase.from('pengajuan_rpl').update({ status, updated_at: new Date().toISOString() }).eq('id', id).select().single()
+    const updatePayload = { status, updated_at: new Date().toISOString() }
+    if (catatanRevisi !== undefined) {
+      updatePayload.catatan_revisi = catatanRevisi
+    }
+    return supabase.from('pengajuan_rpl').update(updatePayload).eq('id', id).select().single()
+  },
+
+  update: async (id, data) => {
+    if (isMock) {
+      const list = getLocalData('si_rpl_pengajuan')
+      const idx = list.findIndex(x => x.id === id)
+      if (idx !== -1) {
+        list[idx] = { ...list[idx], ...data, updated_at: new Date().toISOString() }
+        saveLocalData('si_rpl_pengajuan', list)
+        return { data: list[idx], error: null }
+      }
+      return { data: null, error: new Error('Pengajuan tidak ditemukan') }
+    }
+    return supabase.from('pengajuan_rpl').update({ ...data, updated_at: new Date().toISOString() }).eq('id', id).select().single()
   }
 }
 

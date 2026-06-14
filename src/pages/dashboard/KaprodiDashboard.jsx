@@ -393,12 +393,16 @@ export default function KaprodiDashboard() {
   const [ocrResults, setOcrResults] = useState([])
   const [leftTab, setLeftTab] = useState('transcript') // 'transcript' | 'curriculum'
 
+  const [activeTab, setActiveTab] = useState('pending')
+  const [catatanRevisi, setCatatanRevisi] = useState('')
+  const [showReturnInput, setShowReturnInput] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+
   const loadSubmissions = async () => {
     setLoading(true)
     try {
       const { data } = await dbPengajuan.getAll()
-      // Filter yang statusnya 'validated_baak'
-      let filtered = (data || []).filter(item => item.status === 'validated_baak')
+      let filtered = data || []
       
       // Filter berdasarkan program studi Ka. Prodi jika perannya spesifik
       if (role === 'kaprodi_si') {
@@ -417,6 +421,8 @@ export default function KaprodiDashboard() {
       setOcrResults([])
       setLeftTab('transcript')
       setRecognitionMethod('')
+      setCatatanRevisi('')
+      setShowReturnInput(false)
     } catch (e) {
       console.error(e)
       toast.error('Gagal memuat daftar pengajuan')
@@ -440,10 +446,37 @@ export default function KaprodiDashboard() {
     }
   }
 
+  const loadRecognitionTable = async (pengajuanId) => {
+    try {
+      const { data } = await dbRekognisi.getByPengajuanId(pengajuanId)
+      if (data && data.data_mapping_mk) {
+        const initialRows = data.data_mapping_mk.map((item, idx) => ({
+          id: 'row-rec-' + idx + '-' + Date.now(),
+          mkAsal: item.MK_Asal,
+          sksAsal: item.SKS_Asal,
+          nilaiAsal: item.Nilai,
+          mkTujuanId: item.MK_Tujuan_ID,
+          status: item.Status || 'diakui'
+        }))
+        setRows(initialRows)
+        setRecognitionMethod('manual')
+      }
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
   useEffect(() => {
-    const pId = selectedItem?.prodi_pilihan_id || selectedItem?.prodi?.id
-    if (pId) {
+    if (selectedItem) {
+      const pId = selectedItem.prodi_pilihan_id || selectedItem.prodi?.id
       loadCurriculum(pId)
+      loadRecognitionTable(selectedItem.id)
+      
+      const isPending = selectedItem.status === 'validated_baak' || selectedItem.status === 'returned_asessor'
+      if (!isPending) {
+        setRecognitionMethod('manual')
+      }
+      setCatatanRevisi(selectedItem.catatan_revisi || '')
     }
   }, [selectedItem])
 
@@ -824,6 +857,7 @@ export default function KaprodiDashboard() {
       return
     }
 
+    setSubmitting(true)
     try {
       // 1. Simpan tabel rekognisi ke DB
       const recognitionPayload = {
@@ -841,7 +875,7 @@ export default function KaprodiDashboard() {
             Status: r.status
           }
         }),
-        is_manual_edited: recognitionMethod === 'manual' || rows.some(r => r.id.startsWith('row-add') || r.id.startsWith('row-manual'))
+        is_manual_edited: recognitionMethod === 'manual' || rows.some(r => r.id.startsWith('row-add') || r.id.startsWith('row-manual') || r.id.startsWith('row-rec'))
       }
 
       await dbRekognisi.upsert(selectedItem.id, recognitionPayload)
@@ -853,8 +887,35 @@ export default function KaprodiDashboard() {
     } catch (e) {
       console.error(e)
       toast.error('Gagal memproses rekognisi mata kuliah')
+    } finally {
+      setSubmitting(false)
     }
   }
+
+  const handleReturnToBaak = async () => {
+    if (!catatanRevisi.trim()) {
+      toast.error('Silakan isi catatan revisi / alasan pengembalian!')
+      return
+    }
+
+    setSubmitting(true)
+    try {
+      await dbPengajuan.updateStatus(selectedItem.id, 'returned_kaprodi', catatanRevisi)
+      toast.success('Pengajuan berhasil dikembalikan ke BAAK!')
+      loadSubmissions()
+    } catch (e) {
+      console.error(e)
+      toast.error('Gagal mengembalikan pengajuan')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const pendingList = submissions.filter(item => item.status === 'validated_baak' || item.status === 'returned_asessor')
+  const completedList = submissions.filter(item => ['recognized_kaprodi', 'assessed_asessor', 'mapped_admin'].includes(item.status))
+  const returnedList = submissions.filter(item => item.status === 'returned_kaprodi')
+
+  const activeList = activeTab === 'pending' ? pendingList : activeTab === 'completed' ? completedList : returnedList
 
   if (loading) {
     return (
@@ -863,6 +924,8 @@ export default function KaprodiDashboard() {
       </div>
     )
   }
+
+  const canEvaluate = selectedItem && (selectedItem.status === 'validated_baak' || selectedItem.status === 'returned_asessor')
 
   return (
     <div>
@@ -884,61 +947,113 @@ export default function KaprodiDashboard() {
       </div>
 
       {!selectedItem ? (
-        /* List submissions */
-        <div className="card">
-          <div className="card-header">
-            <h3 style={{ fontSize: 14, fontWeight: 700 }}>Pengajuan Siap Direkognisi</h3>
-            <span className="badge-pill badge-indigo">{submissions.length} Pengajuan</span>
+        /* List submissions with tabs */
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* Tab Control */}
+          <div style={{ display: 'flex', gap: 8, borderBottom: '1px solid var(--gray-200)', paddingBottom: 8 }}>
+            <button
+              onClick={() => setActiveTab('pending')}
+              className={`btn btn-sm ${activeTab === 'pending' ? 'btn-primary' : 'btn-secondary'}`}
+              style={{ fontWeight: 600 }}
+            >
+              Menunggu Evaluasi ({pendingList.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('completed')}
+              className={`btn btn-sm ${activeTab === 'completed' ? 'btn-primary' : 'btn-secondary'}`}
+              style={{ fontWeight: 600 }}
+            >
+              Selesai Diproses ({completedList.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('returned')}
+              className={`btn btn-sm ${activeTab === 'returned' ? 'btn-primary' : 'btn-secondary'}`}
+              style={{ fontWeight: 600 }}
+            >
+              Direvisi BAAK ({returnedList.length})
+            </button>
           </div>
-          <div className="card-body" style={{ padding: 0 }}>
-            {submissions.length === 0 ? (
-              <div className="empty-state">
-                <div className="empty-state-icon">🎓</div>
-                <div className="empty-state-text">Tidak ada pengajuan masuk</div>
-                <div className="empty-state-sub">Belum ada pengajuan baru yang divalidasi oleh BAAK.</div>
-              </div>
-            ) : (
-              <div className="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Nama Pendaftar</th>
-                      <th>Email</th>
-                      <th>Prodi Pilihan</th>
-                      <th>Transkrip Asal</th>
-                      <th style={{ width: 120 }}>Aksi</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {submissions.map(item => (
-                      <tr key={item.id}>
-                        <td><strong>{item.profile?.nama_lengkap}</strong></td>
-                        <td>{item.profile?.email}</td>
-                        <td><span className="badge-pill badge-slate">{item.prodi?.nama}</span></td>
-                        <td>
-                          <span style={{ fontSize: 12, color: 'var(--gray-500)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                            <FileText size={12} /> {item.file_transkrip_url}
-                          </span>
-                        </td>
-                        <td>
-                          <button
-                            onClick={() => setSelectedItem(item)}
-                            className="btn btn-primary btn-sm"
-                          >
-                            Mulai Rekognisi
-                          </button>
-                        </td>
+
+          <div className="card">
+            <div className="card-header">
+              <h3 style={{ fontSize: 14, fontWeight: 700 }}>
+                {activeTab === 'pending' ? 'Pengajuan Siap Direkognisi' : activeTab === 'completed' ? 'Pengajuan Selesai Rekognisi' : 'Pengajuan Dikembalikan ke BAAK'}
+              </h3>
+              <span className="badge-pill badge-indigo">{activeList.length} Pengajuan</span>
+            </div>
+            <div className="card-body" style={{ padding: 0 }}>
+              {activeList.length === 0 ? (
+                <div className="empty-state">
+                  <div className="empty-state-icon">🎓</div>
+                  <div className="empty-state-text">Tidak ada pengajuan</div>
+                  <div className="empty-state-sub">Belum ada pengajuan masuk untuk kategori ini.</div>
+                </div>
+              ) : (
+                <div className="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Nama Pendaftar</th>
+                        <th>Email</th>
+                        <th>Prodi Pilihan</th>
+                        <th>Transkrip Asal</th>
+                        <th>Status Internal</th>
+                        <th style={{ width: 120 }}>Aksi</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+                    </thead>
+                    <tbody>
+                      {activeList.map(item => (
+                        <tr key={item.id} style={{ borderLeft: item.status === 'returned_asessor' ? '4px solid var(--danger)' : '' }}>
+                          <td>
+                            <strong>{item.profile?.nama_lengkap}</strong>
+                            {item.status === 'returned_asessor' && (
+                              <span style={{ display: 'block', fontSize: 11, color: 'var(--danger)', fontWeight: 600, marginTop: 2 }}>
+                                ⚠️ Dikembalikan oleh Asessor: "{item.catatan_revisi}"
+                              </span>
+                            )}
+                          </td>
+                          <td>{item.profile?.email}</td>
+                          <td><span className="badge-pill badge-slate">{item.prodi?.nama}</span></td>
+                          <td>
+                            <span style={{ fontSize: 12, color: 'var(--gray-500)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                              <FileText size={12} /> {item.file_transkrip_url}
+                            </span>
+                          </td>
+                          <td><span className={`badge-pill status-${item.status}`}>{item.status.toUpperCase()}</span></td>
+                          <td>
+                            <button
+                              onClick={() => setSelectedItem(item)}
+                              className="btn btn-primary btn-sm"
+                            >
+                              {activeTab === 'pending' ? 'Mulai Rekognisi' : 'Lihat'}
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       ) : (
         /* Recognition Area */
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          {/* Warning Banner if returned from Asessor */}
+          {selectedItem.status === 'returned_asessor' && (
+            <div className="card" style={{ borderLeft: '4px solid var(--danger)', backgroundColor: '#fff5f5' }}>
+              <div className="card-body">
+                <h4 style={{ color: '#c53030', display: 'flex', alignItems: 'center', gap: 8, margin: 0, fontSize: '14px', fontWeight: 700 }}>
+                  ⚠️ Pengajuan Dikembalikan oleh Asessor untuk Revisi
+                </h4>
+                <p style={{ color: '#742a2a', fontSize: '13px', marginTop: 8, marginBottom: 0 }}>
+                  Catatan Asessor: <strong>{selectedItem.catatan_revisi || 'Harap perbaiki pemetaan Anda.'}</strong>
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Header Info */}
           <div className="card" style={{ background: 'var(--indigo-50)', borderColor: 'var(--indigo-100)' }}>
             <div className="card-body" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px' }}>
@@ -947,11 +1062,36 @@ export default function KaprodiDashboard() {
                 <h2 style={{ fontSize: 16, fontWeight: 800, color: 'var(--indigo-700)', margin: '2px 0 0 0' }}>{selectedItem.profile?.nama_lengkap}</h2>
                 <p style={{ fontSize: 12.5, color: 'var(--gray-600)', margin: 0 }}>Prodi Tujuan: {selectedItem.prodi?.nama}</p>
               </div>
-              <div style={{ display: 'flex', gap: 10 }}>
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                {canEvaluate && (
+                  <button onClick={() => setShowReturnInput(v => !v)} className="btn btn-danger btn-sm">
+                    Kembalikan ke BAAK
+                  </button>
+                )}
                 <button onClick={handleCancel} className="btn btn-secondary btn-sm">Batal</button>
               </div>
             </div>
           </div>
+
+          {/* Return to BAAK Input Card */}
+          {showReturnInput && (
+            <div className="card" style={{ borderLeft: '4px solid var(--danger)' }}>
+              <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <h4 style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#c53030' }}>Kembalikan Pengajuan ke BAAK</h4>
+                <textarea
+                  value={catatanRevisi}
+                  onChange={(e) => setCatatanRevisi(e.target.value)}
+                  placeholder="Masukkan alasan pengembalian untuk diperbaiki BAAK..."
+                  className="input"
+                  rows={2}
+                />
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button onClick={handleReturnToBaak} disabled={submitting} className="btn btn-danger btn-sm">Kirim Pengembalian</button>
+                  <button onClick={() => setShowReturnInput(false)} className="btn btn-secondary btn-sm">Batal</button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* AI/Manual Option Selector (Split Screen with Iframe Preview) */}
           {!recognitionMethod && !ocrRunning && (
@@ -1024,7 +1164,7 @@ export default function KaprodiDashboard() {
             </div>
           )}
 
-          {/* AI/JS OCR Running Loader (Iframe preview with scanning laser/brain glow overlays) */}
+          {/* AI/JS OCR Running Loader */}
           {ocrRunning && (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 24 }}>
               {/* Left Column: Iframe preview with absolute overlays */}
@@ -1098,13 +1238,16 @@ export default function KaprodiDashboard() {
           {recognitionMethod && (
             <div style={{ display: 'grid', gridTemplateColumns: '420px 1fr', gap: 20, alignItems: 'start' }}>
               {/* Left Column: Transcript Document & Curriculum Tabs */}
-              <div className="card" style={{ height: 'fit-content' }}>
-                <div className="card-header" style={{ padding: '8px 12px', display: 'flex', gap: 8, background: '#f8fafc', borderBottom: '1px solid var(--gray-200)' }}>
+              <div className="card">
+                <div style={{ display: 'flex', background: 'var(--gray-50)', borderBottom: '1px solid var(--gray-200)', padding: 6 }}>
                   <button
                     onClick={() => setLeftTab('transcript')}
-                    className="btn btn-sm"
                     style={{
                       flex: 1,
+                      padding: '8px',
+                      fontSize: '12px',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
                       fontWeight: 700,
                       background: leftTab === 'transcript' ? 'var(--indigo-600)' : 'transparent',
                       color: leftTab === 'transcript' ? '#fff' : 'var(--gray-600)',
@@ -1115,9 +1258,12 @@ export default function KaprodiDashboard() {
                   </button>
                   <button
                     onClick={() => setLeftTab('curriculum')}
-                    className="btn btn-sm"
                     style={{
                       flex: 1,
+                      padding: '8px',
+                      fontSize: '12px',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
                       fontWeight: 700,
                       background: leftTab === 'curriculum' ? 'var(--indigo-600)' : 'transparent',
                       color: leftTab === 'curriculum' ? '#fff' : 'var(--gray-600)',
@@ -1145,7 +1291,7 @@ export default function KaprodiDashboard() {
                             <tr>
                               <th style={{ padding: '6px 8px', fontSize: 11 }}>Kode/MK</th>
                               <th style={{ padding: '6px 8px', fontSize: 11, width: 60 }}>SKS</th>
-                              <th style={{ padding: '6px 8px', fontSize: 11, width: 50 }}>Aksi</th>
+                              {canEvaluate && <th style={{ padding: '6px 8px', fontSize: 11, width: 50 }}>Aksi</th>}
                             </tr>
                           </thead>
                           <tbody>
@@ -1158,22 +1304,24 @@ export default function KaprodiDashboard() {
                                 <td style={{ padding: '6px 8px', fontSize: 11.5, textAlign: 'center' }}>
                                   {mk.sks} SKS
                                 </td>
-                                <td style={{ padding: '6px 8px', textAlign: 'center' }}>
-                                  <button
-                                    onClick={() => addCurriculumToMapping(mk)}
-                                    className="btn btn-secondary"
-                                    style={{
-                                      padding: '2px 6px',
-                                      fontSize: 11,
-                                      background: '#ecfdf5',
-                                      color: '#047857',
-                                      borderColor: '#a7f3d0'
-                                    }}
-                                    title="Tambahkan ke Pemetaan"
-                                  >
-                                    + Map
-                                  </button>
-                                </td>
+                                {canEvaluate && (
+                                  <td style={{ padding: '6px 8px', textAlign: 'center' }}>
+                                    <button
+                                      onClick={() => addCurriculumToMapping(mk)}
+                                      className="btn btn-secondary"
+                                      style={{
+                                        padding: '2px 6px',
+                                        fontSize: 11,
+                                        background: '#ecfdf5',
+                                        color: '#047857',
+                                        borderColor: '#a7f3d0'
+                                      }}
+                                      title="Tambahkan ke Pemetaan"
+                                    >
+                                      + Map
+                                    </button>
+                                  </td>
+                                )}
                               </tr>
                             ))}
                           </tbody>
@@ -1188,7 +1336,7 @@ export default function KaprodiDashboard() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
                 
                 {/* OCR results and AI Recommendations panel (if Javascript or AI OCR selected) */}
-                {ocrResults.length > 0 && (
+                {ocrResults.length > 0 && canEvaluate && (
                   <div className="card" style={{ borderColor: 'var(--emerald-200)', background: '#fafdfb' }}>
                     <div className="card-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid var(--emerald-100)' }}>
                       <div>
@@ -1290,14 +1438,20 @@ export default function KaprodiDashboard() {
                       <h3 style={{ fontSize: 14, fontWeight: 700 }}>Tabel Pemetaan Rekognisi Mata Kuliah</h3>
                       <p style={{ margin: 0, fontSize: 11.5, color: 'var(--gray-500)' }}>Penyandingan akhir untuk diserahkan ke Asessor RPL</p>
                     </div>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <button onClick={addRow} className="btn btn-secondary btn-sm" style={{ gap: 4 }}>
-                        <Plus size={14} /> Tambah Pemetaan
-                      </button>
-                      <button onClick={handleSubmitToAsessor} className="btn btn-primary btn-sm" style={{ gap: 4 }}>
-                        <CheckCircle size={14} /> Selesaikan Pemetaan
-                      </button>
-                    </div>
+                    {canEvaluate ? (
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button onClick={addRow} className="btn btn-secondary btn-sm" style={{ gap: 4 }}>
+                          <Plus size={14} /> Tambah Pemetaan
+                        </button>
+                        <button onClick={handleSubmitToAsessor} disabled={submitting} className="btn btn-primary btn-sm" style={{ gap: 4 }}>
+                          <CheckCircle size={14} /> Selesaikan Pemetaan
+                        </button>
+                      </div>
+                    ) : (
+                      <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--gray-500)', background: 'var(--gray-100)', padding: '6px 12px', borderRadius: 6 }}>
+                        Modus Lihat (Read-Only)
+                      </span>
+                    )}
                   </div>
                   <div className="card-body" style={{ padding: 0 }}>
                     <div className="table-wrap">
@@ -1308,7 +1462,7 @@ export default function KaprodiDashboard() {
                             <th style={{ background: '#f8fafc', color: 'var(--indigo-700)', fontWeight: 800, borderBottom: '2px solid var(--indigo-100)', width: '10%' }}>SKS Asal</th>
                             <th style={{ background: '#f8fafc', color: 'var(--indigo-700)', fontWeight: 800, borderBottom: '2px solid var(--indigo-100)', width: '10%' }}>Nilai</th>
                             <th style={{ background: '#f8fafc', color: 'var(--indigo-700)', fontWeight: 800, borderBottom: '2px solid var(--indigo-100)', width: '35%' }}>Disandingkan ke MK Kurikulum</th>
-                            <th style={{ background: '#f8fafc', color: 'var(--indigo-700)', fontWeight: 800, borderBottom: '2px solid var(--indigo-100)', width: '10%' }}>Aksi</th>
+                            {canEvaluate && <th style={{ background: '#f8fafc', color: 'var(--indigo-700)', fontWeight: 800, borderBottom: '2px solid var(--indigo-100)', width: '10%' }}>Aksi</th>}
                           </tr>
                         </thead>
                         <tbody>
@@ -1319,6 +1473,7 @@ export default function KaprodiDashboard() {
                                 <input
                                   type="text"
                                   value={row.mkAsal}
+                                  disabled={!canEvaluate}
                                   onChange={(e) => updateRow(row.id, 'mkAsal', e.target.value)}
                                   placeholder="cth: Dasar Pemrograman I"
                                   className="input"
@@ -1331,6 +1486,7 @@ export default function KaprodiDashboard() {
                                 <input
                                   type="number"
                                   value={row.sksAsal || ''}
+                                  disabled={!canEvaluate}
                                   onChange={(e) => updateRow(row.id, 'sksAsal', e.target.value)}
                                   placeholder="cth: 3"
                                   className="input"
@@ -1343,6 +1499,7 @@ export default function KaprodiDashboard() {
                                 <input
                                   type="text"
                                   value={row.nilaiAsal}
+                                  disabled={!canEvaluate}
                                   onChange={(e) => updateRow(row.id, 'nilaiAsal', e.target.value.toUpperCase())}
                                   placeholder="cth: A"
                                   className="input"
@@ -1354,6 +1511,7 @@ export default function KaprodiDashboard() {
                               <td>
                                 <select
                                   value={row.mkTujuanId}
+                                  disabled={!canEvaluate}
                                   onChange={(e) => updateRow(row.id, 'mkTujuanId', e.target.value)}
                                   style={{
                                     width: '100%',
@@ -1375,16 +1533,18 @@ export default function KaprodiDashboard() {
                               </td>
 
                               {/* Aksi Hapus */}
-                              <td>
-                                <button
-                                  onClick={() => deleteRow(row.id)}
-                                  className="btn btn-ghost btn-icon"
-                                  style={{ color: 'var(--danger)' }}
-                                  title="Hapus baris"
-                                >
-                                  <Trash2 size={16} />
-                                </button>
-                              </td>
+                              {canEvaluate && (
+                                <td>
+                                  <button
+                                    onClick={() => deleteRow(row.id)}
+                                    className="btn btn-ghost btn-icon"
+                                    style={{ color: 'var(--danger)' }}
+                                    title="Hapus baris"
+                                  >
+                                    <Trash2 size={16} />
+                                  </button>
+                                </td>
+                              )}
                             </tr>
                           ))}
                         </tbody>

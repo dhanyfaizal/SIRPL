@@ -13,14 +13,20 @@ export default function AsessorDashboard() {
   // Structure: { id, mkAsal, sksAsal, nilaiAsal, mkTujuanId, sksTujuan, statusTujuan, isCertified }
   const [rows, setRows] = useState([])
 
+  const [activeTab, setActiveTab] = useState('pending')
+  const [catatanRevisi, setCatatanRevisi] = useState('')
+  const [showReturnInput, setShowReturnInput] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+
   const loadSubmissions = async () => {
     setLoading(true)
     try {
       const { data } = await dbPengajuan.getAll()
-      // Filter yang statusnya 'recognized_kaprodi'
-      setSubmissions((data || []).filter(item => item.status === 'recognized_kaprodi'))
+      setSubmissions(data || [])
       setSelectedItem(null)
       setRows([])
+      setCatatanRevisi('')
+      setShowReturnInput(false)
     } catch (e) {
       console.error(e)
       toast.error('Gagal memuat daftar pengajuan')
@@ -47,6 +53,7 @@ export default function AsessorDashboard() {
       const pId = selectedItem.prodi_pilihan_id || selectedItem.prodi?.id
       loadCurriculum(pId)
       loadRecognitionTable(selectedItem.id)
+      setCatatanRevisi(selectedItem.catatan_revisi || '')
     }
   }, [selectedItem])
 
@@ -56,13 +63,13 @@ export default function AsessorDashboard() {
       if (data && data.data_mapping_mk) {
         // Map ke internal state
         const initialRows = data.data_mapping_mk.map((item, idx) => ({
-          id: 'row-rec-' + idx,
+          id: 'row-rec-' + idx + '-' + Date.now(),
           mkAsal: item.MK_Asal,
           sksAsal: item.SKS_Asal,
           nilaiAsal: item.Nilai,
           mkTujuanId: item.MK_Tujuan_ID,
           sksTujuan: item.SKS_Tujuan,
-          statusTujuan: 'disetujui' // Asessor default menyetujui, bisa ditolak
+          statusTujuan: item.Status === 'diakui' || item.Status === 'disetujui' ? 'disetujui' : 'ditolak'
         }))
         setRows(initialRows)
       }
@@ -125,6 +132,10 @@ export default function AsessorDashboard() {
   const biayaPengakuan = totalSksDiakui * BIAYA_PER_SKS_REKOGNISI
   const biayaTotalAwal = BIAYA_UKP + biayaPengakuan
 
+  const maxRecognitionLimit = parseFloat(localStorage.getItem('si_rpl_max_recognition_limit') || '70')
+  const recognitionPercentage = totalSksKurikulum > 0 ? (totalSksDiakui / totalSksKurikulum) * 100 : 0
+  const isLimitExceeded = recognitionPercentage > maxRecognitionLimit
+
   const handleSubmitToAdmin = async () => {
     if (rows.length === 0) {
       toast.error('Minimal harus ada 1 entri rekognisi untuk dinilai')
@@ -137,6 +148,7 @@ export default function AsessorDashboard() {
       return
     }
 
+    setSubmitting(true)
     try {
       // 1. Simpan perubahan review ke tabel rekognisi
       const recognitionPayload = {
@@ -176,8 +188,35 @@ export default function AsessorDashboard() {
     } catch (e) {
       console.error(e)
       toast.error('Gagal memproses penilaian asesmen')
+    } finally {
+      setSubmitting(false)
     }
   }
+
+  const handleReturnToKaprodi = async () => {
+    if (!catatanRevisi.trim()) {
+      toast.error('Silakan isi catatan revisi / alasan pengembalian!')
+      return
+    }
+
+    setSubmitting(true)
+    try {
+      await dbPengajuan.updateStatus(selectedItem.id, 'returned_asessor', catatanRevisi)
+      toast.success('Pengajuan berhasil dikembalikan ke Ka. Prodi!')
+      loadSubmissions()
+    } catch (e) {
+      console.error(e)
+      toast.error('Gagal mengembalikan pengajuan')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const pendingList = submissions.filter(item => item.status === 'recognized_kaprodi' || item.status === 'returned_admin')
+  const completedList = submissions.filter(item => ['assessed_asessor', 'mapped_admin'].includes(item.status))
+  const returnedList = submissions.filter(item => item.status === 'returned_asessor')
+
+  const activeList = activeTab === 'pending' ? pendingList : activeTab === 'completed' ? completedList : returnedList
 
   if (loading) {
     return (
@@ -195,118 +234,255 @@ export default function AsessorDashboard() {
       </div>
 
       {!selectedItem ? (
-        /* List submissions */
-        <div className="card">
-          <div className="card-header">
-            <h3 style={{ fontSize: 14, fontWeight: 700 }}>Menunggu Asesmen Portofolio</h3>
-            <span className="badge-pill badge-indigo">{submissions.length} Pengajuan</span>
+        /* List submissions with tabs */
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* Tab Control */}
+          <div style={{ display: 'flex', gap: 8, borderBottom: '1px solid var(--gray-200)', paddingBottom: 8 }}>
+            <button
+              onClick={() => setActiveTab('pending')}
+              className={`btn btn-sm ${activeTab === 'pending' ? 'btn-primary' : 'btn-secondary'}`}
+              style={{ fontWeight: 600 }}
+            >
+              Menunggu Penilaian ({pendingList.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('completed')}
+              className={`btn btn-sm ${activeTab === 'completed' ? 'btn-primary' : 'btn-secondary'}`}
+              style={{ fontWeight: 600 }}
+            >
+              Selesai Diproses ({completedList.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('returned')}
+              className={`btn btn-sm ${activeTab === 'returned' ? 'btn-primary' : 'btn-secondary'}`}
+              style={{ fontWeight: 600 }}
+            >
+              Direvisi Ka. Prodi ({returnedList.length})
+            </button>
           </div>
-          <div className="card-body" style={{ padding: 0 }}>
-            {submissions.length === 0 ? (
-              <div className="empty-state">
-                <div className="empty-state-icon">⚖️</div>
-                <div className="empty-state-text">Tidak ada pengajuan masuk</div>
-                <div className="empty-state-sub">Belum ada hasil rekognisi Ka. Prodi yang dikirim untuk asesmen.</div>
-              </div>
-            ) : (
-              <div className="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Nama Pendaftar</th>
-                      <th>Email</th>
-                      <th>Prodi Tujuan</th>
-                      <th>Transkrip Asal</th>
-                      <th style={{ width: 120 }}>Aksi</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {submissions.map(item => (
-                      <tr key={item.id}>
-                        <td><strong>{item.profile?.nama_lengkap}</strong></td>
-                        <td>{item.profile?.email}</td>
-                        <td><span className="badge-pill badge-slate">{item.prodi?.nama}</span></td>
-                        <td>{item.file_transkrip_url}</td>
-                        <td>
-                          <button
-                            onClick={() => setSelectedItem(item)}
-                            className="btn btn-primary btn-sm"
-                          >
-                            Mulai Asesmen
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        </div>
-      ) : (
-        /* Assessment Area */
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 24 }}>
-          {/* Main Table Panel */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-            <div className="card">
-              <div className="card-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div>
-                  <h3 style={{ fontSize: 14, fontWeight: 700 }}>Evaluasi Transkrip & Justifikasi Portofolio</h3>
-                  <span style={{ fontSize: 12, color: 'var(--gray-500)' }}>Pendaftar: <strong>{selectedItem.profile?.nama_lengkap}</strong> ({selectedItem.prodi?.nama})</span>
+
+          <div className="card">
+            <div className="card-header">
+              <h3 style={{ fontSize: 14, fontWeight: 700 }}>
+                {activeTab === 'pending' ? 'Menunggu Asesmen Portofolio' : activeTab === 'completed' ? 'Asesmen Selesai' : 'Pengajuan Dikembalikan ke Ka. Prodi'}
+              </h3>
+              <span className="badge-pill badge-indigo">{activeList.length} Pengajuan</span>
+            </div>
+            <div className="card-body" style={{ padding: 0 }}>
+              {activeList.length === 0 ? (
+                <div className="empty-state">
+                  <div className="empty-state-icon">⚖️</div>
+                  <div className="empty-state-text">Tidak ada pengajuan</div>
+                  <div className="empty-state-sub">Belum ada pengajuan masuk untuk kategori ini.</div>
                 </div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button onClick={addPortfolioRow} className="btn btn-secondary btn-sm" style={{ gap: 4 }}>
-                    <Plus size={14} /> Tambah Portofolio/Sertifikasi
-                  </button>
-                  <button onClick={() => setSelectedItem(null)} className="btn btn-ghost btn-sm">Kembali</button>
-                </div>
-              </div>
-              <div className="card-body" style={{ padding: 0 }}>
+              ) : (
                 <div className="table-wrap">
                   <table>
                     <thead>
                       <tr>
-                        <th>Mata Kuliah / Portofolio Asal</th>
-                        <th style={{ width: 60 }}>Nilai</th>
-                        <th>Mata Kuliah Kurikulum</th>
-                        <th style={{ width: 120 }}>Keputusan</th>
-                        <th style={{ width: 60 }}>Aksi</th>
+                        <th>Nama Pendaftar</th>
+                        <th>Email</th>
+                        <th>Prodi Tujuan</th>
+                        <th>Transkrip Asal</th>
+                        <th>Status Internal</th>
+                        <th style={{ width: 120 }}>Aksi</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {rows.map(row => (
-                        <tr key={row.id} style={{ background: row.statusTujuan === 'ditolak' ? '#fee2e2' : '' }}>
+                      {activeList.map(item => (
+                        <tr key={item.id} style={{ borderLeft: item.status === 'returned_admin' ? '4px solid var(--danger)' : '' }}>
                           <td>
-                            {row.isCertified ? (
-                              <input
-                                type="text"
-                                value={row.mkAsal}
-                                onChange={(e) => updateRowField(row.id, 'mkAsal', e.target.value)}
-                                className="input"
-                                style={{ padding: '6px 10px' }}
-                              />
-                            ) : (
-                              <span style={{ fontSize: 12.5, fontWeight: 600 }}>{row.mkAsal}</span>
+                            <strong>{item.profile?.nama_lengkap}</strong>
+                            {item.status === 'returned_admin' && (
+                              <span style={{ display: 'block', fontSize: 11, color: 'var(--danger)', fontWeight: 600, marginTop: 2 }}>
+                                ⚠️ Dikembalikan oleh Admin: "{item.catatan_revisi}"
+                              </span>
                             )}
                           </td>
+                          <td>{item.profile?.email}</td>
+                          <td><span className="badge-pill badge-slate">{item.prodi?.nama}</span></td>
+                          <td>{item.file_transkrip_url}</td>
+                          <td><span className={`badge-pill status-${item.status}`}>{item.status.toUpperCase()}</span></td>
                           <td>
-                            {row.isCertified ? (
-                              <input
-                                type="text"
-                                value={row.nilaiAsal}
-                                onChange={(e) => updateRowField(row.id, 'nilaiAsal', e.target.value)}
-                                className="input"
-                                style={{ padding: '6px 10px' }}
-                              />
-                            ) : (
-                              <span style={{ fontSize: 12.5 }}>{row.nilaiAsal}</span>
-                            )}
+                            <button
+                              onClick={() => setSelectedItem(item)}
+                              className="btn btn-primary btn-sm"
+                            >
+                              {activeTab === 'pending' ? 'Mulai Asesmen' : 'Lihat'}
+                            </button>
                           </td>
-                          <td>
-                            {row.isCertified ? (
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      ) : (
+        /* Assessment Area */
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          {/* Warning Banner if returned from Admin */}
+          {selectedItem.status === 'returned_admin' && (
+            <div className="card" style={{ borderLeft: '4px solid var(--danger)', backgroundColor: '#fff5f5' }}>
+              <div className="card-body">
+                <h4 style={{ color: '#c53030', display: 'flex', alignItems: 'center', gap: 8, margin: 0, fontSize: '14px', fontWeight: 700 }}>
+                  ⚠️ Pengajuan Dikembalikan oleh Admin untuk Revisi
+                </h4>
+                <p style={{ color: '#742a2a', fontSize: '13px', marginTop: 8, marginBottom: 0 }}>
+                  Catatan Admin: <strong>{selectedItem.catatan_revisi || 'Harap perbaiki penilaian Anda.'}</strong>
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Header Card */}
+          <div className="card" style={{ background: 'var(--indigo-50)', borderColor: 'var(--indigo-100)' }}>
+            <div className="card-body" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px' }}>
+              <div>
+                <span style={{ fontSize: 11, color: 'var(--indigo-600)', fontWeight: 700, textTransform: 'uppercase' }}>Asesmen RPL Aktif</span>
+                <h2 style={{ fontSize: 16, fontWeight: 800, color: 'var(--indigo-700)', margin: '2px 0 0 0' }}>{selectedItem.profile?.nama_lengkap}</h2>
+                <p style={{ fontSize: 12.5, color: 'var(--gray-600)', margin: 0 }}>Prodi Tujuan: {selectedItem.prodi?.nama}</p>
+              </div>
+              <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                {(selectedItem.status === 'recognized_kaprodi' || selectedItem.status === 'returned_admin') && (
+                  <button onClick={() => setShowReturnInput(v => !v)} className="btn btn-danger btn-sm">
+                    Kembalikan ke Ka. Prodi
+                  </button>
+                )}
+                <button onClick={() => setSelectedItem(null)} className="btn btn-secondary btn-sm">Batal</button>
+              </div>
+            </div>
+          </div>
+
+          {/* Return to Kaprodi Input Card */}
+          {showReturnInput && (
+            <div className="card" style={{ borderLeft: '4px solid var(--danger)' }}>
+              <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <h4 style={{ margin: 0, fontSize: 13, fontWeight: 700, color: '#c53030' }}>Kembalikan Pengajuan ke Ka. Prodi</h4>
+                <textarea
+                  value={catatanRevisi}
+                  onChange={(e) => setCatatanRevisi(e.target.value)}
+                  placeholder="Masukkan alasan pengembalian untuk diperbaiki Ka. Prodi..."
+                  className="input"
+                  rows={2}
+                />
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button onClick={handleReturnToKaprodi} disabled={submitting} className="btn btn-danger btn-sm">Kirim Pengembalian</button>
+                  <button onClick={() => setShowReturnInput(false)} className="btn btn-secondary btn-sm">Batal</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* SKS Recognition Limit warning alert */}
+          {isLimitExceeded && (
+            <div className="card" style={{ borderLeft: '4px solid var(--amber-500)', backgroundColor: '#fffbeb' }}>
+              <div className="card-body">
+                <h4 style={{ color: '#b45309', display: 'flex', alignItems: 'center', gap: 8, margin: 0, fontSize: '13.5px', fontWeight: 700 }}>
+                  ⚠️ Peringatan: Batas Rekognisi Terlampaui
+                </h4>
+                <p style={{ color: '#92400e', fontSize: '12.5px', marginTop: 6, marginBottom: 0 }}>
+                  Persentase perolehan rekognisi SKS calon mahasiswa ini saat ini adalah <strong>{recognitionPercentage.toFixed(1)}%</strong> ({totalSksDiakui} dari {totalSksKurikulum} SKS), yang mana telah melampaui batas maksimal yang dikonfigurasi yaitu <strong>{maxRecognitionLimit}%</strong>. Harap tinjau kembali kelayakan pemetaan mata kuliah.
+                </p>
+              </div>
+            </div>
+          )}
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 24 }}>
+            {/* Main Table Panel */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+              <div className="card">
+                <div className="card-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div>
+                    <h3 style={{ fontSize: 14, fontWeight: 700 }}>Evaluasi Transkrip & Justifikasi Portofolio</h3>
+                    <span style={{ fontSize: 12, color: 'var(--gray-500)' }}>Pendaftar: <strong>{selectedItem.profile?.nama_lengkap}</strong> ({selectedItem.prodi?.nama})</span>
+                  </div>
+                  {(selectedItem.status === 'recognized_kaprodi' || selectedItem.status === 'returned_admin') ? (
+                    <div style={{ display: 'flex', gap: 8 }}>
+                      <button onClick={addPortfolioRow} className="btn btn-secondary btn-sm" style={{ gap: 4 }}>
+                        <Plus size={14} /> Tambah Portofolio/Sertifikasi
+                      </button>
+                    </div>
+                  ) : (
+                    <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--gray-500)', background: 'var(--gray-100)', padding: '6px 12px', borderRadius: 6 }}>
+                      Modus Lihat (Read-Only)
+                    </span>
+                  )}
+                </div>
+                <div className="card-body" style={{ padding: 0 }}>
+                  <div className="table-wrap">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Mata Kuliah / Portofolio Asal</th>
+                          <th style={{ width: 60 }}>Nilai</th>
+                          <th>Mata Kuliah Kurikulum</th>
+                          <th style={{ width: 120 }}>Keputusan</th>
+                          {selectedItem.status === 'recognized_kaprodi' || selectedItem.status === 'returned_admin' ? <th style={{ width: 60 }}>Aksi</th> : null}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {rows.map(row => (
+                          <tr key={row.id} style={{ background: row.statusTujuan === 'ditolak' ? '#fee2e2' : '' }}>
+                            <td>
+                              {row.isCertified && (selectedItem.status === 'recognized_kaprodi' || selectedItem.status === 'returned_admin') ? (
+                                <input
+                                  type="text"
+                                  value={row.mkAsal}
+                                  onChange={(e) => updateRowField(row.id, 'mkAsal', e.target.value)}
+                                  className="input"
+                                  style={{ padding: '6px 10px' }}
+                                />
+                              ) : (
+                                <span style={{ fontSize: 12.5, fontWeight: 600 }}>{row.mkAsal}</span>
+                              )}
+                            </td>
+                            <td>
+                              {row.isCertified && (selectedItem.status === 'recognized_kaprodi' || selectedItem.status === 'returned_admin') ? (
+                                <input
+                                  type="text"
+                                  value={row.nilaiAsal}
+                                  onChange={(e) => updateRowField(row.id, 'nilaiAsal', e.target.value)}
+                                  className="input"
+                                  style={{ padding: '6px 10px' }}
+                                />
+                              ) : (
+                                <span style={{ fontSize: 12.5 }}>{row.nilaiAsal}</span>
+                              )}
+                            </td>
+                            <td>
+                              {row.isCertified && (selectedItem.status === 'recognized_kaprodi' || selectedItem.status === 'returned_admin') ? (
+                                <select
+                                  value={row.mkTujuanId}
+                                  onChange={(e) => updateRowField(row.id, 'mkTujuanId', e.target.value)}
+                                  style={{
+                                    width: '100%',
+                                    padding: '6px 10px',
+                                    borderRadius: '6px',
+                                    border: '1px solid var(--gray-200)',
+                                    background: 'var(--surface)',
+                                    fontSize: '12.5px',
+                                    outline: 'none'
+                                  }}
+                                >
+                                  <option value="">-- Pilih MK Kurikulum --</option>
+                                  {curriculumMK.map(mk => (
+                                    <option key={mk.id} value={mk.id}>{mk.kode_mk} - {mk.nama_mk} ({mk.sks} SKS)</option>
+                                  ))}
+                                </select>
+                              ) : (
+                                <span style={{ fontSize: 12.5, fontWeight: 500 }}>
+                                  {curriculumMK.find(mk => mk.id === row.mkTujuanId)?.nama_mk || 'Belum Dipetakan'}
+                                </span>
+                              )}
+                            </td>
+                            <td>
                               <select
-                                value={row.mkTujuanId}
-                                onChange={(e) => updateRowField(row.id, 'mkTujuanId', e.target.value)}
+                                value={row.statusTujuan}
+                                disabled={!(selectedItem.status === 'recognized_kaprodi' || selectedItem.status === 'returned_admin')}
+                                onChange={(e) => updateRowField(row.id, 'statusTujuan', e.target.value)}
                                 style={{
                                   width: '100%',
                                   padding: '6px 10px',
@@ -314,117 +490,108 @@ export default function AsessorDashboard() {
                                   border: '1px solid var(--gray-200)',
                                   background: 'var(--surface)',
                                   fontSize: '12.5px',
-                                  outline: 'none'
+                                  fontWeight: 600,
+                                  color: row.statusTujuan === 'disetujui' ? '#065f46' : '#991b1b'
                                 }}
                               >
-                                <option value="">-- Pilih MK Kurikulum --</option>
-                                {curriculumMK.map(mk => (
-                                  <option key={mk.id} value={mk.id}>{mk.kode_mk} - {mk.nama_mk} ({mk.sks} SKS)</option>
-                                ))}
+                                <option value="disetujui">✅ Diakui</option>
+                                <option value="ditolak">❌ Ditolak</option>
                               </select>
-                            ) : (
-                              <span style={{ fontSize: 12.5, fontWeight: 500 }}>
-                                {curriculumMK.find(mk => mk.id === row.mkTujuanId)?.nama_mk || 'Belum Dipetakan'}
-                              </span>
+                            </td>
+                            {(selectedItem.status === 'recognized_kaprodi' || selectedItem.status === 'returned_admin') && (
+                              <td>
+                                {row.isCertified ? (
+                                  <button onClick={() => deleteRow(row.id)} className="btn btn-ghost btn-icon" style={{ color: 'var(--danger)' }}>
+                                    <Trash2 size={15} />
+                                  </button>
+                                ) : (
+                                  <span style={{ fontSize: 11, color: 'var(--gray-400)' }}>Kaprodi</span>
+                                )}
+                              </td>
                             )}
-                          </td>
-                          <td>
-                            <select
-                              value={row.statusTujuan}
-                              onChange={(e) => updateRowField(row.id, 'statusTujuan', e.target.value)}
-                              style={{
-                                width: '100%',
-                                padding: '6px 10px',
-                                borderRadius: '6px',
-                                border: '1px solid var(--gray-200)',
-                                background: 'var(--surface)',
-                                fontSize: '12.5px',
-                                fontWeight: 600,
-                                color: row.statusTujuan === 'disetujui' ? '#065f46' : '#991b1b'
-                              }}
-                            >
-                              <option value="disetujui">✅ Diakui</option>
-                              <option value="ditolak">❌ Ditolak</option>
-                            </select>
-                          </td>
-                          <td>
-                            {row.isCertified ? (
-                              <button onClick={() => deleteRow(row.id)} className="btn btn-ghost btn-icon" style={{ color: 'var(--danger)' }}>
-                                <Trash2 size={15} />
-                              </button>
-                            ) : (
-                              <span style={{ fontSize: 11, color: 'var(--gray-400)' }}>Kaprodi</span>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          {/* Financial Calculation Side Panel */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-            {/* Calculation Card */}
-            <div className="card">
-              <div className="card-header" style={{ borderBottom: 'none', paddingBottom: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--indigo-600)' }}>
-                  <Calculator size={18} />
-                  <h3 style={{ fontSize: 14, fontWeight: 700 }}>Rincian Biaya Kuliah</h3>
-                </div>
-              </div>
-              <div className="card-body">
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 14, fontSize: 12.5 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: 'var(--gray-500)' }}>Total SKS Diakui:</span>
-                    <strong>{totalSksDiakui} SKS</strong>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: 'var(--gray-500)' }}>SKS Harus Ditempuh:</span>
-                    <strong>{totalSksSisa} SKS</strong>
-                  </div>
-
-                  <div style={{ borderTop: '1px solid var(--gray-100)', padding: '10px 0 0' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                      <span style={{ color: 'var(--gray-600)', fontWeight: 500 }}>Uang Kuliah Paket (UKP)</span>
-                      <span>Rp5.400.000</span>
-                    </div>
-                    <span style={{ fontSize: 11, color: 'var(--gray-400)' }}>Flat per semester (Rp900.000/bln x 6)</span>
-                  </div>
-
-                  <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                      <span style={{ color: 'var(--gray-600)', fontWeight: 500 }}>Biaya Pengakuan RPL</span>
-                      <span>Rp{biayaPengakuan.toLocaleString('id-ID')}</span>
-                    </div>
-                    <span style={{ fontSize: 11, color: 'var(--gray-400)' }}>{totalSksDiakui} SKS x Rp50.000/SKS</span>
-                  </div>
-
-                  <div style={{ borderTop: '2px solid var(--indigo-100)', padding: '12px 0 0', marginTop: 4 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13.5 }}>
-                      <strong style={{ color: 'var(--gray-800)' }}>Total Biaya Awal:</strong>
-                      <strong style={{ color: 'var(--indigo-700)', fontSize: 15 }}>Rp{biayaTotalAwal.toLocaleString('id-ID')}</strong>
-                    </div>
+            {/* Financial Calculation Side Panel */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+              {/* Calculation Card */}
+              <div className="card">
+                <div className="card-header" style={{ borderBottom: 'none', paddingBottom: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--indigo-600)' }}>
+                    <Calculator size={18} />
+                    <h3 style={{ fontSize: 14, fontWeight: 700 }}>Rincian Biaya Kuliah</h3>
                   </div>
                 </div>
+                <div className="card-body">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 14, fontSize: 12.5 }}>
+                    
+                    {/* SKS Limit Gauge */}
+                    <div style={{ background: isLimitExceeded ? '#fff1f2' : '#f0fdf4', border: isLimitExceeded ? '1px solid #fecaca' : '1px solid #bbf7d0', padding: 12, borderRadius: 8, fontSize: 12 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, color: isLimitExceeded ? '#991b1b' : '#166534', marginBottom: 4 }}>
+                        <span>Persentase Rekognisi:</span>
+                        <span>{recognitionPercentage.toFixed(1)}%</span>
+                      </div>
+                      <span style={{ fontSize: 11, color: 'var(--gray-500)' }}>Batas Maksimal: {maxRecognitionLimit}% ({totalSksDiakui} / {totalSksKurikulum} SKS)</span>
+                    </div>
 
-                <div style={{ display: 'flex', gap: 6, padding: 10, background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 6, marginTop: 16 }}>
-                  <Info size={16} color="var(--info)" style={{ flexShrink: 0, marginTop: 2 }} />
-                  <p style={{ fontSize: 11, color: '#0369a1', margin: 0, lineHeight: 1.4 }}>
-                    Admin Akademik berhak memberikan diskon / pengurangan biaya individu di tahap berikutnya.
-                  </p>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: 'var(--gray-500)' }}>Total SKS Diakui:</span>
+                      <strong>{totalSksDiakui} SKS</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: 'var(--gray-500)' }}>SKS Harus Ditempuh:</span>
+                      <strong>{totalSksSisa} SKS</strong>
+                    </div>
+
+                    <div style={{ borderTop: '1px solid var(--gray-100)', padding: '10px 0 0' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                        <span style={{ color: 'var(--gray-600)', fontWeight: 500 }}>Uang Kuliah Paket (UKP)</span>
+                        <span>Rp5.400.000</span>
+                      </div>
+                      <span style={{ fontSize: 11, color: 'var(--gray-400)' }}>Flat per semester (Rp900.000/bln x 6)</span>
+                    </div>
+
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                        <span style={{ color: 'var(--gray-600)', fontWeight: 500 }}>Biaya Pengakuan RPL</span>
+                        <span>Rp{biayaPengakuan.toLocaleString('id-ID')}</span>
+                      </div>
+                      <span style={{ fontSize: 11, color: 'var(--gray-400)' }}>{totalSksDiakui} SKS x Rp50.000/SKS</span>
+                    </div>
+
+                    <div style={{ borderTop: '2px solid var(--indigo-100)', padding: '12px 0 0', marginTop: 4 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13.5 }}>
+                        <strong style={{ color: 'var(--gray-800)' }}>Total Biaya Awal:</strong>
+                        <strong style={{ color: 'var(--indigo-700)', fontSize: 15 }}>Rp{biayaTotalAwal.toLocaleString('id-ID')}</strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 6, padding: 10, background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: 6, marginTop: 16 }}>
+                    <Info size={16} color="var(--info)" style={{ flexShrink: 0, marginTop: 2 }} />
+                    <p style={{ fontSize: 11, color: '#0369a1', margin: 0, lineHeight: 1.4 }}>
+                      Admin Akademik berhak memberikan diskon / pengurangan biaya individu di tahap berikutnya.
+                    </p>
+                  </div>
                 </div>
-              </div>
-              <div className="card-footer">
-                <button
-                  onClick={handleSubmitToAdmin}
-                  className="btn btn-primary"
-                  style={{ width: '100%', justifyContent: 'center', fontWeight: 700 }}
-                >
-                  Kirim Rekomendasi Biaya
-                </button>
+                {(selectedItem.status === 'recognized_kaprodi' || selectedItem.status === 'returned_admin') && (
+                  <div className="card-footer">
+                    <button
+                      onClick={handleSubmitToAdmin}
+                      disabled={submitting}
+                      className="btn btn-primary"
+                      style={{ width: '100%', justifyContent: 'center', fontWeight: 700 }}
+                    >
+                      Kirim Rekomendasi Biaya
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>

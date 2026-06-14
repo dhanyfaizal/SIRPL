@@ -121,7 +121,7 @@ export default function AppRouter() {
           
           {/* Profile & Settings */}
           <Route path="/profile" element={<PlaceholderPage title="Profil Saya" />} />
-          <Route path="/settings/ai" element={<PlaceholderPage title="Pengaturan AI Key" />} />
+          <Route path="/settings/ai" element={<ProtectedRoute allowedRoles={['admin']}><PlaceholderPage title="Pengaturan AI Key" /></ProtectedRoute>} />
         </Route>
 
         {/* Standalone Print Route */}
