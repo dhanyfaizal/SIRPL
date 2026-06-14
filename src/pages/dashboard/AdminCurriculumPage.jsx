@@ -30,6 +30,15 @@ export default function AdminCurriculumPage() {
   const [importParsed, setImportParsed] = useState([])
   const [importing, setImporting] = useState(false)
 
+  // Custom Confirmation Modal state
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    title: 'Konfirmasi',
+    message: '',
+    confirmText: 'Ya, Lanjutkan',
+    onConfirm: null
+  })
+
   const loadData = async () => {
     setLoading(true)
     try {
@@ -161,17 +170,24 @@ export default function AdminCurriculumPage() {
   }
 
   // ── Delete ──────────────────────────────────────────────────
-  const handleDelete = async (mk) => {
-    if (!window.confirm(`Hapus mata kuliah "${mk.kode_mk} - ${mk.nama_mk}"?`)) return
-    try {
-      const { error } = await dbMK.delete(mk.id)
-      if (error) throw error
-      toast.success('Mata kuliah berhasil dihapus')
-      loadData()
-    } catch (e) {
-      console.error(e)
-      toast.error('Gagal menghapus: ' + (e.message || ''))
-    }
+  const handleDelete = (mk) => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Hapus Mata Kuliah',
+      message: `Apakah Anda yakin ingin menghapus mata kuliah "${mk.kode_mk} - ${mk.nama_mk}" dari kurikulum? Tindakan ini tidak dapat dibatalkan.`,
+      confirmText: 'Ya, Hapus',
+      onConfirm: async () => {
+        try {
+          const { error } = await dbMK.delete(mk.id)
+          if (error) throw error
+          toast.success('Mata kuliah berhasil dihapus')
+          loadData()
+        } catch (e) {
+          console.error(e)
+          toast.error('Gagal menghapus: ' + (e.message || ''))
+        }
+      }
+    })
   }
 
   // ── Download Template CSV ───────────────────────────────────
@@ -478,6 +494,43 @@ export default function AdminCurriculumPage() {
           </div>
         </div>
       </div>
+
+      {/* Custom Confirmation Modal */}
+      {confirmModal.isOpen && (
+        <div className="modal-overlay" onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '400px' }}>
+            <div className="modal-header">
+              <h3 className="modal-title">{confirmModal.title}</h3>
+              <button 
+                onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', color: 'var(--gray-400)' }}
+              >
+                ✕
+              </button>
+            </div>
+            <div className="modal-body" style={{ fontSize: '13px', color: 'var(--gray-600)', lineHeight: 1.5, padding: '20px 24px' }}>
+              {confirmModal.message}
+            </div>
+            <div className="modal-footer" style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', padding: '12px 24px' }}>
+              <button 
+                className="btn btn-secondary btn-sm" 
+                onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+              >
+                Batal
+              </button>
+              <button 
+                className="btn btn-danger btn-sm" 
+                onClick={() => {
+                  confirmModal.onConfirm()
+                  setConfirmModal(prev => ({ ...prev, isOpen: false }))
+                }}
+              >
+                {confirmModal.confirmText}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

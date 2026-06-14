@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { supabase, isMock } from '../lib/supabase'
 import { dbProfiles } from '../lib/db'
+import toast from 'react-hot-toast'
 
 const AuthContext = createContext(null)
 export const useAuth = () => useContext(AuthContext)
@@ -127,7 +128,7 @@ export default function AuthProvider({ children }) {
   // ── Google Sign In (Supabase) ─────────────────────────────────
   async function signInWithGoogle() {
     if (isMock) {
-      alert('Aplikasi sedang berjalan dalam MODE MOCK. Gunakan Simulasi Login Peran.')
+      toast.error('Aplikasi sedang berjalan dalam MODE MOCK. Gunakan Simulasi Login Peran.')
       return
     }
     const { error } = await supabase.auth.signInWithOAuth({

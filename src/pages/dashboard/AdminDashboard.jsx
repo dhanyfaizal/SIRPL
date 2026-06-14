@@ -29,6 +29,15 @@ export default function AdminDashboard() {
   const [recRows, setRecRows] = useState([])
   const [submitting, setSubmitting] = useState(false)
 
+  // Custom Confirmation Modal state
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    title: 'Konfirmasi',
+    message: '',
+    confirmText: 'Ya, Lanjutkan',
+    onConfirm: null
+  })
+
   const loadSubmissions = async () => {
     setLoading(true)
     try {
@@ -230,25 +239,30 @@ export default function AdminDashboard() {
     }
   }
 
-  const handleAllowResubmission = async () => {
-    const confirmAction = window.confirm('Apakah Anda yakin ingin membuka kembali pengajuan ini agar calon pendaftar dapat mengunggah berkas baru?')
-    if (!confirmAction) return
-
-    setSubmitting(true)
-    try {
-      await dbPengajuan.updateStatus(
-        selectedItem.id,
-        'returned_baak',
-        'Dibuka kembali oleh Admin Akademik agar Anda dapat mengajukan berkas baru atau melakukan revisi.'
-      )
-      toast.success('Pengajuan berhasil dibuka kembali untuk Calon Pendaftar!')
-      loadSubmissions()
-    } catch (e) {
-      console.error(e)
-      toast.error('Gagal membuka kembali pengajuan')
-    } finally {
-      setSubmitting(false)
-    }
+  const handleAllowResubmission = () => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Buka Pengajuan Baru',
+      message: 'Apakah Anda yakin ingin membuka kembali pengajuan ini agar calon pendaftar dapat mengunggah berkas baru?',
+      confirmText: 'Ya, Buka Akses',
+      onConfirm: async () => {
+        setSubmitting(true)
+        try {
+          await dbPengajuan.updateStatus(
+            selectedItem.id,
+            'returned_baak',
+            'Dibuka kembali oleh Admin Akademik agar Anda dapat mengajukan berkas baru atau melakukan revisi.'
+          )
+          toast.success('Pengajuan berhasil dibuka kembali untuk Calon Pendaftar!')
+          loadSubmissions()
+        } catch (e) {
+          console.error(e)
+          toast.error('Gagal membuka kembali pengajuan')
+        } finally {
+          setSubmitting(false)
+        }
+      }
+    })
   }
 
   const getStatusInfo = (status) => {
@@ -780,6 +794,43 @@ export default function AdminDashboard() {
                   </button>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Confirmation Modal */}
+      {confirmModal.isOpen && (
+        <div className="modal-overlay" onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '400px' }}>
+            <div className="modal-header">
+              <h3 className="modal-title">{confirmModal.title}</h3>
+              <button 
+                onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', color: 'var(--gray-400)' }}
+              >
+                ✕
+              </button>
+            </div>
+            <div className="modal-body" style={{ fontSize: '13px', color: 'var(--gray-600)', lineHeight: 1.5, padding: '20px 24px' }}>
+              {confirmModal.message}
+            </div>
+            <div className="modal-footer" style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', padding: '12px 24px' }}>
+              <button 
+                className="btn btn-secondary btn-sm" 
+                onClick={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+              >
+                Batal
+              </button>
+              <button 
+                className="btn btn-primary btn-sm" 
+                onClick={() => {
+                  confirmModal.onConfirm()
+                  setConfirmModal(prev => ({ ...prev, isOpen: false }))
+                }}
+              >
+                {confirmModal.confirmText}
+              </button>
             </div>
           </div>
         </div>
