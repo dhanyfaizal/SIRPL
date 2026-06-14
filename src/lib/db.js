@@ -219,7 +219,9 @@ export const dbPengajuan = {
       saveLocalData('si_rpl_pengajuan', list)
       return { data: newItem, error: null }
     }
-    return supabase.from('pengajuan_rpl').insert({ status: 'submitted', sertifikat_kompetensi: [], pengalaman_kerja: [], ...data }).select().single()
+    const { data: resData, error } = await supabase.from('pengajuan_rpl').insert({ status: 'submitted', sertifikat_kompetensi: [], pengalaman_kerja: [], ...data }).select().single()
+    if (error) throw new Error(error.message)
+    return { data: resData, error: null }
   },
 
   updateStatus: async (id, status, catatanRevisi = null) => {
@@ -239,7 +241,9 @@ export const dbPengajuan = {
     if (catatanRevisi !== undefined) {
       updatePayload.catatan_revisi = catatanRevisi
     }
-    return supabase.from('pengajuan_rpl').update(updatePayload).eq('id', id).select().single()
+    const { data: resData, error } = await supabase.from('pengajuan_rpl').update(updatePayload).eq('id', id).select().single()
+    if (error) throw new Error(error.message)
+    return { data: resData, error: null }
   },
 
   update: async (id, data) => {
@@ -253,7 +257,9 @@ export const dbPengajuan = {
       }
       return { data: null, error: new Error('Pengajuan tidak ditemukan') }
     }
-    return supabase.from('pengajuan_rpl').update({ ...data, updated_at: new Date().toISOString() }).eq('id', id).select().single()
+    const { data: resData, error } = await supabase.from('pengajuan_rpl').update({ ...data, updated_at: new Date().toISOString() }).eq('id', id).select().single()
+    if (error) throw new Error(error.message)
+    return { data: resData, error: null }
   }
 }
 
