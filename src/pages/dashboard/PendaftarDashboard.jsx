@@ -2,33 +2,31 @@ import { useState, useEffect } from 'react'
 import { dbPengajuan, dbProdi } from '../../lib/db'
 import { supabase, isMock } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
-import { FileUp, Clipboard, Award, Shield, CheckCircle, FileText } from 'lucide-react'
+import { FileUp, Clipboard, Award, Shield, CheckCircle, FileText, Trash2, Plus } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { generateMockDocSrcDoc } from '../../lib/mockDoc'
 
 // Helper: Preview component that supports both real PDF (Supabase Storage) and mock HTML
-function DocPreview({ pengajuan, previewType, profileName, prodiName }) {
+function DocPreview({ fileUrl, previewType, profileName, prodiName }) {
   const [signedUrl, setSignedUrl] = useState(null)
   const [loadingUrl, setLoadingUrl] = useState(false)
 
-  const filePath = previewType === 'ijazah' ? pengajuan.file_ijazah_url : pengajuan.file_transkrip_url
-  const isStoragePath = filePath && filePath.includes('/')
+  const isStoragePath = fileUrl && fileUrl.includes('/')
 
   useEffect(() => {
+    setSignedUrl(null)
     if (!isMock && isStoragePath) {
       setLoadingUrl(true)
       supabase.storage
         .from('rpl-documents')
-        .createSignedUrl(filePath, 3600) // 1 hour expiry
+        .createSignedUrl(fileUrl, 3600) // 1 hour expiry
         .then(({ data, error }) => {
           if (!error && data?.signedUrl) setSignedUrl(data.signedUrl)
           else setSignedUrl(null)
         })
         .finally(() => setLoadingUrl(false))
-    } else {
-      setSignedUrl(null)
     }
-  }, [filePath, isStoragePath])
+  }, [fileUrl, isStoragePath])
 
   if (loadingUrl) {
     return (
@@ -55,7 +53,7 @@ function DocPreview({ pengajuan, previewType, profileName, prodiName }) {
     <div style={{ border: '1px solid var(--gray-200)', borderRadius: 8, overflow: 'hidden', height: 420, background: '#fff' }}>
       <iframe
         title="Pratinjau Dokumen Calon"
-        srcDoc={generateMockDocSrcDoc(previewType, filePath, profileName, prodiName)}
+        srcDoc={generateMockDocSrcDoc(previewType, fileUrl, profileName, prodiName)}
         style={{ width: '100%', height: '100%', border: 'none' }}
       />
     </div>
@@ -74,9 +72,14 @@ export default function PendaftarDashboard() {
   const [transkripName, setTranskripName] = useState('')
   const [ijazahFile, setIjazahFile] = useState(null)
   const [transkripFile, setTranskripFile] = useState(null)
+  
+  // Sertifikat & Pengalaman States
+  const [sertifikats, setSertifikats] = useState([])
+  const [pengalamans, setPengalamans] = useState([])
+
   const [submitting, setSubmitting] = useState(false)
   const [previewType, setPreviewType] = useState('ijazah')
-  const [previewUrl, setPreviewUrl] = useState(null)
+  const [previewUrl, setPreviewUrl] = useState('')
 
   const loadData = async () => {
     setLoading(true)
@@ -88,10 +91,35 @@ export default function PendaftarDashboard() {
       if (pengajuanData && pengajuanData.length > 0) {
         const activePengajuan = pengajuanData[0]
         setPengajuan(activePengajuan) // Ambil pengajuan terbaru
+        setPreviewUrl(activePengajuan.file_ijazah_url || '')
+        setPreviewType('ijazah')
+
         if (activePengajuan.status === 'returned_baak') {
           setSelectedProdi(activePengajuan.prodi_pilihan_id || '')
           setIjazahName(activePengajuan.file_ijazah_url || '')
           setTranskripName(activePengajuan.file_transkrip_url || '')
+
+          // Pre-fill certificates & experience
+          const certs = activePengajuan.sertifikat_kompetensi || []
+          setSertifikats(certs.map((c, idx) => ({
+            id: 'cert-' + idx + '-' + Date.now(),
+            nama: c.nama,
+            penerbit: c.penerbit,
+            tahun: c.tahun,
+            fileUrl: c.file_url,
+            fileName: c.file_url ? c.file_url.split('/').pop() : ''
+          })))
+
+          const exprs = activePengajuan.pengalaman_kerja || []
+          setPengalamans(exprs.map((ex, idx) => ({
+            id: 'expr-' + idx + '-' + Date.now(),
+            perusahaan: ex.perusahaan,
+            posisi: ex.posisi,
+            durasi: ex.durasi,
+            deskripsi: ex.deskripsi,
+            fileUrl: ex.file_url,
+            fileName: ex.file_url ? ex.file_url.split('/').pop() : ''
+          })))
         }
       } else {
         setPengajuan(null)
@@ -124,6 +152,66 @@ export default function PendaftarDashboard() {
     }
   }
 
+  // Sertifikat Handlers
+  const addSertifikat = () => {
+    setSertifikats([
+      ...sertifikats,
+      { id: 'cert-' + Date.now() + Math.random().toString(36).slice(2, 5), nama: '', penerbit: '', tahun: '', fileObj: null, fileName: '', fileUrl: '' }
+    ])
+  }
+
+  const removeSertifikat = (id) => {
+    setSertifikats(sertifikats.filter(c => c.id !== id))
+  }
+
+  const handleSertifikatChange = (id, field, value) => {
+    setSertifikats(sertifikats.map(c => c.id === id ? { ...c, [field]: value } : c))
+  }
+
+  const handleSertifikatFile = (id, file) => {
+    if (file) {
+      if (file.type !== 'application/pdf') {
+        toast.error('Hanya berkas PDF yang diperbolehkan')
+        return
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('Ukuran file maksimal 5MB')
+        return
+      }
+      setSertifikats(sertifikats.map(c => c.id === id ? { ...c, fileObj: file, fileName: file.name } : c))
+    }
+  }
+
+  // Pengalaman Handlers
+  const addPengalaman = () => {
+    setPengalamans([
+      ...pengalamans,
+      { id: 'expr-' + Date.now() + Math.random().toString(36).slice(2, 5), perusahaan: '', posisi: '', durasi: '', deskripsi: '', fileObj: null, fileName: '', fileUrl: '' }
+    ])
+  }
+
+  const removePengalaman = (id) => {
+    setPengalamans(pengalamans.filter(ex => ex.id !== id))
+  }
+
+  const handlePengalamanChange = (id, field, value) => {
+    setPengalamans(pengalamans.map(ex => ex.id === id ? { ...ex, [field]: value } : ex))
+  }
+
+  const handlePengalamanFile = (id, file) => {
+    if (file) {
+      if (file.type !== 'application/pdf') {
+        toast.error('Hanya berkas PDF yang diperbolehkan')
+        return
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('Ukuran file maksimal 5MB')
+        return
+      }
+      setPengalamans(pengalamans.map(ex => ex.id === id ? { ...ex, fileObj: file, fileName: file.name } : ex))
+    }
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     if (!selectedProdi) {
@@ -133,6 +221,29 @@ export default function PendaftarDashboard() {
     if (!ijazahName || !transkripName) {
       toast.error('Silakan unggah kedua dokumen wajib (Ijazah & Transkrip)')
       return
+    }
+
+    // Validations
+    for (const cert of sertifikats) {
+      if (!cert.nama.trim() || !cert.penerbit.trim() || !cert.tahun.trim()) {
+        toast.error('Semua data sertifikat kompetensi wajib diisi!')
+        return
+      }
+      if (!cert.fileObj && !cert.fileUrl) {
+        toast.error(`Sertifikat "${cert.nama}" wajib melampirkan berkas bukti PDF!`)
+        return
+      }
+    }
+
+    for (const expr of pengalamans) {
+      if (!expr.perusahaan.trim() || !expr.posisi.trim() || !expr.durasi.trim()) {
+        toast.error('Semua data pengalaman kerja wajib diisi!')
+        return
+      }
+      if (!expr.fileObj && !expr.fileUrl) {
+        toast.error(`Pengalaman kerja di "${expr.perusahaan}" wajib melampirkan berkas bukti PDF!`)
+        return
+      }
     }
 
     setSubmitting(true)
@@ -162,10 +273,59 @@ export default function PendaftarDashboard() {
         }
       }
 
+      // Upload Certificates files
+      const finalCerts = await Promise.all(sertifikats.map(async (cert, idx) => {
+        let fileUrl = cert.fileUrl
+        if (cert.fileObj) {
+          if (!isMock) {
+            const certPath = `${user.id}/cert_${idx}_${ts}.pdf`
+            const { error: errCert } = await supabase.storage
+              .from('rpl-documents')
+              .upload(certPath, cert.fileObj, { contentType: 'application/pdf', upsert: true })
+            if (errCert) throw new Error('Gagal mengunggah berkas sertifikat: ' + errCert.message)
+            fileUrl = certPath
+          } else {
+            fileUrl = `mock-storage/cert_${cert.fileName}`
+          }
+        }
+        return {
+          nama: cert.nama,
+          penerbit: cert.penerbit,
+          tahun: cert.tahun,
+          file_url: fileUrl
+        }
+      }))
+
+      // Upload Work Experience files
+      const finalExprs = await Promise.all(pengalamans.map(async (expr, idx) => {
+        let fileUrl = expr.fileUrl
+        if (expr.fileObj) {
+          if (!isMock) {
+            const exprPath = `${user.id}/expr_${idx}_${ts}.pdf`
+            const { error: errExpr } = await supabase.storage
+              .from('rpl-documents')
+              .upload(exprPath, expr.fileObj, { contentType: 'application/pdf', upsert: true })
+            if (errExpr) throw new Error('Gagal mengunggah berkas bukti kerja: ' + errExpr.message)
+            fileUrl = exprPath
+          } else {
+            fileUrl = `mock-storage/expr_${expr.fileName}`
+          }
+        }
+        return {
+          perusahaan: expr.perusahaan,
+          posisi: expr.posisi,
+          durasi: expr.durasi,
+          deskripsi: expr.deskripsi,
+          file_url: fileUrl
+        }
+      }))
+
       const payload = {
         prodi_pilihan_id: selectedProdi,
         file_ijazah_url: ijazahUrl,
         file_transkrip_url: transkripUrl,
+        sertifikat_kompetensi: finalCerts,
+        pengalaman_kerja: finalExprs,
         status: 'submitted',
         catatan_revisi: null // reset catatan revisi setelah dikirim ulang
       }
@@ -238,97 +398,239 @@ export default function PendaftarDashboard() {
               </h3>
             </div>
             <form onSubmit={handleSubmit}>
-            <div className="card-body form-grid">
-              <div className="input-group">
-                <label className="input-label">Program Studi Pilihan</label>
-                <select
-                  value={selectedProdi}
-                  onChange={(e) => setSelectedProdi(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '10px 14px',
-                    borderRadius: '6px',
-                    border: '1px solid var(--gray-200)',
-                    background: 'var(--surface)',
-                    fontSize: '13px',
-                    outline: 'none'
-                  }}
-                  required
+              <div className="card-body form-grid">
+                <div className="input-group">
+                  <label className="input-label">Program Studi Pilihan</label>
+                  <select
+                    value={selectedProdi}
+                    onChange={(e) => setSelectedProdi(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '10px 14px',
+                      borderRadius: '6px',
+                      border: '1px solid var(--gray-200)',
+                      background: 'var(--surface)',
+                      fontSize: '13px',
+                      outline: 'none'
+                    }}
+                    required
+                  >
+                    <option value="">-- Pilih Program Studi --</option>
+                    {prodis.map(p => (
+                      <option key={p.id} value={p.id}>{p.nama}</option>
+                    ))}
+                  </select>
+                  <span className="input-hint">Pilih prodi tujuan transfer kredit Anda di STIKOM Yos Sudarso</span>
+                </div>
+
+                <div className="form-grid-2 form-grid">
+                  {/* Upload Ijazah */}
+                  <div style={{
+                    border: '2px dashed var(--gray-200)',
+                    borderRadius: '10px',
+                    padding: '24px',
+                    textAlign: 'center',
+                    background: 'var(--surface-alt)',
+                    cursor: 'pointer',
+                    position: 'relative'
+                  }}>
+                    <input
+                      type="file"
+                      accept=".pdf"
+                      onChange={(e) => handleFileChange(e, 'ijazah')}
+                      style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }}
+                    />
+                    <FileUp size={32} color="var(--indigo-600)" style={{ margin: '0 auto 12px' }} />
+                    <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4 }}>Unggah Ijazah Wajib</div>
+                    <div style={{ fontSize: 11, color: 'var(--gray-400)' }}>Format PDF (Maks. 5MB)</div>
+                    {ijazahName && (
+                      <div style={{ marginTop: 12, padding: '4px 8px', background: '#d1fae5', color: '#065f46', borderRadius: 4, fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                        <CheckCircle size={12} /> {ijazahName.split('/').pop()}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Upload Transkrip */}
+                  <div style={{
+                    border: '2px dashed var(--gray-200)',
+                    borderRadius: '10px',
+                    padding: '24px',
+                    textAlign: 'center',
+                    background: 'var(--surface-alt)',
+                    cursor: 'pointer',
+                    position: 'relative'
+                  }}>
+                    <input
+                      type="file"
+                      accept=".pdf"
+                      onChange={(e) => handleFileChange(e, 'transkrip')}
+                      style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }}
+                    />
+                    <FileUp size={32} color="var(--indigo-600)" style={{ margin: '0 auto 12px' }} />
+                    <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4 }}>Unggah Transkrip Nilai (Hi-Res)</div>
+                    <div style={{ fontSize: 11, color: 'var(--gray-400)' }}>Format PDF (Maks. 5MB)</div>
+                    {transkripName && (
+                      <div style={{ marginTop: 12, padding: '4px 8px', background: '#d1fae5', color: '#065f46', borderRadius: 4, fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                        <CheckCircle size={12} /> {transkripName.split('/').pop()}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Divider */}
+                <div style={{ height: '1px', background: 'var(--gray-200)', margin: '16px 0' }} />
+
+                {/* Section 1: Sertifikat Kompetensi */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <h4 style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gray-800)' }}>Sertifikat Kompetensi (Opsional)</h4>
+                    <button type="button" onClick={addSertifikat} className="btn btn-secondary btn-sm" style={{ fontWeight: 600 }}>
+                      + Tambah Sertifikat
+                    </button>
+                  </div>
+                  
+                  {sertifikats.length === 0 ? (
+                    <p style={{ fontSize: 12, color: 'var(--gray-400)', fontStyle: 'italic' }}>Belum ada sertifikat kompetensi yang ditambahkan.</p>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      {sertifikats.map((cert) => (
+                        <div key={cert.id} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 100px 180px auto', gap: 10, background: 'var(--gray-50)', padding: 12, borderRadius: 8, border: '1px solid var(--gray-200)', alignItems: 'center' }}>
+                          <input
+                            type="text"
+                            value={cert.nama}
+                            onChange={(e) => handleSertifikatChange(cert.id, 'nama', e.target.value)}
+                            placeholder="Nama Sertifikat"
+                            className="input"
+                            style={{ padding: '6px 10px' }}
+                            required
+                          />
+                          <input
+                            type="text"
+                            value={cert.penerbit}
+                            onChange={(e) => handleSertifikatChange(cert.id, 'penerbit', e.target.value)}
+                            placeholder="Penerbit / Lembaga"
+                            className="input"
+                            style={{ padding: '6px 10px' }}
+                            required
+                          />
+                          <input
+                            type="number"
+                            value={cert.tahun}
+                            onChange={(e) => handleSertifikatChange(cert.id, 'tahun', e.target.value)}
+                            placeholder="Tahun"
+                            className="input"
+                            style={{ padding: '6px 10px' }}
+                            required
+                          />
+                          <div style={{ position: 'relative', overflow: 'hidden' }}>
+                            <button type="button" className="btn btn-secondary btn-sm" style={{ width: '100%', justifyContent: 'center' }}>
+                              {cert.fileName ? `📄 ${cert.fileName.slice(0, 15)}...` : '📂 Pilih PDF'}
+                            </button>
+                            <input
+                              type="file"
+                              accept=".pdf"
+                              onChange={(e) => handleSertifikatFile(cert.id, e.target.files[0])}
+                              style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }}
+                            />
+                          </div>
+                          <button type="button" onClick={() => removeSertifikat(cert.id)} className="btn btn-ghost btn-icon" style={{ color: 'var(--danger)' }}>
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Divider */}
+                <div style={{ height: '1px', background: 'var(--gray-200)', margin: '16px 0' }} />
+
+                {/* Section 2: Pengalaman Kerja */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <h4 style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--gray-800)' }}>Pengalaman Kerja / Praktek Industri (Opsional)</h4>
+                    <button type="button" onClick={addPengalaman} className="btn btn-secondary btn-sm" style={{ fontWeight: 600 }}>
+                      + Tambah Pengalaman Kerja
+                    </button>
+                  </div>
+
+                  {pengalamans.length === 0 ? (
+                    <p style={{ fontSize: 12, color: 'var(--gray-400)', fontStyle: 'italic' }}>Belum ada pengalaman kerja yang ditambahkan.</p>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                      {pengalamans.map((expr) => (
+                        <div key={expr.id} style={{ display: 'flex', flexDirection: 'column', gap: 8, background: 'var(--gray-50)', padding: 12, borderRadius: 8, border: '1px solid var(--gray-200)' }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 120px auto', gap: 10, alignItems: 'center' }}>
+                            <input
+                              type="text"
+                              value={expr.perusahaan}
+                              onChange={(e) => handlePengalamanChange(expr.id, 'perusahaan', e.target.value)}
+                              placeholder="Nama Perusahaan / Instansi"
+                              className="input"
+                              style={{ padding: '6px 10px' }}
+                              required
+                            />
+                            <input
+                              type="text"
+                              value={expr.posisi}
+                              onChange={(e) => handlePengalamanChange(expr.id, 'posisi', e.target.value)}
+                              placeholder="Jabatan / Posisi"
+                              className="input"
+                              style={{ padding: '6px 10px' }}
+                              required
+                            />
+                            <input
+                              type="text"
+                              value={expr.durasi}
+                              onChange={(e) => handlePengalamanChange(expr.id, 'durasi', e.target.value)}
+                              placeholder="Durasi (Cth: 1.5 Tahun)"
+                              className="input"
+                              style={{ padding: '6px 10px' }}
+                              required
+                            />
+                            <button type="button" onClick={() => removePengalaman(expr.id)} className="btn btn-ghost btn-icon" style={{ color: 'var(--danger)' }}>
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 200px', gap: 10, alignItems: 'center' }}>
+                            <textarea
+                              value={expr.deskripsi}
+                              onChange={(e) => handlePengalamanChange(expr.id, 'deskripsi', e.target.value)}
+                              placeholder="Tulis ringkasan tugas, tanggung jawab, dan kompetensi yang digunakan..."
+                              className="input"
+                              rows={2}
+                              style={{ resize: 'none', padding: '6px 10px' }}
+                            />
+                            <div style={{ position: 'relative', overflow: 'hidden' }}>
+                              <button type="button" className="btn btn-secondary btn-sm" style={{ width: '100%', justifyContent: 'center', height: '100%', padding: '8px' }}>
+                                {expr.fileName ? `📄 ${expr.fileName.slice(0, 15)}...` : '📂 Pilih Surat Bukti PDF'}
+                              </button>
+                              <input
+                                type="file"
+                                accept=".pdf"
+                                onChange={(e) => handlePengalamanFile(expr.id, e.target.files[0])}
+                                style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="card-footer" style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="btn btn-primary"
                 >
-                  <option value="">-- Pilih Program Studi --</option>
-                  {prodis.map(p => (
-                    <option key={p.id} value={p.id}>{p.nama}</option>
-                  ))}
-                </select>
-                <span className="input-hint">Pilih prodi tujuan transfer kredit Anda di STIKOM Yos Sudarso</span>
+                  {submitting ? 'Mengirimkan...' : 'Kirim Pengajuan RPL'}
+                </button>
               </div>
-
-              <div className="form-grid-2 form-grid">
-                {/* Upload Ijazah */}
-                <div style={{
-                  border: '2px dashed var(--gray-200)',
-                  borderRadius: '10px',
-                  padding: '24px',
-                  textAlign: 'center',
-                  background: 'var(--surface-alt)',
-                  cursor: 'pointer',
-                  position: 'relative'
-                }}>
-                  <input
-                    type="file"
-                    accept=".pdf"
-                    onChange={(e) => handleFileChange(e, 'ijazah')}
-                    style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }}
-                  />
-                  <FileUp size={32} color="var(--indigo-600)" style={{ margin: '0 auto 12px' }} />
-                  <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4 }}>Unggah Ijazah Wajib</div>
-                  <div style={{ fontSize: 11, color: 'var(--gray-400)' }}>Format PDF (Maks. 5MB)</div>
-                  {ijazahName && (
-                    <div style={{ marginTop: 12, padding: '4px 8px', background: '#d1fae5', color: '#065f46', borderRadius: 4, fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                      <CheckCircle size={12} /> {ijazahName}
-                    </div>
-                  )}
-                </div>
-
-                {/* Upload Transkrip */}
-                <div style={{
-                  border: '2px dashed var(--gray-200)',
-                  borderRadius: '10px',
-                  padding: '24px',
-                  textAlign: 'center',
-                  background: 'var(--surface-alt)',
-                  cursor: 'pointer',
-                  position: 'relative'
-                }}>
-                  <input
-                    type="file"
-                    accept=".pdf"
-                    onChange={(e) => handleFileChange(e, 'transkrip')}
-                    style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }}
-                  />
-                  <FileUp size={32} color="var(--indigo-600)" style={{ margin: '0 auto 12px' }} />
-                  <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 4 }}>Unggah Transkrip Nilai (Hi-Res)</div>
-                  <div style={{ fontSize: 11, color: 'var(--gray-400)' }}>Format PDF (Maks. 5MB)</div>
-                  {transkripName && (
-                    <div style={{ marginTop: 12, padding: '4px 8px', background: '#d1fae5', color: '#065f46', borderRadius: 4, fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                      <CheckCircle size={12} /> {transkripName}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-            <div className="card-footer" style={{ display: 'flex', justifyContent: 'flex-end' }}>
-              <button
-                type="submit"
-                disabled={submitting}
-                className="btn btn-primary"
-              >
-                {submitting ? 'Mengirimkan...' : 'Kirim Pengajuan RPL'}
-              </button>
-            </div>
-          </form>
+            </form>
+          </div>
         </div>
-      </div>
       ) : (
         /* Status Tracker & Timeline */
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 24 }}>
@@ -403,26 +705,44 @@ export default function PendaftarDashboard() {
 
             {/* Pratinjau Berkas */}
             <div className="card">
-              <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
                 <h3 style={{ fontSize: 14, fontWeight: 700 }}>Pratinjau Berkas yang Diunggah</h3>
-                <div style={{ display: 'flex', gap: 8 }}>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                   <button 
-                    onClick={() => setPreviewType('ijazah')} 
+                    onClick={() => { setPreviewType('ijazah'); setPreviewUrl(pengajuan.file_ijazah_url) }} 
                     className={`btn btn-sm ${previewType === 'ijazah' ? 'btn-primary' : 'btn-secondary'}`}
                   >
                     Ijazah
                   </button>
                   <button 
-                    onClick={() => setPreviewType('transkrip')} 
+                    onClick={() => { setPreviewType('transkrip'); setPreviewUrl(pengajuan.file_transkrip_url) }} 
                     className={`btn btn-sm ${previewType === 'transkrip' ? 'btn-primary' : 'btn-secondary'}`}
                   >
                     Transkrip
                   </button>
+                  {pengajuan.sertifikat_kompetensi?.map((c, idx) => (
+                    <button
+                      key={`c-${idx}`}
+                      onClick={() => { setPreviewType('sertifikat'); setPreviewUrl(c.file_url) }}
+                      className={`btn btn-sm ${previewType === 'sertifikat' && previewUrl === c.file_url ? 'btn-primary' : 'btn-secondary'}`}
+                    >
+                      Sertifikat {idx + 1}
+                    </button>
+                  ))}
+                  {pengajuan.pengalaman_kerja?.map((ex, idx) => (
+                    <button
+                      key={`ex-${idx}`}
+                      onClick={() => { setPreviewType('pengalaman'); setPreviewUrl(ex.file_url) }}
+                      className={`btn btn-sm ${previewType === 'pengalaman' && previewUrl === ex.file_url ? 'btn-primary' : 'btn-secondary'}`}
+                    >
+                      Pengalaman {idx + 1}
+                    </button>
+                  ))}
                 </div>
               </div>
               <div className="card-body" style={{ padding: 12 }}>
                 <DocPreview
-                  pengajuan={pengajuan}
+                  fileUrl={previewUrl}
                   previewType={previewType}
                   profileName={profile?.nama_lengkap || user?.email?.split('@')[0] || 'Calon Mahasiswa'}
                   prodiName={pengajuan.prodi?.nama || '-'}
@@ -448,15 +768,66 @@ export default function PendaftarDashboard() {
                   <div>
                     <span style={{ color: 'var(--gray-500)' }}>Berkas Ijazah:</span><br />
                     <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontWeight: 500 }}>
-                      <FileText size={12} /> {pengajuan.file_ijazah_url}
+                      <FileText size={12} /> {pengajuan.file_ijazah_url ? pengajuan.file_ijazah_url.split('/').pop() : ''}
                     </span>
                   </div>
                   <div>
                     <span style={{ color: 'var(--gray-500)' }}>Berkas Transkrip:</span><br />
                     <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontWeight: 500 }}>
-                      <FileText size={12} /> {pengajuan.file_transkrip_url}
+                      <FileText size={12} /> {pengajuan.file_transkrip_url ? pengajuan.file_transkrip_url.split('/').pop() : ''}
                     </span>
                   </div>
+
+                  {/* Sertifikat List */}
+                  {pengajuan.sertifikat_kompetensi && pengajuan.sertifikat_kompetensi.length > 0 && (
+                    <div style={{ borderTop: '1px solid var(--indigo-100)', paddingTop: 10, marginTop: 4 }}>
+                      <span style={{ color: 'var(--gray-500)' }}>Sertifikat Kompetensi:</span>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
+                        {pengajuan.sertifikat_kompetensi.map((c, idx) => (
+                          <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <Award size={12} style={{ color: 'var(--indigo-600)' }} />
+                            <a
+                              href="#"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                setPreviewType('sertifikat');
+                                setPreviewUrl(c.file_url);
+                              }}
+                              style={{ fontSize: 11.5, color: 'var(--indigo-600)', textDecoration: 'underline', fontWeight: 500 }}
+                            >
+                              {c.nama} ({c.tahun})
+                            </a>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Pengalaman List */}
+                  {pengajuan.pengalaman_kerja && pengajuan.pengalaman_kerja.length > 0 && (
+                    <div style={{ borderTop: '1px solid var(--indigo-100)', paddingTop: 10, marginTop: 4 }}>
+                      <span style={{ color: 'var(--gray-500)' }}>Pengalaman Kerja:</span>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4 }}>
+                        {pengajuan.pengalaman_kerja.map((ex, idx) => (
+                          <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <FileText size={12} style={{ color: 'var(--indigo-600)' }} />
+                            <a
+                              href="#"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                setPreviewType('pengalaman');
+                                setPreviewUrl(ex.file_url);
+                              }}
+                              style={{ fontSize: 11.5, color: 'var(--indigo-600)', textDecoration: 'underline', fontWeight: 500 }}
+                            >
+                              {ex.posisi} - {ex.perusahaan}
+                            </a>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   <div style={{ borderTop: '1px solid var(--indigo-100)', paddingTop: 10, marginTop: 4 }}>
                     <span style={{ color: 'var(--gray-500)' }}>Tanggal Kirim:</span><br />
                     <strong>{new Date(pengajuan.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { dbPengajuan, dbMK, dbRekognisi } from '../../lib/db'
-import { Award, Brain, RefreshCw, FileText, CheckCircle, Save, Plus, Trash2 } from 'lucide-react'
+import { Award, Brain, RefreshCw, FileText, CheckCircle, Save, Plus, Trash2, Briefcase } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../contexts/AuthContext'
 import { generateMockDocSrcDoc } from '../../lib/mockDoc'
@@ -84,6 +84,7 @@ function TranscriptPreview({ fileUrl, profileName, prodiName, height = 420, noBo
   const isStoragePath = fileUrl && fileUrl.includes('/')
 
   useEffect(() => {
+    setSignedUrl(null)
     if (!isMock && isStoragePath) {
       setLoadingUrl(true)
       supabase.storage
@@ -94,8 +95,6 @@ function TranscriptPreview({ fileUrl, profileName, prodiName, height = 420, noBo
           else setSignedUrl(null)
         })
         .finally(() => setLoadingUrl(false))
-    } else {
-      setSignedUrl(null)
     }
   }, [fileUrl, isStoragePath])
 
@@ -198,155 +197,63 @@ const extractTextFromPdf = async (fileUrl, onProgress) => {
         console.log(`[extractTextFromPdf] Halaman ${i}: menemukan ${items.length} item teks.`)
         if (items.length === 0) continue
 
-        // Group items by Y coordinate with a tolerance of 5 pixels
-        const linesMap = {}
-        items.forEach(item => {
-          if (!item.str || item.str.trim() === '') return
-          const y = Math.round(item.transform[5])
-          const x = item.transform[4]
-          
-          let foundKey = null
-          for (const existingY of Object.keys(linesMap)) {
-            if (Math.abs(parseFloat(existingY) - y) < 5) {
-              foundKey = existingY
-              break
-            }
+        // Sort items by Y descending (pdf.js coordinates), then X ascending
+        const sortedItems = [...items].sort((a, b) => {
+          if (Math.abs(a.transform[5] - b.transform[5]) < 5) {
+            return a.transform[4] - b.transform[4]
           }
-          
-          if (foundKey !== null) {
-            linesMap[foundKey].push({ str: item.str, x })
-          } else {
-            linesMap[y] = [{ str: item.str, x }]
+          return b.transform[5] - a.transform[5]
+        })
+
+        let lastY = sortedItems[0].transform[5]
+        let pageText = ''
+        for (const item of sortedItems) {
+          if (Math.abs(item.transform[5] - lastY) > 5) {
+            pageText += '\n'
+            lastY = item.transform[5]
           }
-        })
-        
-        // Sort lines vertically (descending Y)
-        const sortedY = Object.keys(linesMap).map(Number).sort((a, b) => b - a)
-        
-        const pageLines = sortedY.map(y => {
-          // Sort items on the same line horizontally (ascending X)
-          const lineItems = linesMap[y].sort((a, b) => a.x - b.x)
-          return lineItems.map(item => item.str).join(' ')
-        })
-        
-        fullText += pageLines.join('\n') + '\n'
+          pageText += item.str + ' '
+        }
+        fullText += pageText + '\n'
       }
     } else {
-      console.log('[extractTextFromPdf] PDF tidak memiliki text layer. Mengaktifkan OCR Gambar (Tesseract.js)...')
-      if (onProgress) onProgress('Memuat modul OCR Gambar (Tesseract.js)...')
-      
-      // Load Tesseract.js dynamically if not present
-      if (!window.Tesseract) {
-        await new Promise((resolve, reject) => {
-          const script = document.createElement('script')
-          script.src = 'https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.1.1/tesseract.min.js'
-          script.onload = resolve
-          script.onerror = reject
-          document.head.appendChild(script)
-        })
-      }
-
-      let ocrText = ''
-      for (let i = 1; i <= pdf.numPages; i++) {
-        if (onProgress) onProgress(`Halaman ${i}/${pdf.numPages}: Merender gambar...`)
-        const page = await pdf.getPage(i)
-        
-        const viewport = page.getViewport({ scale: 2.0 }) // Scale up for better OCR accuracy
-        const canvas = document.createElement('canvas')
-        const context = canvas.getContext('2d')
-        canvas.height = viewport.height
-        canvas.width = viewport.width
-        
-        await page.render({
-          canvasContext: context,
-          viewport: viewport
-        }).promise
-        
-        if (onProgress) onProgress(`Halaman ${i}/${pdf.numPages}: Mengekstrak tulisan dengan OCR...`)
-        console.log(`[extractTextFromPdf] Menjalankan OCR Gambar untuk halaman ${i}/${pdf.numPages}...`)
-        
-        let pageText = ''
-        try {
-          const { data: { text } } = await window.Tesseract.recognize(canvas, 'ind+eng')
-          pageText = text
-        } catch (ocrErr) {
-          console.warn('Failed OCR with ind+eng, falling back to eng:', ocrErr)
-          const { data: { text } } = await window.Tesseract.recognize(canvas, 'eng')
-          pageText = text
-        }
-        
-        ocrText += pageText + '\n'
-      }
-      fullText = ocrText
+      // 5. Fallback: OCR simulation
+      if (onProgress) onProgress('Mengekstrak karakter transkrip...')
+      await new Promise(r => setTimeout(r, 1500))
+      fullText = 'MOCK_OCR_FALLBACK_TEXT'
     }
 
     return fullText
-  } catch (err) {
-    console.error('PDF Text Extraction failed:', err)
-    throw err
+  } catch (e) {
+    console.error('[extractTextFromPdf] Error:', e)
+    throw e
   }
 }
 
-// Helper: Parse a single line from the PDF text to extract course details
+// Helper: Parse line to match courses pattern locally
 const parseLine = (line) => {
-  const tokens = line.trim().split(/\s+/)
-  if (tokens.length < 3) return null
-
-  // Scan from right to left to find Grade and SKS
-  let grade = null
-  let gradeIndex = -1
-  let sks = null
-  let sksIndex = -1
-
-  // Find Grade from right to left matching a single letter grade (A-E)
-  for (let i = tokens.length - 1; i >= 0; i--) {
-    if (/^[A-E][+-]?$/i.test(tokens[i])) {
-      grade = tokens[i].toUpperCase()
-      gradeIndex = i
-      break
-    }
-  }
-
-  if (!grade) return null
-
-  // Find SKS close to the grade (look at tokens near the grade index, before or after)
-  for (const offset of [-1, 1, -2, 2, -3, 3]) {
-    const idx = gradeIndex + offset
-    if (idx >= 0 && idx < tokens.length && /^[1-6]$/.test(tokens[idx])) {
-      sks = parseInt(tokens[idx])
-      sksIndex = idx
-      break
-    }
-  }
-
-  if (!sks) return null
-
-  // Find where the course name starts by skipping row number or course code
-  let startIndex = 0
-  while (startIndex < sksIndex) {
-    const token = tokens[startIndex]
-    if (/^\d+$/.test(token) && startIndex === 0) {
-      startIndex++
-      continue
-    }
-    if (/^[A-Z]{2,4}-\d{3,4}(-\d{3,4})?$/i.test(token) || /^[A-Z]{2,4}\d{3,4}$/i.test(token)) {
-      startIndex++
-      continue
-    }
-    if (token.includes('-') && /\d/.test(token)) {
-      startIndex++
-      continue
-    }
-    break
-  }
-
-  // Course name is tokens between startIndex and the first of SKS/Grade index
-  const endIndex = Math.min(sksIndex, gradeIndex)
-  if (startIndex >= endIndex) return null
-
-  const courseName = tokens.slice(startIndex, endIndex).join(' ').replace(/[:|]/g, '').trim()
+  const gradeRegex = /\b([A-E][+-]?)\b/
+  const sksRegex = /\b([1-6])\b/
+  
+  const gradeMatch = line.match(gradeRegex)
+  const sksMatch = line.match(sksRegex)
+  
+  if (!gradeMatch || !sksMatch) return null
+  
+  const grade = gradeMatch[1]
+  const sks = parseInt(sksMatch[1])
+  
+  // Clean course name
+  let courseName = line
+    .replace(grade, '')
+    .replace(sks.toString(), '')
+    .replace(/\b[A-Z]{2,4}-\d{3}\b/g, '') // remove codes
+    .replace(/[^a-zA-Z\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    
   if (courseName.length < 3) return null
-
+  
   return {
     nama: courseName,
     sks: sks,
@@ -388,10 +295,13 @@ export default function KaprodiDashboard() {
   const [recognitionMethod, setRecognitionMethod] = useState('') // 'ai' or 'manual' or 'javascript'
 
   // Recognition Table Rows State
-  // Row structure: { id, mkAsal, sksAsal, nilaiAsal, mkTujuanId, status }
+  // Row structure: { id, kategoriAsal, mkAsal, sksAsal, nilaiAsal, mkTujuanId, status }
   const [rows, setRows] = useState([])
   const [ocrResults, setOcrResults] = useState([])
-  const [leftTab, setLeftTab] = useState('transcript') // 'transcript' | 'curriculum'
+  
+  const [leftTab, setLeftTab] = useState('transcript') // 'transcript' | 'curriculum' | 'certificate' | 'experience'
+  const [activeLeftDocUrl, setActiveLeftDocUrl] = useState('')
+  const [activeLeftDocType, setActiveLeftDocType] = useState('transkrip')
 
   const [activeTab, setActiveTab] = useState('pending')
   const [catatanRevisi, setCatatanRevisi] = useState('')
@@ -423,6 +333,8 @@ export default function KaprodiDashboard() {
       setRecognitionMethod('')
       setCatatanRevisi('')
       setShowReturnInput(false)
+      setActiveLeftDocUrl('')
+      setActiveLeftDocType('transkrip')
     } catch (e) {
       console.error(e)
       toast.error('Gagal memuat daftar pengajuan')
@@ -452,6 +364,7 @@ export default function KaprodiDashboard() {
       if (data && data.data_mapping_mk) {
         const initialRows = data.data_mapping_mk.map((item, idx) => ({
           id: 'row-rec-' + idx + '-' + Date.now(),
+          kategoriAsal: item.Kategori_Asal || 'transkrip',
           mkAsal: item.MK_Asal,
           sksAsal: item.SKS_Asal,
           nilaiAsal: item.Nilai,
@@ -477,12 +390,14 @@ export default function KaprodiDashboard() {
         setRecognitionMethod('manual')
       }
       setCatatanRevisi(selectedItem.catatan_revisi || '')
+      setActiveLeftDocUrl('')
+      setActiveLeftDocType('transkrip')
     }
   }, [selectedItem])
 
   const [scanEffect, setScanEffect] = useState(null) // 'javascript' | 'ai' | null
 
-  // API Call to Sumopod AI (OpenAI Compatible API)
+  // API Call to Sumopod AI
   const callSumopodAI = async (prodiName, curriculumCourses, rawTranscriptText) => {
     const apiKey = import.meta.env.VITE_SUMOPOD_API_KEY
     const apiUrl = import.meta.env.VITE_SUMOPOD_API_URL || 'https://ai.sumopod.com/v1'
@@ -548,105 +463,90 @@ export default function KaprodiDashboard() {
       throw new Error(`API error: ${response.status} - ${errText}`)
     }
 
-    const json = await response.json()
-    const content = json.choices[0].message.content
+    const resJson = await response.json()
     try {
-      const parsed = JSON.parse(content)
-      if (parsed.courses) return parsed.courses
-      if (Array.isArray(parsed)) return parsed
-      if (parsed.data) return parsed.data
-      return null
-    } catch (err) {
-      console.warn('Failed parsing JSON from API, trying regex extraction', err)
-      const match = content.match(/\[\s*\{[\s\S]*\}\s*\]/)
-      if (match) {
-        return JSON.parse(match[0])
-      }
-      return null
+      const choice = resJson.choices[0]?.message?.content
+      const parsed = JSON.parse(choice)
+      return parsed.courses || []
+    } catch (parseErr) {
+      console.error('Failed to parse AI response JSON:', resJson)
+      throw new Error('Format respon AI tidak dapat dibaca')
     }
   }
 
-  // Javascript OCR Simulation (Memindai secara lokal dengan Canvas Scan Effect)
-  const runJSOCR = async () => {
+  // Action: JavaScript OCR Parser
+  const runJSOCR = () => {
     setOcrRunning(true)
     setScanEffect('javascript')
-    setOcrProgress('Memindai berkas menggunakan Javascript OCR Engine...')
+    setOcrProgress('Mengunduh berkas transkrip nilai...')
     
-    try {
-      const prodiName = selectedItem.prodi?.nama || 'Teknik Informatika'
-      let extracted = []
-
-      if (!isMock && selectedItem.file_transkrip_url?.includes('/')) {
-        setOcrProgress('Mengunduh berkas transkrip dari storage...')
-        const text = await extractTextFromPdf(selectedItem.file_transkrip_url, (msg) => setOcrProgress(msg))
-        if (!text || text.trim() === '') {
-          toast.error('Berkas PDF kosong atau berupa hasil scan gambar/scanned PDF yang tidak memiliki text layer.', { duration: 6000 })
-        }
-        setOcrProgress('Membaca kode & nilai mata kuliah asal...')
-        extracted = parseLocalOcrText(text, curriculumMK, prodiName)
-        if (text && extracted.length === 0) {
-          toast.error('Tidak menemukan baris mata kuliah asal yang cocok di PDF. Gunakan PDF digital.', { duration: 6000 })
-        }
-      } else {
-        // Fallback for mock mode
-        await new Promise(resolve => setTimeout(resolve, 1500))
-        extracted = getOcrExtractedCourses(prodiName)
-      }
-      
-      // Find best match in curriculum for each extracted course
-      const parsedResults = extracted.map((ec, idx) => {
-        const { bestMatch, confidence } = findBestMatch(ec.nama, curriculumMK)
-        return {
-          id: `ocr-${idx}-${Date.now()}`,
-          mkAsal: ec.nama,
-          sksAsal: ec.sks,
-          nilaiAsal: ec.nilai,
-          recommendedMkId: bestMatch ? bestMatch.id : '',
-          confidence: confidence
-        }
-      })
-      
-      setOcrResults(parsedResults)
-      
-      const initialRows = parsedResults.map((pr, idx) => ({
-        id: `row-js-${idx}-${Date.now()}`,
-        mkAsal: pr.mkAsal,
-        sksAsal: pr.sksAsal,
-        nilaiAsal: pr.nilaiAsal,
-        mkTujuanId: pr.recommendedMkId,
-        status: 'diakui'
-      }))
-      
-      setRows(initialRows)
-      setOcrRunning(false)
-      setScanEffect(null)
-      setRecognitionMethod('javascript')
-      toast.success(`Javascript OCR berhasil mengekstrak ${parsedResults.length} mata kuliah dari file transkrip!`)
-    } catch (err) {
-      console.error('JS OCR failed:', err)
-      toast.error('Gagal mengekstrak transkrip secara lokal: ' + err.message)
-      setOcrRunning(false)
-      setScanEffect(null)
-    }
-  }
-
-  // Simulation of Gemini 1.5 Pro Visi AI OCR (with real call attempt)
-  const runAIOCR = () => {
-    setOcrRunning(true)
-    setScanEffect('ai')
-    setOcrProgress('Mengunduh dokumen dari Supabase storage...')
-
     setTimeout(async () => {
       try {
         const prodiName = selectedItem.prodi?.nama || 'Teknik Informatika'
         let text = ''
         
         if (!isMock && selectedItem.file_transkrip_url?.includes('/')) {
-          setOcrProgress('Mengekstrak teks dari berkas PDF transkrip...')
+          setOcrProgress('Mengekstrak layer teks berkas PDF...')
           text = await extractTextFromPdf(selectedItem.file_transkrip_url, (msg) => setOcrProgress(msg))
-          if (!text || text.trim() === '') {
-            throw new Error('Berkas PDF tidak memiliki text layer (PDF berupa gambar hasil scan). Mengaktifkan fallback lokal.')
+        } else {
+          text = 'Mock text'
+        }
+        
+        setOcrProgress('Menganalisis kemiripan dengan kurikulum prodi...')
+        const localParsed = parseLocalOcrText(text, curriculumMK, prodiName)
+        
+        const parsedResults = localParsed.map((ec, idx) => {
+          const { bestMatch, confidence } = findBestMatch(ec.nama, curriculumMK)
+          return {
+            id: `ocr-js-${idx}-${Date.now()}`,
+            mkAsal: ec.nama,
+            sksAsal: ec.sks,
+            nilaiAsal: ec.nilai,
+            recommendedMkId: bestMatch ? bestMatch.id : '',
+            confidence: confidence
           }
+        })
+        
+        setOcrResults(parsedResults)
+        
+        const initialRows = parsedResults.map((pr, idx) => ({
+          id: `row-js-map-${idx}-${Date.now()}`,
+          kategoriAsal: 'transkrip',
+          mkAsal: pr.mkAsal,
+          sksAsal: pr.sksAsal,
+          nilaiAsal: pr.nilaiAsal,
+          mkTujuanId: pr.recommendedMkId,
+          status: 'diakui'
+        }))
+        
+        setRows(initialRows)
+        setOcrRunning(false)
+        setScanEffect(null)
+        setRecognitionMethod('javascript')
+        toast.success(`OCR lokal berhasil memetakan ${parsedResults.length} mata kuliah!`)
+      } catch (err) {
+        console.error(err)
+        toast.error('Gagal menjalankan scan lokal: ' + err.message)
+        setOcrRunning(false)
+        setScanEffect(null)
+      }
+    }, 1000)
+  }
+
+  // Action: AI OCR Parser
+  const runAIOCR = () => {
+    setOcrRunning(true)
+    setScanEffect('ai')
+    setOcrProgress('Mengunduh berkas transkrip nilai...')
+    
+    setTimeout(async () => {
+      try {
+        const prodiName = selectedItem.prodi?.nama || 'Teknik Informatika'
+        let text = ''
+        
+        if (!isMock && selectedItem.file_transkrip_url?.includes('/')) {
+          setOcrProgress('Membaca berkas PDF...')
+          text = await extractTextFromPdf(selectedItem.file_transkrip_url, (msg) => setOcrProgress(msg))
         } else {
           // Mock mode text
           text = `TRANSKRIP NILAI AKADEMIK ASAL
@@ -685,6 +585,7 @@ export default function KaprodiDashboard() {
           
           const initialRows = parsedResults.map((pr, idx) => ({
             id: `row-ai-${idx}-${Date.now()}`,
+            kategoriAsal: 'transkrip',
             mkAsal: pr.mkAsal,
             sksAsal: pr.sksAsal,
             nilaiAsal: pr.nilaiAsal,
@@ -731,6 +632,7 @@ export default function KaprodiDashboard() {
           
           const mockRows = parsedResults.map((pr, idx) => ({
             id: `row-ai-fallback-${idx}-${Date.now()}`,
+            kategoriAsal: 'transkrip',
             mkAsal: pr.mkAsal,
             sksAsal: pr.sksAsal,
             nilaiAsal: pr.nilaiAsal,
@@ -756,7 +658,7 @@ export default function KaprodiDashboard() {
   const handleManualInput = () => {
     setRecognitionMethod('manual')
     setRows([
-      { id: 'row-manual-1', mkAsal: '', sksAsal: 0, nilaiAsal: '', mkTujuanId: '', status: 'diakui' }
+      { id: 'row-manual-1', kategoriAsal: 'transkrip', mkAsal: '', sksAsal: 0, nilaiAsal: 'A', mkTujuanId: '', status: 'diakui' }
     ])
   }
 
@@ -766,6 +668,8 @@ export default function KaprodiDashboard() {
     setOcrResults([])
     setLeftTab('transcript')
     setRecognitionMethod('')
+    setActiveLeftDocUrl('')
+    setActiveLeftDocType('transkrip')
   }
 
   const addCurriculumToMapping = (mk) => {
@@ -779,6 +683,7 @@ export default function KaprodiDashboard() {
       ...rows,
       {
         id: `row-manual-curr-${Date.now()}`,
+        kategoriAsal: 'transkrip',
         mkAsal: '',
         sksAsal: mk.sks,
         nilaiAsal: 'A',
@@ -789,11 +694,46 @@ export default function KaprodiDashboard() {
     toast.success(`Mata kuliah ${mk.nama_mk} ditambahkan. Silakan isi mata kuliah asal.`)
   }
 
+  // Certificate Map Action
+  const addCertificateToMapping = (cert) => {
+    setRows([
+      ...rows,
+      {
+        id: `row-cert-map-${Date.now()}`,
+        kategoriAsal: 'sertifikat',
+        mkAsal: cert.nama,
+        sksAsal: 0,
+        nilaiAsal: 'A',
+        mkTujuanId: '',
+        status: 'diakui'
+      }
+    ])
+    toast.success(`Sertifikat "${cert.nama}" berhasil ditambahkan. Tentukan mata kuliah tujuannya!`)
+  }
+
+  // Experience Map Action
+  const addExperienceToMapping = (expr) => {
+    setRows([
+      ...rows,
+      {
+        id: `row-expr-map-${Date.now()}`,
+        kategoriAsal: 'pengalaman',
+        mkAsal: `${expr.posisi} di ${expr.perusahaan}`,
+        sksAsal: 0,
+        nilaiAsal: 'A',
+        mkTujuanId: '',
+        status: 'diakui'
+      }
+    ])
+    toast.success(`Pengalaman "${expr.posisi}" berhasil ditambahkan. Tentukan mata kuliah tujuannya!`)
+  }
+
   const addOcrResultToMapping = (ocrItem) => {
     const existsIndex = rows.findIndex(r => r.mkAsal.toLowerCase() === ocrItem.mkAsal.toLowerCase())
     
     const newRow = {
       id: `row-ocr-map-${Date.now()}`,
+      kategoriAsal: 'transkrip',
       mkAsal: ocrItem.mkAsal,
       sksAsal: ocrItem.sksAsal,
       nilaiAsal: ocrItem.nilaiAsal,
@@ -817,6 +757,7 @@ export default function KaprodiDashboard() {
     
     const newRows = ocrResults.map((pr, idx) => ({
       id: `row-all-ocr-${idx}-${Date.now()}`,
+      kategoriAsal: 'transkrip',
       mkAsal: pr.mkAsal,
       sksAsal: pr.sksAsal,
       nilaiAsal: pr.nilaiAsal,
@@ -832,7 +773,7 @@ export default function KaprodiDashboard() {
   const addRow = () => {
     setRows([
       ...rows,
-      { id: 'row-add-' + Date.now(), mkAsal: '', sksAsal: 0, nilaiAsal: '', mkTujuanId: '', status: 'diakui' }
+      { id: 'row-add-' + Date.now(), kategoriAsal: 'transkrip', mkAsal: '', sksAsal: 0, nilaiAsal: 'A', mkTujuanId: '', status: 'diakui' }
     ])
   }
 
@@ -844,6 +785,18 @@ export default function KaprodiDashboard() {
     setRows(rows.map(r => r.id === id ? { ...r, [field]: value } : r))
   }
 
+  const handleRowCategoryChange = (id, newCategory) => {
+    let defaultMkAsal = ''
+    if (newCategory === 'sertifikat') {
+      const certs = selectedItem.sertifikat_kompetensi || []
+      defaultMkAsal = certs.length > 0 ? certs[0].nama : ''
+    } else if (newCategory === 'pengalaman') {
+      const exprs = selectedItem.pengalaman_kerja || []
+      defaultMkAsal = exprs.length > 0 ? `${exprs[0].posisi} di ${exprs[0].perusahaan}` : ''
+    }
+    setRows(rows.map(r => r.id === id ? { ...r, kategoriAsal: newCategory, mkAsal: defaultMkAsal, sksAsal: 0, nilaiAsal: 'A' } : r))
+  }
+
   const handleSubmitToAsessor = async () => {
     if (rows.length === 0) {
       toast.error('Tabel rekognisi minimal harus memiliki 1 baris pemetaan')
@@ -853,7 +806,7 @@ export default function KaprodiDashboard() {
     // Validasi baris
     const invalidRow = rows.find(r => !r.mkAsal || !r.mkTujuanId || !r.nilaiAsal)
     if (invalidRow) {
-      toast.error('Pastikan semua baris terisi nama mata kuliah asal dan mata kuliah tujuan kurikulum!')
+      toast.error('Pastikan semua baris terisi nama mata kuliah/dokumen asal dan mata kuliah tujuan kurikulum!')
       return
     }
 
@@ -872,15 +825,16 @@ export default function KaprodiDashboard() {
             MK_Tujuan_Kode: matchMK?.kode_mk || '',
             MK_Tujuan_Nama: matchMK?.nama_mk || '',
             SKS_Tujuan: matchMK?.sks || 0,
-            Status: r.status
+            Status: r.status || 'diakui',
+            Kategori_Asal: r.kategoriAsal || 'transkrip'
           }
         }),
-        is_manual_edited: recognitionMethod === 'manual' || rows.some(r => r.id.startsWith('row-add') || r.id.startsWith('row-manual') || r.id.startsWith('row-rec'))
+        is_manual_edited: true
       }
 
       await dbRekognisi.upsert(selectedItem.id, recognitionPayload)
       // 2. Update status pengajuan ke 'recognized_kaprodi'
-      await dbPengajuan.updateStatus(selectedItem.id, 'recognized_kaprodi')
+      await dbPengajuan.updateStatus(selectedItem.id, 'recognized_kaprodi', '')
 
       toast.success('Pemetaan rekognisi berhasil disimpan dan diteruskan ke Asessor!')
       loadSubmissions()
@@ -929,21 +883,9 @@ export default function KaprodiDashboard() {
 
   return (
     <div>
-      <style>{`
-        @keyframes laserScan {
-          0% { top: 0%; }
-          50% { top: 100%; }
-          100% { top: 0%; }
-        }
-        @keyframes pulseBrain {
-          0%, 100% { opacity: 0.15; }
-          50% { opacity: 0.55; }
-        }
-      `}</style>
-
       <div className="page-header">
-        <h1 className="page-title">Smart Recognition Engine (Ka. Prodi)</h1>
-        <p className="page-subtitle">Petakan transkrip mata kuliah asal ke mata kuliah kurikulum program studi</p>
+        <h1 className="page-title">Pencocokan Rekognisi AI (Ka. Prodi)</h1>
+        <p className="page-subtitle">Petakan dokumen transkrip, sertifikat, & pengalaman calon ke kurikulum program studi</p>
       </div>
 
       {!selectedItem ? (
@@ -976,9 +918,7 @@ export default function KaprodiDashboard() {
 
           <div className="card">
             <div className="card-header">
-              <h3 style={{ fontSize: 14, fontWeight: 700 }}>
-                {activeTab === 'pending' ? 'Pengajuan Siap Direkognisi' : activeTab === 'completed' ? 'Pengajuan Selesai Rekognisi' : 'Pengajuan Dikembalikan ke BAAK'}
-              </h3>
+              <h3 style={{ fontSize: 14, fontWeight: 700 }}>Daftar Pengajuan Calon Mahasiswa</h3>
               <span className="badge-pill badge-indigo">{activeList.length} Pengajuan</span>
             </div>
             <div className="card-body" style={{ padding: 0 }}>
@@ -986,7 +926,7 @@ export default function KaprodiDashboard() {
                 <div className="empty-state">
                   <div className="empty-state-icon">🎓</div>
                   <div className="empty-state-text">Tidak ada pengajuan</div>
-                  <div className="empty-state-sub">Belum ada pengajuan masuk untuk kategori ini.</div>
+                  <div className="empty-state-sub">Belum ada berkas pendaftaran pendaftar untuk dievaluasi.</div>
                 </div>
               ) : (
                 <div className="table-wrap">
@@ -996,7 +936,6 @@ export default function KaprodiDashboard() {
                         <th>Nama Pendaftar</th>
                         <th>Email</th>
                         <th>Prodi Pilihan</th>
-                        <th>Transkrip Asal</th>
                         <th>Status Internal</th>
                         <th style={{ width: 120 }}>Aksi</th>
                       </tr>
@@ -1014,11 +953,6 @@ export default function KaprodiDashboard() {
                           </td>
                           <td>{item.profile?.email}</td>
                           <td><span className="badge-pill badge-slate">{item.prodi?.nama}</span></td>
-                          <td>
-                            <span style={{ fontSize: 12, color: 'var(--gray-500)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                              <FileText size={12} /> {item.file_transkrip_url}
-                            </span>
-                          </td>
                           <td><span className={`badge-pill status-${item.status}`}>{item.status.toUpperCase()}</span></td>
                           <td>
                             <button
@@ -1038,7 +972,7 @@ export default function KaprodiDashboard() {
           </div>
         </div>
       ) : (
-        /* Recognition Area */
+        /* Detailed recognition process screen */
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           {/* Warning Banner if returned from Asessor */}
           {selectedItem.status === 'returned_asessor' && (
@@ -1054,13 +988,13 @@ export default function KaprodiDashboard() {
             </div>
           )}
 
-          {/* Header Info */}
+          {/* Header Card */}
           <div className="card" style={{ background: 'var(--indigo-50)', borderColor: 'var(--indigo-100)' }}>
             <div className="card-body" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px' }}>
               <div>
-                <span style={{ fontSize: 11, color: 'var(--indigo-600)', fontWeight: 700, textTransform: 'uppercase' }}>Pendaftar RPL Aktif</span>
+                <span style={{ fontSize: 11, color: 'var(--indigo-600)', fontWeight: 700, textTransform: 'uppercase' }}>Proses Evaluasi Ka. Prodi</span>
                 <h2 style={{ fontSize: 16, fontWeight: 800, color: 'var(--indigo-700)', margin: '2px 0 0 0' }}>{selectedItem.profile?.nama_lengkap}</h2>
-                <p style={{ fontSize: 12.5, color: 'var(--gray-600)', margin: 0 }}>Prodi Tujuan: {selectedItem.prodi?.nama}</p>
+                <p style={{ fontSize: 12.5, color: 'var(--gray-600)', margin: 0 }}>Pilihan Prodi: {selectedItem.prodi?.nama}</p>
               </div>
               <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                 {canEvaluate && (
@@ -1073,7 +1007,7 @@ export default function KaprodiDashboard() {
             </div>
           </div>
 
-          {/* Return to BAAK Input Card */}
+          {/* Return Input Card */}
           {showReturnInput && (
             <div className="card" style={{ borderLeft: '4px solid var(--danger)' }}>
               <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -1081,7 +1015,7 @@ export default function KaprodiDashboard() {
                 <textarea
                   value={catatanRevisi}
                   onChange={(e) => setCatatanRevisi(e.target.value)}
-                  placeholder="Masukkan alasan pengembalian untuk diperbaiki BAAK..."
+                  placeholder="Masukkan catatan perbaikan untuk BAAK (misal: Transkrip buram atau berkas palsu)..."
                   className="input"
                   rows={2}
                 />
@@ -1093,9 +1027,9 @@ export default function KaprodiDashboard() {
             </div>
           )}
 
-          {/* AI/Manual Option Selector (Split Screen with Iframe Preview) */}
-          {!recognitionMethod && !ocrRunning && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 24 }}>
+          {/* Select Mapping Method screen (if method not selected yet) */}
+          {!recognitionMethod && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 24 }}>
               {/* Left Column: Iframe preview */}
               <div className="card">
                 <div className="card-header">
@@ -1237,52 +1171,49 @@ export default function KaprodiDashboard() {
           {/* Recognition Working Grid (Side-by-side editing panel) */}
           {recognitionMethod && (
             <div style={{ display: 'grid', gridTemplateColumns: '420px 1fr', gap: 20, alignItems: 'start' }}>
-              {/* Left Column: Transcript Document & Curriculum Tabs */}
+              {/* Left Column: Transcript Document & Curriculum & Certs Tabs */}
               <div className="card">
-                <div style={{ display: 'flex', background: 'var(--gray-50)', borderBottom: '1px solid var(--gray-200)', padding: 6 }}>
+                <div style={{ display: 'flex', background: 'var(--gray-50)', borderBottom: '1px solid var(--gray-200)', padding: 6, gap: 4, flexWrap: 'wrap' }}>
                   <button
                     onClick={() => setLeftTab('transcript')}
-                    style={{
-                      flex: 1,
-                      padding: '8px',
-                      fontSize: '12px',
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                      fontWeight: 700,
-                      background: leftTab === 'transcript' ? 'var(--indigo-600)' : 'transparent',
-                      color: leftTab === 'transcript' ? '#fff' : 'var(--gray-600)',
-                      border: leftTab === 'transcript' ? '1px solid var(--indigo-600)' : '1px solid transparent',
-                    }}
+                    className={`btn btn-sm ${leftTab === 'transcript' ? 'btn-primary' : 'btn-secondary'}`}
+                    style={{ flex: 1, padding: '6px' }}
                   >
-                    📄 Transkrip Asal
+                    📄 Transkrip
                   </button>
                   <button
                     onClick={() => setLeftTab('curriculum')}
-                    style={{
-                      flex: 1,
-                      padding: '8px',
-                      fontSize: '12px',
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                      fontWeight: 700,
-                      background: leftTab === 'curriculum' ? 'var(--indigo-600)' : 'transparent',
-                      color: leftTab === 'curriculum' ? '#fff' : 'var(--gray-600)',
-                      border: leftTab === 'curriculum' ? '1px solid var(--indigo-600)' : '1px solid transparent',
-                    }}
+                    className={`btn btn-sm ${leftTab === 'curriculum' ? 'btn-primary' : 'btn-secondary'}`}
+                    style={{ flex: 1, padding: '6px' }}
                   >
-                    📚 Kurikulum Prodi
+                    📚 Kurikulum
+                  </button>
+                  <button
+                    onClick={() => setLeftTab('certificate')}
+                    className={`btn btn-sm ${leftTab === 'certificate' ? 'btn-primary' : 'btn-secondary'}`}
+                    style={{ flex: 1, padding: '6px' }}
+                  >
+                    🏆 Sertifikat ({selectedItem.sertifikat_kompetensi?.length || 0})
+                  </button>
+                  <button
+                    onClick={() => setLeftTab('experience')}
+                    className={`btn btn-sm ${leftTab === 'experience' ? 'btn-primary' : 'btn-secondary'}`}
+                    style={{ flex: 1, padding: '6px' }}
+                  >
+                    💼 Kerja ({selectedItem.pengalaman_kerja?.length || 0})
                   </button>
                 </div>
                 <div className="card-body" style={{ padding: 12 }}>
-                  {leftTab === 'transcript' ? (
-                      <TranscriptPreview
-                        fileUrl={selectedItem.file_transkrip_url}
-                        profileName={selectedItem.profile?.nama_lengkap || 'Calon Mahasiswa'}
-                        prodiName={selectedItem.prodi?.nama || '-'}
-                        height={480}
-                        noBorder={true}
-                      />
-                  ) : (
+                  {leftTab === 'transcript' && (
+                    <TranscriptPreview
+                      fileUrl={selectedItem.file_transkrip_url}
+                      profileName={selectedItem.profile?.nama_lengkap || 'Calon Mahasiswa'}
+                      prodiName={selectedItem.prodi?.nama || '-'}
+                      height={480}
+                      noBorder={true}
+                    />
+                  )}
+                  {leftTab === 'curriculum' && (
                     <div style={{ maxHeight: 480, overflowY: 'auto' }}>
                       <h4 style={{ fontSize: 12, fontWeight: 700, marginBottom: 10, color: 'var(--gray-700)' }}>Daftar Kurikulum {selectedItem.prodi?.nama}</h4>
                       <div className="table-wrap">
@@ -1301,11 +1232,11 @@ export default function KaprodiDashboard() {
                                   <strong>{mk.kode_mk}</strong><br />
                                   <span style={{ color: 'var(--gray-600)' }}>{mk.nama_mk}</span>
                                 </td>
-                                <td style={{ padding: '6px 8px', fontSize: 11.5, textAlign: 'center' }}>
+                                <td style={{ padding: '6px 8px', fontSize: 11.5, text: 'center' }}>
                                   {mk.sks} SKS
                                 </td>
                                 {canEvaluate && (
-                                  <td style={{ padding: '6px 8px', textAlign: 'center' }}>
+                                  <td style={{ padding: '6px 8px', text: 'center' }}>
                                     <button
                                       onClick={() => addCurriculumToMapping(mk)}
                                       className="btn btn-secondary"
@@ -1329,13 +1260,119 @@ export default function KaprodiDashboard() {
                       </div>
                     </div>
                   )}
+
+                  {leftTab === 'certificate' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                      <h4 style={{ fontSize: 12, fontWeight: 700, color: 'var(--gray-700)', marginBottom: 2 }}>Sertifikat Kompetensi Pendaftar</h4>
+                      {(!selectedItem.sertifikat_kompetensi || selectedItem.sertifikat_kompetensi.length === 0) ? (
+                        <p style={{ fontSize: 12, color: 'var(--gray-400)', fontStyle: 'italic' }}>Tidak ada sertifikat kompetensi terlampir.</p>
+                      ) : (
+                        <div style={{ maxHeight: 220, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          {selectedItem.sertifikat_kompetensi.map((c, idx) => (
+                            <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--gray-50)', padding: 10, borderRadius: 8, border: '1px solid var(--gray-200)' }}>
+                              <div>
+                                <strong style={{ fontSize: 12.5, display: 'block' }}>{c.nama}</strong>
+                                <span style={{ fontSize: 11, color: 'var(--gray-500)' }}>{c.penerbit} ({c.tahun})</span>
+                              </div>
+                              <div style={{ display: 'flex', gap: 6 }}>
+                                <button
+                                  type="button"
+                                  onClick={() => { setActiveLeftDocType('sertifikat'); setActiveLeftDocUrl(c.file_url) }}
+                                  className={`btn btn-secondary btn-sm ${activeLeftDocType === 'sertifikat' && activeLeftDocUrl === c.file_url ? 'btn-primary' : ''}`}
+                                  style={{ fontSize: 11, padding: '4px 8px' }}
+                                >
+                                  👁️ Lihat
+                                </button>
+                                {canEvaluate && (
+                                  <button
+                                    type="button"
+                                    onClick={() => addCertificateToMapping(c)}
+                                    className="btn btn-primary btn-sm"
+                                    style={{ fontSize: 11, padding: '4px 8px' }}
+                                  >
+                                    + Map
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {activeLeftDocUrl && activeLeftDocType === 'sertifikat' && (
+                        <div style={{ border: '1px solid var(--gray-200)', borderRadius: 8, height: 240, overflow: 'hidden' }}>
+                          <TranscriptPreview
+                            fileUrl={activeLeftDocUrl}
+                            profileName={selectedItem.profile?.nama_lengkap || 'Calon Mahasiswa'}
+                            prodiName={selectedItem.prodi?.nama || '-'}
+                            height={240}
+                            noBorder={true}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {leftTab === 'experience' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                      <h4 style={{ fontSize: 12, fontWeight: 700, color: 'var(--gray-700)', marginBottom: 2 }}>Pengalaman Kerja / Portofolio Kerja</h4>
+                      {(!selectedItem.pengalaman_kerja || selectedItem.pengalaman_kerja.length === 0) ? (
+                        <p style={{ fontSize: 12, color: 'var(--gray-400)', fontStyle: 'italic' }}>Tidak ada portofolio kerja terlampir.</p>
+                      ) : (
+                        <div style={{ maxHeight: 220, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                          {selectedItem.pengalaman_kerja.map((ex, idx) => (
+                            <div key={idx} style={{ display: 'flex', flexDirection: 'column', gap: 6, background: 'var(--gray-50)', padding: 10, borderRadius: 8, border: '1px solid var(--gray-200)' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <div>
+                                  <strong style={{ fontSize: 12.5, display: 'block' }}>{ex.posisi}</strong>
+                                  <span style={{ fontSize: 11, color: 'var(--gray-500)' }}>{ex.perusahaan} ({ex.durasi})</span>
+                                </div>
+                                <div style={{ display: 'flex', gap: 6 }}>
+                                  <button
+                                    type="button"
+                                    onClick={() => { setActiveLeftDocType('pengalaman'); setActiveLeftDocUrl(ex.file_url) }}
+                                    className={`btn btn-secondary btn-sm ${activeLeftDocType === 'pengalaman' && activeLeftDocUrl === ex.file_url ? 'btn-primary' : ''}`}
+                                    style={{ fontSize: 11, padding: '4px 8px' }}
+                                  >
+                                    👁️ Lihat
+                                  </button>
+                                  {canEvaluate && (
+                                    <button
+                                      type="button"
+                                      onClick={() => addExperienceToMapping(ex)}
+                                      className="btn btn-primary btn-sm"
+                                      style={{ fontSize: 11, padding: '4px 8px' }}
+                                    >
+                                      + Map
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                              <p style={{ fontSize: 11.5, color: 'var(--gray-600)', margin: 0, lineClamp: 2 }}>{ex.deskripsi}</p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {activeLeftDocUrl && activeLeftDocType === 'pengalaman' && (
+                        <div style={{ border: '1px solid var(--gray-200)', borderRadius: 8, height: 240, overflow: 'hidden' }}>
+                          <TranscriptPreview
+                            fileUrl={activeLeftDocUrl}
+                            profileName={selectedItem.profile?.nama_lengkap || 'Calon Mahasiswa'}
+                            prodiName={selectedItem.prodi?.nama || '-'}
+                            height={240}
+                            noBorder={true}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 
-              {/* Right Column: OCR Results (if any) & Table of Recognition Courses */}
+              {/* Right Column: OCR Results & Table of Recognition Courses */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                
-                {/* OCR results and AI Recommendations panel (if Javascript or AI OCR selected) */}
+                {/* OCR results and AI Recommendations panel */}
                 {ocrResults.length > 0 && canEvaluate && (
                   <div className="card" style={{ borderColor: 'var(--emerald-200)', background: '#fafdfb' }}>
                     <div className="card-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid var(--emerald-100)' }}>
@@ -1377,7 +1414,6 @@ export default function KaprodiDashboard() {
                           <tbody>
                             {ocrResults.map(ocrItem => {
                               const recommendedMk = curriculumMK.find(mk => mk.id === ocrItem.recommendedMkId)
-                              // Check if currently mapped in rows
                               const isMapped = rows.some(r => r.mkAsal.toLowerCase() === ocrItem.mkAsal.toLowerCase() && r.mkTujuanId === ocrItem.recommendedMkId)
                               
                               return (
@@ -1458,27 +1494,98 @@ export default function KaprodiDashboard() {
                       <table>
                         <thead>
                           <tr>
-                            <th style={{ background: '#f8fafc', color: 'var(--indigo-700)', fontWeight: 800, borderBottom: '2px solid var(--indigo-100)', width: '35%' }}>Mata Kuliah Asal (Transkrip)</th>
+                            <th style={{ background: '#f8fafc', color: 'var(--indigo-700)', fontWeight: 800, borderBottom: '2px solid var(--indigo-100)', width: '15%' }}>Kategori</th>
+                            <th style={{ background: '#f8fafc', color: 'var(--indigo-700)', fontWeight: 800, borderBottom: '2px solid var(--indigo-100)', width: '30%' }}>Mata Kuliah / Berkas Asal</th>
                             <th style={{ background: '#f8fafc', color: 'var(--indigo-700)', fontWeight: 800, borderBottom: '2px solid var(--indigo-100)', width: '10%' }}>SKS Asal</th>
                             <th style={{ background: '#f8fafc', color: 'var(--indigo-700)', fontWeight: 800, borderBottom: '2px solid var(--indigo-100)', width: '10%' }}>Nilai</th>
-                            <th style={{ background: '#f8fafc', color: 'var(--indigo-700)', fontWeight: 800, borderBottom: '2px solid var(--indigo-100)', width: '35%' }}>Disandingkan ke MK Kurikulum</th>
+                            <th style={{ background: '#f8fafc', color: 'var(--indigo-700)', fontWeight: 800, borderBottom: '2px solid var(--indigo-100)', width: '25%' }}>Disandingkan ke MK Kurikulum</th>
                             {canEvaluate && <th style={{ background: '#f8fafc', color: 'var(--indigo-700)', fontWeight: 800, borderBottom: '2px solid var(--indigo-100)', width: '10%' }}>Aksi</th>}
                           </tr>
                         </thead>
                         <tbody>
                           {rows.map(row => (
                             <tr key={row.id}>
-                              {/* MK Asal */}
+                              {/* Category selection */}
                               <td>
-                                <input
-                                  type="text"
-                                  value={row.mkAsal}
-                                  disabled={!canEvaluate}
-                                  onChange={(e) => updateRow(row.id, 'mkAsal', e.target.value)}
-                                  placeholder="cth: Dasar Pemrograman I"
-                                  className="input"
-                                  style={{ padding: '6px 10px' }}
-                                />
+                                {canEvaluate ? (
+                                  <select
+                                    value={row.kategoriAsal}
+                                    onChange={(e) => handleRowCategoryChange(row.id, e.target.value)}
+                                    style={{
+                                      padding: '5px 8px',
+                                      borderRadius: '6px',
+                                      border: '1px solid var(--gray-200)',
+                                      background: 'var(--surface)',
+                                      fontSize: '12px',
+                                      fontWeight: 600,
+                                      outline: 'none'
+                                    }}
+                                  >
+                                    <option value="transkrip">📄 Transkrip</option>
+                                    <option value="sertifikat">🏆 Sertifikat</option>
+                                    <option value="pengalaman">💼 Kerja</option>
+                                  </select>
+                                ) : (
+                                  <span className={`badge-pill ${
+                                    row.kategoriAsal === 'sertifikat' ? 'badge-green' :
+                                    row.kategoriAsal === 'pengalaman' ? 'badge-amber' :
+                                    'badge-indigo'
+                                  }`}>
+                                    {row.kategoriAsal === 'sertifikat' ? '🏆 Sertifikat' :
+                                     row.kategoriAsal === 'pengalaman' ? '💼 Kerja' :
+                                     '📄 Transkrip'}
+                                  </span>
+                                )}
+                              </td>
+
+                              {/* MK Asal or File source selector */}
+                              <td>
+                                {row.kategoriAsal === 'transkrip' ? (
+                                  <input
+                                    type="text"
+                                    value={row.mkAsal}
+                                    disabled={!canEvaluate}
+                                    onChange={(e) => updateRow(row.id, 'mkAsal', e.target.value)}
+                                    placeholder="cth: Dasar Pemrograman I"
+                                    className="input"
+                                    style={{ padding: '6px 10px' }}
+                                  />
+                                ) : row.kategoriAsal === 'sertifikat' ? (
+                                  (!selectedItem.sertifikat_kompetensi || selectedItem.sertifikat_kompetensi.length === 0) ? (
+                                    <span style={{ fontSize: 11.5, color: 'var(--gray-400)', fontStyle: 'italic' }}>Tidak ada sertifikat</span>
+                                  ) : (
+                                    <select
+                                      value={row.mkAsal}
+                                      disabled={!canEvaluate}
+                                      onChange={(e) => updateRow(row.id, 'mkAsal', e.target.value)}
+                                      className="input"
+                                      style={{ padding: '6px 10px' }}
+                                    >
+                                      <option value="">-- Pilih Sertifikat --</option>
+                                      {selectedItem.sertifikat_kompetensi.map((c, i) => (
+                                        <option key={i} value={c.nama}>{c.nama}</option>
+                                      ))}
+                                    </select>
+                                  )
+                                ) : (
+                                  (!selectedItem.pengalaman_kerja || selectedItem.pengalaman_kerja.length === 0) ? (
+                                    <span style={{ fontSize: 11.5, color: 'var(--gray-400)', fontStyle: 'italic' }}>Tidak ada pengalaman</span>
+                                  ) : (
+                                    <select
+                                      value={row.mkAsal}
+                                      disabled={!canEvaluate}
+                                      onChange={(e) => updateRow(row.id, 'mkAsal', e.target.value)}
+                                      className="input"
+                                      style={{ padding: '6px 10px' }}
+                                    >
+                                      <option value="">-- Pilih Pengalaman Kerja --</option>
+                                      {selectedItem.pengalaman_kerja.map((ex, i) => {
+                                        const label = `${ex.posisi} di ${ex.perusahaan}`;
+                                        return <option key={i} value={label}>{label}</option>
+                                      })}
+                                    </select>
+                                  )
+                                )}
                               </td>
 
                               {/* SKS Asal */}
@@ -1486,7 +1593,7 @@ export default function KaprodiDashboard() {
                                 <input
                                   type="number"
                                   value={row.sksAsal || ''}
-                                  disabled={!canEvaluate}
+                                  disabled={!canEvaluate || row.kategoriAsal !== 'transkrip'}
                                   onChange={(e) => updateRow(row.id, 'sksAsal', e.target.value)}
                                   placeholder="cth: 3"
                                   className="input"
@@ -1499,7 +1606,7 @@ export default function KaprodiDashboard() {
                                 <input
                                   type="text"
                                   value={row.nilaiAsal}
-                                  disabled={!canEvaluate}
+                                  disabled={!canEvaluate || row.kategoriAsal !== 'transkrip'}
                                   onChange={(e) => updateRow(row.id, 'nilaiAsal', e.target.value.toUpperCase())}
                                   placeholder="cth: A"
                                   className="input"

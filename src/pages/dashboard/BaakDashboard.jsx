@@ -1,30 +1,28 @@
 import { useState, useEffect } from 'react'
 import { dbPengajuan } from '../../lib/db'
 import { supabase, isMock } from '../../lib/supabase'
-import { ClipboardCheck, FileText, CheckCircle, XCircle } from 'lucide-react'
+import { ClipboardCheck, FileText, CheckCircle, XCircle, Award } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { generateMockDocSrcDoc } from '../../lib/mockDoc'
 
 // Helper: Preview component for BAAK with signed URL support
-function BaakDocPreview({ selectedItem, previewType, previewSignedUrl, setPreviewSignedUrl }) {
+function BaakDocPreview({ selectedItem, fileUrl, previewType, previewSignedUrl, setPreviewSignedUrl }) {
   const [loading, setLoading] = useState(false)
-
-  const filePath = previewType === 'ijazah' ? selectedItem.file_ijazah_url : selectedItem.file_transkrip_url
-  const isStoragePath = filePath && filePath.includes('/')
+  const isStoragePath = fileUrl && fileUrl.includes('/')
 
   useEffect(() => {
     if (!isMock && isStoragePath && !previewSignedUrl) {
       setLoading(true)
       supabase.storage
         .from('rpl-documents')
-        .createSignedUrl(filePath, 3600)
+        .createSignedUrl(fileUrl, 3600)
         .then(({ data, error }) => {
           if (!error && data?.signedUrl) setPreviewSignedUrl(data.signedUrl)
           else setPreviewSignedUrl(null)
         })
         .finally(() => setLoading(false))
     }
-  }, [filePath, isStoragePath, previewSignedUrl])
+  }, [fileUrl, isStoragePath, previewSignedUrl])
 
   if (loading) {
     return (
@@ -48,7 +46,7 @@ function BaakDocPreview({ selectedItem, previewType, previewSignedUrl, setPrevie
         title="Pratinjau Dokumen BAAK"
         srcDoc={generateMockDocSrcDoc(
           previewType,
-          filePath,
+          fileUrl,
           selectedItem.profile?.nama_lengkap || 'Calon Mahasiswa',
           selectedItem.prodi?.nama || '-'
         )}
@@ -63,11 +61,15 @@ export default function BaakDashboard() {
   const [selectedItem, setSelectedItem] = useState(null)
   const [loading, setLoading] = useState(true)
   const [previewType, setPreviewType] = useState('ijazah')
+  const [previewUrl, setPreviewUrl] = useState('')
+  const [previewSignedUrl, setPreviewSignedUrl] = useState(null)
 
-  // Verification Checklist State (simplified: 2 checkboxes)
+  // Verification Checklist State
   const [chkIjazah, setChkIjazah] = useState(false)
   const [chkTranskrip, setChkTranskrip] = useState(false)
-  const [previewSignedUrl, setPreviewSignedUrl] = useState(null)
+  const [chkCertificates, setChkCertificates] = useState({})
+  const [chkExperiences, setChkExperiences] = useState({})
+  
   const [catatanRevisi, setCatatanRevisi] = useState('')
   const [activeTab, setActiveTab] = useState('pending')
   const [submitting, setSubmitting] = useState(false)
@@ -78,10 +80,13 @@ export default function BaakDashboard() {
       const { data } = await dbPengajuan.getAll()
       setSubmissions(data || [])
       setSelectedItem(null)
-      // Reset checklist
+      // Reset checklists
       setChkIjazah(false)
       setChkTranskrip(false)
+      setChkCertificates({})
+      setChkExperiences({})
       setPreviewSignedUrl(null)
+      setPreviewUrl('')
       setCatatanRevisi('')
     } catch (e) {
       console.error(e)
@@ -98,16 +103,53 @@ export default function BaakDashboard() {
   useEffect(() => {
     if (selectedItem) {
       const isPending = selectedItem.status === 'submitted' || selectedItem.status === 'returned_kaprodi'
+      const certs = selectedItem.sertifikat_kompetensi || []
+      const exprs = selectedItem.pengalaman_kerja || []
+
       if (!isPending) {
         setChkIjazah(true)
         setChkTranskrip(true)
+        
+        const certMap = {}
+        certs.forEach((_, idx) => { certMap[idx] = true })
+        setChkCertificates(certMap)
+        
+        const exprMap = {}
+        exprs.forEach((_, idx) => { exprMap[idx] = true })
+        setChkExperiences(exprMap)
       } else {
         setChkIjazah(false)
         setChkTranskrip(false)
+        setChkCertificates({})
+        setChkExperiences({})
       }
+      
       setCatatanRevisi(selectedItem.catatan_revisi || '')
+      setPreviewType('ijazah')
+      setPreviewUrl(selectedItem.file_ijazah_url || '')
+      setPreviewSignedUrl(null)
     }
   }, [selectedItem])
+
+  const toggleCertificateCheck = (idx) => {
+    setChkCertificates(prev => ({
+      ...prev,
+      [idx]: !prev[idx]
+    }))
+  }
+
+  const toggleExperienceCheck = (idx) => {
+    setChkExperiences(prev => ({
+      ...prev,
+      [idx]: !prev[idx]
+    }))
+  }
+
+  const handlePreviewFile = (type, url) => {
+    setPreviewType(type)
+    setPreviewUrl(url)
+    setPreviewSignedUrl(null)
+  }
 
   const handleApprove = async () => {
     if (!chkIjazah || !chkTranskrip) {
@@ -115,9 +157,27 @@ export default function BaakDashboard() {
       return
     }
 
+    // Validate certificates checklist
+    const certs = selectedItem.sertifikat_kompetensi || []
+    for (let i = 0; i < certs.length; i++) {
+      if (!chkCertificates[i]) {
+        toast.error(`Sertifikat "${certs[i].nama}" belum dicentang/diverifikasi!`)
+        return
+      }
+    }
+
+    // Validate experiences checklist
+    const exprs = selectedItem.pengalaman_kerja || []
+    for (let i = 0; i < exprs.length; i++) {
+      if (!chkExperiences[i]) {
+        toast.error(`Pengalaman kerja di "${exprs[i].perusahaan}" belum dicentang/diverifikasi!`)
+        return
+      }
+    }
+
     setSubmitting(true)
     try {
-      await dbPengajuan.updateStatus(selectedItem.id, 'validated_baak')
+      await dbPengajuan.updateStatus(selectedItem.id, 'validated_baak', '')
       toast.success('Pengajuan berhasil divalidasi dan diteruskan ke Ka. Prodi!')
       loadSubmissions()
     } catch (e) {
@@ -161,9 +221,13 @@ export default function BaakDashboard() {
     )
   }
 
-  // Apakah item saat ini bisa di-review (status pending atau masih di validated_baak)
   const isEditable = selectedItem && (selectedItem.status === 'submitted' || selectedItem.status === 'returned_kaprodi' || selectedItem.status === 'validated_baak')
   const canApprove = selectedItem && (selectedItem.status === 'submitted' || selectedItem.status === 'returned_kaprodi')
+
+  // Approval Button State Check
+  const allCertsChecked = selectedItem ? (selectedItem.sertifikat_kompetensi || []).every((_, idx) => !!chkCertificates[idx]) : true
+  const allExprsChecked = selectedItem ? (selectedItem.pengalaman_kerja || []).every((_, idx) => !!chkExperiences[idx]) : true
+  const approvalReady = chkIjazah && chkTranskrip && allCertsChecked && allExprsChecked
 
   return (
     <div>
@@ -276,15 +340,15 @@ export default function BaakDashboard() {
                   <table style={{ width: '100%', fontSize: 12.5 }}>
                     <tbody>
                       <tr>
-                        <td style={{ width: 140, padding: '4px 0', color: 'var(--gray-500)' }}>Nama Lengkap</td>
+                        <td style={{ width: 140, padding: '4px 0', color: 'var(--gray-50)' }}>Nama Lengkap</td>
                         <td style={{ padding: '4px 0' }}>: <strong>{selectedItem.profile?.nama_lengkap}</strong></td>
                       </tr>
                       <tr>
-                        <td style={{ padding: '4px 0', color: 'var(--gray-500)' }}>Alamat Email</td>
+                        <td style={{ padding: '4px 0', color: 'var(--gray-50)' }}>Alamat Email</td>
                         <td style={{ padding: '4px 0' }}>: {selectedItem.profile?.email}</td>
                       </tr>
                       <tr>
-                        <td style={{ padding: '4px 0', color: 'var(--gray-500)' }}>Pilihan Program Studi</td>
+                        <td style={{ padding: '4px 0', color: 'var(--gray-50)' }}>Pilihan Program Studi</td>
                         <td style={{ padding: '4px 0' }}>: {selectedItem.prodi?.nama}</td>
                       </tr>
                     </tbody>
@@ -293,27 +357,46 @@ export default function BaakDashboard() {
 
                 {/* Document selector & preview iframe */}
                 <div style={{ border: '1px solid var(--gray-200)', borderRadius: 8, overflow: 'hidden' }}>
-                  <div style={{ display: 'flex', background: 'var(--gray-50)', borderBottom: '1px solid var(--gray-200)', padding: 8, justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', background: 'var(--gray-50)', borderBottom: '1px solid var(--gray-200)', padding: 8, justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
                     <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--gray-700)', paddingLeft: 8 }}>
-                      Pratinjau: {previewType === 'ijazah' ? 'Ijazah' : 'Transkrip'}
+                      Pratinjau: {previewType.toUpperCase()}
                     </span>
-                    <div style={{ display: 'flex', gap: 6 }}>
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                       <button 
-                        onClick={() => { setPreviewType('ijazah'); setPreviewSignedUrl(null) }} 
+                        onClick={() => handlePreviewFile('ijazah', selectedItem.file_ijazah_url)} 
                         className={`btn btn-sm ${previewType === 'ijazah' ? 'btn-primary' : 'btn-secondary'}`}
                       >
                         Ijazah
                       </button>
                       <button 
-                        onClick={() => { setPreviewType('transkrip'); setPreviewSignedUrl(null) }} 
+                        onClick={() => handlePreviewFile('transkrip', selectedItem.file_transkrip_url)} 
                         className={`btn btn-sm ${previewType === 'transkrip' ? 'btn-primary' : 'btn-secondary'}`}
                       >
                         Transkrip
                       </button>
+                      {selectedItem.sertifikat_kompetensi?.map((c, idx) => (
+                        <button
+                          key={`cert-${idx}`}
+                          onClick={() => handlePreviewFile('sertifikat', c.file_url)}
+                          className={`btn btn-sm ${previewType === 'sertifikat' && previewUrl === c.file_url ? 'btn-primary' : 'btn-secondary'}`}
+                        >
+                          Sertifikat {idx + 1}
+                        </button>
+                      ))}
+                      {selectedItem.pengalaman_kerja?.map((ex, idx) => (
+                        <button
+                          key={`expr-${idx}`}
+                          onClick={() => handlePreviewFile('pengalaman', ex.file_url)}
+                          className={`btn btn-sm ${previewType === 'pengalaman' && previewUrl === ex.file_url ? 'btn-primary' : 'btn-secondary'}`}
+                        >
+                          Pengalaman {idx + 1}
+                        </button>
+                      ))}
                     </div>
                   </div>
                   <BaakDocPreview
                     selectedItem={selectedItem}
+                    fileUrl={previewUrl}
                     previewType={previewType}
                     previewSignedUrl={previewSignedUrl}
                     setPreviewSignedUrl={setPreviewSignedUrl}
@@ -329,7 +412,7 @@ export default function BaakDashboard() {
               <h3 style={{ fontSize: 14, fontWeight: 700 }}>Checklist Kelayakan Berkas</h3>
             </div>
             <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <p style={{ fontSize: 12, color: 'var(--gray-500)' }}>Status Pemeriksaan Kelayakan Dokumen:</p>
+              <p style={{ fontSize: 12, color: 'var(--gray-50)' }}>Status Pemeriksaan Kelayakan Dokumen:</p>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 <label style={{
@@ -348,7 +431,7 @@ export default function BaakDashboard() {
                   />
                   <div>
                     <div style={{ fontWeight: 700, marginBottom: 2 }}>✅ Ijazah Terverifikasi</div>
-                    <div style={{ fontSize: 11.5, color: 'var(--gray-500)' }}>Dokumen ijazah terbaca jelas, nama sesuai, dan memiliki tanda tangan/stempel sah.</div>
+                    <div style={{ fontSize: 11.5, color: 'var(--gray-50)' }}>Dokumen ijazah terbaca jelas, nama sesuai, dan tanda tangan/stempel sah.</div>
                   </div>
                 </label>
 
@@ -368,9 +451,61 @@ export default function BaakDashboard() {
                   />
                   <div>
                     <div style={{ fontWeight: 700, marginBottom: 2 }}>✅ Transkrip Terverifikasi</div>
-                    <div style={{ fontSize: 11.5, color: 'var(--gray-500)' }}>Transkrip menampilkan kode MK, SKS, dan nilai dengan jelas serta resolusi cukup untuk OCR.</div>
+                    <div style={{ fontSize: 11.5, color: 'var(--gray-50)' }}>Transkrip menampilkan mata kuliah, SKS, dan nilai dengan jelas untuk OCR.</div>
                   </div>
                 </label>
+
+                {/* Certificates Checklist */}
+                {selectedItem.sertifikat_kompetensi?.map((c, idx) => {
+                  const isChecked = !!chkCertificates[idx]
+                  return (
+                    <label key={`cert-chk-${idx}`} style={{
+                      display: 'flex', alignItems: 'center', gap: 12, fontSize: 13, cursor: canApprove ? 'pointer' : 'default',
+                      padding: '12px 14px', borderRadius: 8,
+                      border: isChecked ? '2px solid var(--success)' : '2px solid var(--gray-200)',
+                      background: isChecked ? '#f0fdf4' : 'var(--surface)',
+                      transition: 'all .15s ease'
+                    }}>
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        disabled={!canApprove}
+                        onChange={() => toggleCertificateCheck(idx)}
+                        style={{ width: 18, height: 18, accentColor: 'var(--success)' }}
+                      />
+                      <div>
+                        <div style={{ fontWeight: 700, marginBottom: 2 }}>🏆 Sertifikat: {c.nama}</div>
+                        <div style={{ fontSize: 11.5, color: 'var(--gray-50)' }}>Penerbit: {c.penerbit} ({c.tahun}). Keabsahan dokumen kompetensi valid.</div>
+                      </div>
+                    </label>
+                  )
+                })}
+
+                {/* Experiences Checklist */}
+                {selectedItem.pengalaman_kerja?.map((ex, idx) => {
+                  const isChecked = !!chkExperiences[idx]
+                  return (
+                    <label key={`expr-chk-${idx}`} style={{
+                      display: 'flex', alignItems: 'center', gap: 12, fontSize: 13, cursor: canApprove ? 'pointer' : 'default',
+                      padding: '12px 14px', borderRadius: 8,
+                      border: isChecked ? '2px solid var(--success)' : '2px solid var(--gray-200)',
+                      background: isChecked ? '#f0fdf4' : 'var(--surface)',
+                      transition: 'all .15s ease'
+                    }}>
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        disabled={!canApprove}
+                        onChange={() => toggleExperienceCheck(idx)}
+                        style={{ width: 18, height: 18, accentColor: 'var(--success)' }}
+                      />
+                      <div>
+                        <div style={{ fontWeight: 700, marginBottom: 2 }}>💼 Pengalaman: {ex.posisi}</div>
+                        <div style={{ fontSize: 11.5, color: 'var(--gray-50)' }}>Perusahaan: {ex.perusahaan} ({ex.durasi}). Bukti/surat portofolio valid.</div>
+                      </div>
+                    </label>
+                  )
+                })}
               </div>
 
               {/* Teks Catatan Revisi */}
@@ -393,9 +528,9 @@ export default function BaakDashboard() {
                 {canApprove && (
                   <button
                     onClick={handleApprove}
-                    disabled={!chkIjazah || !chkTranskrip || submitting}
+                    disabled={!approvalReady || submitting}
                     className="btn btn-primary"
-                    style={{ width: '100%', justifyContent: 'center', gap: 6, opacity: (!chkIjazah || !chkTranskrip) ? 0.5 : 1 }}
+                    style={{ width: '100%', justifyContent: 'center', gap: 6, opacity: !approvalReady ? 0.5 : 1 }}
                   >
                     <CheckCircle size={15} /> Setujui & Kirim ke Ka. Prodi
                   </button>

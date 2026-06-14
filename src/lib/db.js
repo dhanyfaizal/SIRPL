@@ -208,6 +208,8 @@ export const dbPengajuan = {
     if (isMock) {
       const list = getLocalData('si_rpl_pengajuan')
       const newItem = {
+        sertifikat_kompetensi: [],
+        pengalaman_kerja: [],
         ...data,
         id: 'pengajuan-' + Math.random().toString(36).slice(2, 10),
         status: 'submitted',
@@ -217,7 +219,7 @@ export const dbPengajuan = {
       saveLocalData('si_rpl_pengajuan', list)
       return { data: newItem, error: null }
     }
-    return supabase.from('pengajuan_rpl').insert({ status: 'submitted', ...data }).select().single()
+    return supabase.from('pengajuan_rpl').insert({ status: 'submitted', sertifikat_kompetensi: [], pengalaman_kerja: [], ...data }).select().single()
   },
 
   updateStatus: async (id, status, catatanRevisi = null) => {

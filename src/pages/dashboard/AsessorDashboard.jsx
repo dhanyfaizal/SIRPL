@@ -1,7 +1,65 @@
 import { useState, useEffect } from 'react'
 import { dbPengajuan, dbMK, dbRekognisi, dbPenetapan } from '../../lib/db'
-import { GraduationCap, FileText, CheckCircle, Calculator, Info, Plus, Trash2 } from 'lucide-react'
+import { GraduationCap, FileText, CheckCircle, Calculator, Info, Plus, Trash2, Award, Briefcase } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { generateMockDocSrcDoc } from '../../lib/mockDoc'
+import { supabase, isMock } from '../../lib/supabase'
+
+// Component: Preview component for Asessor with signed URL support
+function AsessorDocPreview({ selectedItem, fileUrl, previewType, previewSignedUrl, setPreviewSignedUrl }) {
+  const [loading, setLoading] = useState(false)
+  const isStoragePath = fileUrl && fileUrl.includes('/')
+
+  useEffect(() => {
+    setPreviewSignedUrl(null)
+  }, [fileUrl])
+
+  useEffect(() => {
+    if (!isMock && isStoragePath && !previewSignedUrl) {
+      setLoading(true)
+      supabase.storage
+        .from('rpl-documents')
+        .createSignedUrl(fileUrl, 3600)
+        .then(({ data, error }) => {
+          if (!error && data?.signedUrl) setPreviewSignedUrl(data.signedUrl)
+          else setPreviewSignedUrl(null)
+        })
+        .finally(() => setLoading(false))
+    }
+  }, [fileUrl, isStoragePath, previewSignedUrl])
+
+  if (loading) {
+    return (
+      <div style={{ height: 420, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fff', border: '1px solid var(--gray-200)', borderRadius: 8 }}>
+        <div className="spinner" />
+      </div>
+    )
+  }
+
+  if (!isMock && isStoragePath && previewSignedUrl) {
+    return (
+      <div style={{ height: 420, background: '#fff', border: '1px solid var(--gray-200)', borderRadius: 8, overflow: 'hidden' }}>
+        <iframe title="Pratinjau Dokumen PDF Asessor" src={previewSignedUrl} style={{ width: '100%', height: '100%', border: 'none' }} />
+      </div>
+    )
+  }
+
+  return (
+    <div style={{ height: 420, background: '#fff', border: '1px solid var(--gray-200)', borderRadius: 8, overflow: 'hidden' }}>
+      <iframe
+        title="Pratinjau Dokumen Asessor"
+        srcDoc={generateMockDocSrcDoc(
+          previewType,
+          fileUrl,
+          selectedItem?.profile?.nama_lengkap || 'Calon Mahasiswa',
+          selectedItem?.prodi?.nama || '-'
+        )}
+        style={{ width: '100%', height: '100%', border: 'none' }}
+      />
+    </div>
+  )
+}
+
 
 export default function AsessorDashboard() {
   const [submissions, setSubmissions] = useState([])
@@ -10,13 +68,20 @@ export default function AsessorDashboard() {
   const [curriculumMK, setCurriculumMK] = useState([])
 
   // State Table Rows (reviewed from Kaprodi)
-  // Structure: { id, mkAsal, sksAsal, nilaiAsal, mkTujuanId, sksTujuan, statusTujuan, isCertified }
+  // Structure: { id, mkAsal, sksAsal, nilaiAsal, mkTujuanId, sksTujuan, statusTujuan, isCertified, kategoriAsal }
   const [rows, setRows] = useState([])
 
   const [activeTab, setActiveTab] = useState('pending')
   const [catatanRevisi, setCatatanRevisi] = useState('')
   const [showReturnInput, setShowReturnInput] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+
+  // Document preview states
+  const [previewType, setPreviewType] = useState('transkrip')
+  const [previewUrl, setPreviewUrl] = useState('')
+  const [previewName, setPreviewName] = useState('Transkrip Nilai')
+  const [previewSignedUrl, setPreviewSignedUrl] = useState(null)
+  const [activeRowId, setActiveRowId] = useState(null)
 
   const loadSubmissions = async () => {
     setLoading(true)
@@ -54,6 +119,11 @@ export default function AsessorDashboard() {
       loadCurriculum(pId)
       loadRecognitionTable(selectedItem.id)
       setCatatanRevisi(selectedItem.catatan_revisi || '')
+      setPreviewType('transkrip')
+      setPreviewUrl(selectedItem.file_transkrip_url || '')
+      setPreviewName('Transkrip Nilai')
+      setPreviewSignedUrl(null)
+      setActiveRowId(null)
     }
   }, [selectedItem])
 
@@ -69,13 +139,53 @@ export default function AsessorDashboard() {
           nilaiAsal: item.Nilai,
           mkTujuanId: item.MK_Tujuan_ID,
           sksTujuan: item.SKS_Tujuan,
-          statusTujuan: item.Status === 'diakui' || item.Status === 'disetujui' ? 'disetujui' : 'ditolak'
+          statusTujuan: item.Status === 'diakui' || item.Status === 'disetujui' ? 'disetujui' : 'ditolak',
+          kategoriAsal: item.Kategori_Asal || 'transkrip'
         }))
         setRows(initialRows)
       }
     } catch (e) {
       console.error(e)
       toast.error('Gagal memuat data tabel rekognisi')
+    }
+  }
+
+  // Row Click Handler to update preview panel PDF
+  const handleRowClick = (row) => {
+    setActiveRowId(row.id)
+    if (row.kategoriAsal === 'transkrip' || !row.kategoriAsal) {
+      setPreviewType('transkrip')
+      setPreviewUrl(selectedItem?.file_transkrip_url || '')
+      setPreviewName('Transkrip Nilai')
+      setPreviewSignedUrl(null)
+    } else if (row.kategoriAsal === 'sertifikat') {
+      const certs = selectedItem?.sertifikat_kompetensi || []
+      const matched = certs.find(c => c.nama === row.mkAsal) || certs[0]
+      if (matched) {
+        setPreviewType('sertifikat')
+        setPreviewUrl(matched.file_url || '')
+        setPreviewName(matched.nama || 'Sertifikat Kompetensi')
+        setPreviewSignedUrl(null)
+      } else {
+        setPreviewType('sertifikat')
+        setPreviewUrl('')
+        setPreviewName('Sertifikat Kompetensi')
+        setPreviewSignedUrl(null)
+      }
+    } else if (row.kategoriAsal === 'pengalaman') {
+      const exprs = selectedItem?.pengalaman_kerja || []
+      const matched = exprs.find(ex => `${ex.posisi} di ${ex.perusahaan}` === row.mkAsal) || exprs[0]
+      if (matched) {
+        setPreviewType('pengalaman')
+        setPreviewUrl(matched.file_url || '')
+        setPreviewName(`${matched.posisi} - ${matched.perusahaan}`)
+        setPreviewSignedUrl(null)
+      } else {
+        setPreviewType('pengalaman')
+        setPreviewUrl('')
+        setPreviewName('Pengalaman Kerja')
+        setPreviewSignedUrl(null)
+      }
     }
   }
 
@@ -91,7 +201,8 @@ export default function AsessorDashboard() {
         mkTujuanId: '',
         sksTujuan: 0,
         statusTujuan: 'disetujui',
-        isCertified: true
+        isCertified: true,
+        kategoriAsal: 'sertifikat'
       }
     ])
   }
@@ -162,7 +273,8 @@ export default function AsessorDashboard() {
             MK_Tujuan_Kode: matchMK?.kode_mk || '',
             MK_Tujuan_Nama: matchMK?.nama_mk || '',
             SKS_Tujuan: matchMK?.sks || 0,
-            Status: r.statusTujuan === 'disetujui' ? 'diakui' : 'ditolak'
+            Status: r.statusTujuan === 'disetujui' ? 'diakui' : 'ditolak',
+            Kategori_Asal: r.kategoriAsal || 'transkrip'
           }
         }),
         is_manual_edited: true
@@ -390,8 +502,85 @@ export default function AsessorDashboard() {
             </div>
           )}
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 24 }}>
-            {/* Main Table Panel */}
+          <div style={{ display: 'grid', gridTemplateColumns: '400px 1fr 320px', gap: 20, alignItems: 'start' }}>
+            {/* Column 1: PDF Preview Panel */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16, position: 'sticky', top: 20 }}>
+              <div className="card">
+                <div className="card-header" style={{ display: 'flex', flexDirection: 'column', gap: 8, borderBottom: '1px solid var(--gray-200)', padding: 12 }}>
+                  <h3 style={{ fontSize: 13, fontWeight: 700, margin: 0 }}>Dokumen Pendukung</h3>
+                  <div style={{ fontSize: 11, color: 'var(--gray-500)', fontWeight: 600 }}>
+                    Pratinjau: {previewName} ({previewType.toUpperCase()})
+                  </div>
+                </div>
+                <div style={{ display: 'flex', background: 'var(--gray-50)', borderBottom: '1px solid var(--gray-200)', padding: 8, gap: 6, flexWrap: 'wrap' }}>
+                  <button
+                    onClick={() => {
+                      setPreviewType('transkrip')
+                      setPreviewUrl(selectedItem?.file_transkrip_url || '')
+                      setPreviewName('Transkrip Nilai')
+                      setPreviewSignedUrl(null)
+                    }}
+                    className={`btn btn-sm ${previewType === 'transkrip' ? 'btn-primary' : 'btn-secondary'}`}
+                    style={{ padding: '4px 8px', fontSize: '11px' }}
+                  >
+                    📄 Transkrip
+                  </button>
+                  <button
+                    onClick={() => {
+                      setPreviewType('ijazah')
+                      setPreviewUrl(selectedItem?.file_ijazah_url || '')
+                      setPreviewName('Ijazah')
+                      setPreviewSignedUrl(null)
+                    }}
+                    className={`btn btn-sm ${previewType === 'ijazah' ? 'btn-primary' : 'btn-secondary'}`}
+                    style={{ padding: '4px 8px', fontSize: '11px' }}
+                  >
+                    🎓 Ijazah
+                  </button>
+                  {selectedItem?.sertifikat_kompetensi?.map((c, idx) => (
+                    <button
+                      key={`cert-preview-${idx}`}
+                      onClick={() => {
+                        setPreviewType('sertifikat')
+                        setPreviewUrl(c.file_url)
+                        setPreviewName(c.nama)
+                        setPreviewSignedUrl(null)
+                      }}
+                      className={`btn btn-sm ${previewType === 'sertifikat' && previewUrl === c.file_url ? 'btn-primary' : 'btn-secondary'}`}
+                      style={{ padding: '4px 8px', fontSize: '11px' }}
+                    >
+                      🏆 Sertifikat {idx + 1}
+                    </button>
+                  ))}
+                  {selectedItem?.pengalaman_kerja?.map((ex, idx) => (
+                    <button
+                      key={`expr-preview-${idx}`}
+                      onClick={() => {
+                        setPreviewType('pengalaman')
+                        setPreviewUrl(ex.file_url)
+                        setPreviewName(`${ex.posisi} di ${ex.perusahaan}`)
+                        setPreviewSignedUrl(null)
+                      }}
+                      className={`btn btn-sm ${previewType === 'pengalaman' && previewUrl === ex.file_url ? 'btn-primary' : 'btn-secondary'}`}
+                      style={{ padding: '4px 8px', fontSize: '11px' }}
+                    >
+                      💼 Kerja {idx + 1}
+                    </button>
+                  ))}
+                </div>
+                <div className="card-body" style={{ padding: 12 }}>
+                  <AsessorDocPreview
+                    selectedItem={selectedItem}
+                    fileUrl={previewUrl}
+                    previewType={previewType}
+                    previewSignedUrl={previewSignedUrl}
+                    setPreviewSignedUrl={setPreviewSignedUrl}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Column 2: Main Table Panel */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
               <div className="card">
                 <div className="card-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -424,39 +613,117 @@ export default function AsessorDashboard() {
                         </tr>
                       </thead>
                       <tbody>
-                        {rows.map(row => (
-                          <tr key={row.id} style={{ background: row.statusTujuan === 'ditolak' ? '#fee2e2' : '' }}>
-                            <td>
-                              {row.isCertified && (selectedItem.status === 'recognized_kaprodi' || selectedItem.status === 'returned_admin') ? (
-                                <input
-                                  type="text"
-                                  value={row.mkAsal}
-                                  onChange={(e) => updateRowField(row.id, 'mkAsal', e.target.value)}
-                                  className="input"
-                                  style={{ padding: '6px 10px' }}
-                                />
-                              ) : (
-                                <span style={{ fontSize: 12.5, fontWeight: 600 }}>{row.mkAsal}</span>
-                              )}
-                            </td>
-                            <td>
-                              {row.isCertified && (selectedItem.status === 'recognized_kaprodi' || selectedItem.status === 'returned_admin') ? (
-                                <input
-                                  type="text"
-                                  value={row.nilaiAsal}
-                                  onChange={(e) => updateRowField(row.id, 'nilaiAsal', e.target.value)}
-                                  className="input"
-                                  style={{ padding: '6px 10px' }}
-                                />
-                              ) : (
-                                <span style={{ fontSize: 12.5 }}>{row.nilaiAsal}</span>
-                              )}
-                            </td>
-                            <td>
-                              {row.isCertified && (selectedItem.status === 'recognized_kaprodi' || selectedItem.status === 'returned_admin') ? (
+                        {rows.map(row => {
+                          const isActive = activeRowId === row.id
+                          return (
+                            <tr 
+                              key={row.id} 
+                              onClick={() => handleRowClick(row)}
+                              style={{ 
+                                cursor: 'pointer',
+                                transition: 'all 0.15s',
+                                background: isActive 
+                                  ? 'var(--indigo-50)' 
+                                  : row.statusTujuan === 'ditolak' 
+                                    ? '#fee2e2' 
+                                    : '',
+                                outline: isActive ? '2px solid var(--indigo-400)' : '',
+                                outlineOffset: '-2px'
+                              }}
+                            >
+                              <td>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                  {row.isCertified && (selectedItem.status === 'recognized_kaprodi' || selectedItem.status === 'returned_admin') ? (
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }} onClick={e => e.stopPropagation()}>
+                                      <input
+                                        type="text"
+                                        value={row.mkAsal}
+                                        onChange={(e) => updateRowField(row.id, 'mkAsal', e.target.value)}
+                                        className="input"
+                                        style={{ padding: '6px 10px' }}
+                                      />
+                                      <select
+                                        value={row.kategoriAsal || 'sertifikat'}
+                                        onChange={(e) => updateRowField(row.id, 'kategoriAsal', e.target.value)}
+                                        style={{
+                                          padding: '4px 8px',
+                                          borderRadius: '6px',
+                                          border: '1px solid var(--gray-200)',
+                                          background: 'var(--surface)',
+                                          fontSize: '11px',
+                                          outline: 'none'
+                                        }}
+                                      >
+                                        <option value="sertifikat">🏆 Sertifikat</option>
+                                        <option value="pengalaman">💼 Kerja</option>
+                                        <option value="transkrip">📄 Transkrip</option>
+                                      </select>
+                                    </div>
+                                  ) : (
+                                    <>
+                                      <span style={{ fontSize: 12.5, fontWeight: 600 }}>{row.mkAsal}</span>
+                                      <div>
+                                        <span className={`badge-pill ${
+                                          row.kategoriAsal === 'sertifikat' ? 'badge-green' :
+                                          row.kategoriAsal === 'pengalaman' ? 'badge-amber' :
+                                          'badge-indigo'
+                                        }`} style={{ fontSize: '10px' }}>
+                                          {row.kategoriAsal === 'sertifikat' ? '🏆 Sertifikat' :
+                                           row.kategoriAsal === 'pengalaman' ? '💼 Kerja' :
+                                           '📄 Transkrip'}
+                                        </span>
+                                      </div>
+                                    </>
+                                  )}
+                                </div>
+                              </td>
+                              <td>
+                                {row.isCertified && (selectedItem.status === 'recognized_kaprodi' || selectedItem.status === 'returned_admin') ? (
+                                  <input
+                                    type="text"
+                                    value={row.nilaiAsal}
+                                    onChange={(e) => updateRowField(row.id, 'nilaiAsal', e.target.value)}
+                                    className="input"
+                                    style={{ padding: '6px 10px' }}
+                                    onClick={(e) => e.stopPropagation()}
+                                  />
+                                ) : (
+                                  <span style={{ fontSize: 12.5 }}>{row.nilaiAsal}</span>
+                                )}
+                              </td>
+                              <td>
+                                {row.isCertified && (selectedItem.status === 'recognized_kaprodi' || selectedItem.status === 'returned_admin') ? (
+                                  <select
+                                    value={row.mkTujuanId}
+                                    onChange={(e) => updateRowField(row.id, 'mkTujuanId', e.target.value)}
+                                    onClick={(e) => e.stopPropagation()}
+                                    style={{
+                                      width: '100%',
+                                      padding: '6px 10px',
+                                      borderRadius: '6px',
+                                      border: '1px solid var(--gray-200)',
+                                      background: 'var(--surface)',
+                                      fontSize: '12.5px',
+                                      outline: 'none'
+                                    }}
+                                  >
+                                    <option value="">-- Pilih MK Kurikulum --</option>
+                                    {curriculumMK.map(mk => (
+                                      <option key={mk.id} value={mk.id}>{mk.kode_mk} - {mk.nama_mk} ({mk.sks} SKS)</option>
+                                    ))}
+                                  </select>
+                                ) : (
+                                  <span style={{ fontSize: 12.5, fontWeight: 500 }}>
+                                    {curriculumMK.find(mk => mk.id === row.mkTujuanId)?.nama_mk || 'Belum Dipetakan'}
+                                  </span>
+                                )}
+                              </td>
+                              <td>
                                 <select
-                                  value={row.mkTujuanId}
-                                  onChange={(e) => updateRowField(row.id, 'mkTujuanId', e.target.value)}
+                                  value={row.statusTujuan}
+                                  disabled={!(selectedItem.status === 'recognized_kaprodi' || selectedItem.status === 'returned_admin')}
+                                  onChange={(e) => updateRowField(row.id, 'statusTujuan', e.target.value)}
+                                  onClick={(e) => e.stopPropagation()}
                                   style={{
                                     width: '100%',
                                     padding: '6px 10px',
@@ -464,53 +731,35 @@ export default function AsessorDashboard() {
                                     border: '1px solid var(--gray-200)',
                                     background: 'var(--surface)',
                                     fontSize: '12.5px',
-                                    outline: 'none'
+                                    fontWeight: 600,
+                                    color: row.statusTujuan === 'disetujui' ? '#065f46' : '#991b1b'
                                   }}
                                 >
-                                  <option value="">-- Pilih MK Kurikulum --</option>
-                                  {curriculumMK.map(mk => (
-                                    <option key={mk.id} value={mk.id}>{mk.kode_mk} - {mk.nama_mk} ({mk.sks} SKS)</option>
-                                  ))}
+                                  <option value="disetujui">✅ Diakui</option>
+                                  <option value="ditolak">❌ Ditolak</option>
                                 </select>
-                              ) : (
-                                <span style={{ fontSize: 12.5, fontWeight: 500 }}>
-                                  {curriculumMK.find(mk => mk.id === row.mkTujuanId)?.nama_mk || 'Belum Dipetakan'}
-                                </span>
-                              )}
-                            </td>
-                            <td>
-                              <select
-                                value={row.statusTujuan}
-                                disabled={!(selectedItem.status === 'recognized_kaprodi' || selectedItem.status === 'returned_admin')}
-                                onChange={(e) => updateRowField(row.id, 'statusTujuan', e.target.value)}
-                                style={{
-                                  width: '100%',
-                                  padding: '6px 10px',
-                                  borderRadius: '6px',
-                                  border: '1px solid var(--gray-200)',
-                                  background: 'var(--surface)',
-                                  fontSize: '12.5px',
-                                  fontWeight: 600,
-                                  color: row.statusTujuan === 'disetujui' ? '#065f46' : '#991b1b'
-                                }}
-                              >
-                                <option value="disetujui">✅ Diakui</option>
-                                <option value="ditolak">❌ Ditolak</option>
-                              </select>
-                            </td>
-                            {(selectedItem.status === 'recognized_kaprodi' || selectedItem.status === 'returned_admin') && (
-                              <td>
-                                {row.isCertified ? (
-                                  <button onClick={() => deleteRow(row.id)} className="btn btn-ghost btn-icon" style={{ color: 'var(--danger)' }}>
-                                    <Trash2 size={15} />
-                                  </button>
-                                ) : (
-                                  <span style={{ fontSize: 11, color: 'var(--gray-400)' }}>Kaprodi</span>
-                                )}
                               </td>
-                            )}
-                          </tr>
-                        ))}
+                              {(selectedItem.status === 'recognized_kaprodi' || selectedItem.status === 'returned_admin') && (
+                                <td>
+                                  {row.isCertified ? (
+                                    <button 
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        deleteRow(row.id)
+                                      }} 
+                                      className="btn btn-ghost btn-icon" 
+                                      style={{ color: 'var(--danger)' }}
+                                    >
+                                      <Trash2 size={15} />
+                                    </button>
+                                  ) : (
+                                    <span style={{ fontSize: 11, color: 'var(--gray-400)' }}>Kaprodi</span>
+                                  )}
+                                </td>
+                              )}
+                            </tr>
+                          )
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -518,7 +767,7 @@ export default function AsessorDashboard() {
               </div>
             </div>
 
-            {/* Financial Calculation Side Panel */}
+            {/* Column 3: Financial Calculation Side Panel */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
               {/* Calculation Card */}
               <div className="card">
