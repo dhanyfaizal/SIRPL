@@ -45,16 +45,16 @@ const getOcrExtractedCourses = (prodiName) => {
 // Helper: Similarity score between source and curriculum course name
 const findBestMatch = (sourceName, curriculumList) => {
   if (!curriculumList || curriculumList.length === 0) return { bestMatch: null, confidence: 0 }
-  
+
   let bestMatch = null
   let maxScore = 0
-  
+
   const clean = (str) => str.toLowerCase().replace(/[^a-z0-9]/g, ' ')
   const wordsSource = clean(sourceName).split(/\s+/).filter(Boolean)
-  
+
   for (const mk of curriculumList) {
     const wordsTarget = clean(mk.nama_mk).split(/\s+/).filter(Boolean)
-    
+
     // Hitung kemiripan kata kunci
     let matches = 0
     for (const w of wordsSource) {
@@ -65,14 +65,14 @@ const findBestMatch = (sourceName, curriculumList) => {
         if (partial) matches += 1
       }
     }
-    
+
     const score = matches / (wordsSource.length + wordsTarget.length)
     if (score > maxScore) {
       maxScore = score
       bestMatch = mk
     }
   }
-  
+
   const confidence = Math.min(100, Math.round(maxScore * 100))
   return { bestMatch, confidence }
 }
@@ -148,7 +148,7 @@ const extractTextFromPdf = async (fileUrl, onProgress) => {
     const { data, error } = await supabase.storage
       .from('rpl-documents')
       .download(fileUrl)
-      
+
     if (error || !data) {
       throw new Error(error?.message || 'Gagal mengunduh berkas transkrip dari storage')
     }
@@ -236,7 +236,7 @@ const extractImagesFromPdf = async (fileUrl, onProgress) => {
     const { data, error } = await supabase.storage
       .from('rpl-documents')
       .download(fileUrl)
-      
+
     if (error || !data) {
       throw new Error(error?.message || 'Gagal mengunduh berkas dari storage')
     }
@@ -267,12 +267,12 @@ const extractImagesFromPdf = async (fileUrl, onProgress) => {
       const context = canvas.getContext('2d')
       canvas.height = viewport.height
       canvas.width = viewport.width
-      
+
       await page.render({
         canvasContext: context,
         viewport: viewport
       }).promise
-      
+
       const base64 = canvas.toDataURL('image/jpeg', 0.8)
       images.push(base64)
     }
@@ -288,15 +288,15 @@ const extractImagesFromPdf = async (fileUrl, onProgress) => {
 const parseLine = (line) => {
   const gradeRegex = /\b([A-E][+-]?)\b/
   const sksRegex = /\b([1-6])\b/
-  
+
   const gradeMatch = line.match(gradeRegex)
   const sksMatch = line.match(sksRegex)
-  
+
   if (!gradeMatch || !sksMatch) return null
-  
+
   const grade = gradeMatch[1]
   const sks = parseInt(sksMatch[1])
-  
+
   // Clean course name
   let courseName = line
     .replace(grade, '')
@@ -305,9 +305,9 @@ const parseLine = (line) => {
     .replace(/[^a-zA-Z\s]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
-    
+
   if (courseName.length < 3) return null
-  
+
   return {
     nama: courseName,
     sks: sks,
@@ -319,17 +319,17 @@ const parseLine = (line) => {
 const parseLocalOcrText = (text, curriculumList, prodiName) => {
   const lines = text.split('\n')
   const extracted = []
-  
+
   for (let line of lines) {
     line = line.trim()
     if (!line) continue
-    
+
     const parsed = parseLine(line)
     if (parsed) {
       extracted.push(parsed)
     }
   }
-  
+
   if (extracted.length === 0) {
     return getOcrExtractedCourses(prodiName)
   }
@@ -353,7 +353,7 @@ export default function KaprodiDashboard() {
   // Row structure: { id, kategoriAsal, mkAsal, sksAsal, nilaiAsal, mkTujuanId, status }
   const [rows, setRows] = useState([])
   const [ocrResults, setOcrResults] = useState([])
-  
+
   const [leftTab, setLeftTab] = useState('transcript') // 'transcript' | 'curriculum' | 'certificate' | 'experience'
   const [activeLeftDocUrl, setActiveLeftDocUrl] = useState('')
   const [activeLeftDocType, setActiveLeftDocType] = useState('transkrip')
@@ -368,7 +368,7 @@ export default function KaprodiDashboard() {
     try {
       const { data } = await dbPengajuan.getAll()
       let filtered = data || []
-      
+
       // Filter berdasarkan program studi Ka. Prodi jika perannya spesifik
       if (role === 'kaprodi_si') {
         filtered = filtered.filter(item => item.prodi?.kode === 'SI')
@@ -379,7 +379,7 @@ export default function KaprodiDashboard() {
       } else if (role === 'kaprodi_ka') {
         filtered = filtered.filter(item => item.prodi?.kode === 'KA')
       }
-      
+
       setSubmissions(filtered)
       setSelectedItem(null)
       setRows([])
@@ -442,7 +442,7 @@ export default function KaprodiDashboard() {
       loadCurriculum(pId)
       const isPending = selectedItem.status === 'validated_baak' || selectedItem.status === 'returned_asessor'
       loadRecognitionTable(selectedItem.id, isPending)
-      
+
       if (!isPending) {
         setRecognitionMethod('manual')
       }
@@ -464,7 +464,7 @@ export default function KaprodiDashboard() {
     }
 
     const systemPrompt = 'Anda adalah koordinator akademik SI-RPL STIKOM Yos Sudarso. Bantu memetakan berkas calon mahasiswa (transkrip, sertifikat, pengalaman kerja) ke mata kuliah prodi. Respon HARUS berupa JSON objek.'
-    
+
     const userContent = [
       {
         type: 'text',
@@ -587,16 +587,16 @@ export default function KaprodiDashboard() {
   const runJSOCR = () => {
     setOcrRunning(true)
     setScanEffect('javascript')
-    
+
     setTimeout(async () => {
       try {
         const prodiName = selectedItem.prodi?.nama || 'Teknik Informatika'
         const hasTranscript = !!selectedItem.file_transkrip_url
         const hasCertificates = selectedItem.sertifikat_kompetensi && selectedItem.sertifikat_kompetensi.length > 0
         const hasExperiences = selectedItem.pengalaman_kerja && selectedItem.pengalaman_kerja.length > 0
-        
+
         let allResults = []
-        
+
         // 1. Process Transcript
         if (hasTranscript) {
           setOcrProgress('Mengunduh berkas transkrip nilai...')
@@ -608,7 +608,7 @@ export default function KaprodiDashboard() {
             text = `TRANSKRIP NILAI AKADEMIK ASAL
             - Pendidikan Pancasila 2 SKS Nilai A`
           }
-          
+
           setOcrProgress('Menganalisis transkrip dengan kurikulum...')
           const localParsed = parseLocalOcrText(text, curriculumMK, prodiName)
           const transcriptResults = localParsed.map((ec, idx) => {
@@ -625,7 +625,7 @@ export default function KaprodiDashboard() {
           })
           allResults.push(...transcriptResults)
         }
-        
+
         // 2. Process Certificates
         if (hasCertificates) {
           setOcrProgress('Menganalisis berkas sertifikat kompetensi...')
@@ -640,7 +640,7 @@ export default function KaprodiDashboard() {
                 console.warn(`Gagal ekstraksi sertifikat ${c.nama}:`, e)
               }
             }
-            
+
             const queryName = c.nama
             const { bestMatch, confidence } = findBestMatch(queryName, curriculumMK)
             allResults.push({
@@ -654,7 +654,7 @@ export default function KaprodiDashboard() {
             })
           }
         }
-        
+
         // 3. Process Experience
         if (hasExperiences) {
           setOcrProgress('Menganalisis berkas pengalaman kerja...')
@@ -669,7 +669,7 @@ export default function KaprodiDashboard() {
                 console.warn(`Gagal ekstraksi pengalaman ${ex.posisi}:`, e)
               }
             }
-            
+
             const queryName = `${ex.posisi} ${ex.deskripsi || ''}`
             const { bestMatch, confidence } = findBestMatch(queryName, curriculumMK)
             allResults.push({
@@ -683,9 +683,9 @@ export default function KaprodiDashboard() {
             })
           }
         }
-        
+
         setOcrResults(allResults)
-        
+
         const initialRows = allResults.map((pr, idx) => ({
           id: `row-js-map-${idx}-${Date.now()}`,
           kategoriAsal: pr.kategoriAsal,
@@ -695,7 +695,7 @@ export default function KaprodiDashboard() {
           mkTujuanId: pr.recommendedMkId,
           status: 'diakui'
         }))
-        
+
         setRows(initialRows)
         setOcrRunning(false)
         setScanEffect(null)
@@ -714,7 +714,7 @@ export default function KaprodiDashboard() {
   const runAIOCR = () => {
     setOcrRunning(true)
     setScanEffect('ai')
-    
+
     setTimeout(async () => {
       try {
         const prodiName = selectedItem.prodi?.nama || 'Teknik Informatika'
@@ -739,7 +739,7 @@ export default function KaprodiDashboard() {
             } catch (e) {
               console.warn('Gagal membaca text layer, mencoba render gambar...', e)
             }
-            
+
             // If the PDF is scanned (has no text layer or very short text), render pages as images
             if (!transcriptText || transcriptText.trim() === 'MOCK_OCR_FALLBACK_TEXT' || transcriptText.trim().length < 50) {
               setOcrProgress('Mengonversi PDF transkrip ke gambar untuk AI Vision...')
@@ -850,7 +850,7 @@ export default function KaprodiDashboard() {
           experiences: experiencesPayload,
           experienceImages
         }, selectedAiModel)
-        
+
         if (results && results.length > 0) {
           const parsedResults = results.map((r, idx) => {
             const matchMK = curriculumMK.find(mk => mk.id === r.mkTujuanId)
@@ -869,9 +869,9 @@ export default function KaprodiDashboard() {
               confidence: similarity
             }
           })
-          
+
           setOcrResults(parsedResults)
-          
+
           const initialRows = parsedResults.map((pr, idx) => ({
             id: `row-ai-${idx}-${Date.now()}`,
             kategoriAsal: pr.kategoriAsal,
@@ -881,7 +881,7 @@ export default function KaprodiDashboard() {
             mkTujuanId: pr.recommendedMkId,
             status: 'diakui'
           }))
-          
+
           setRows(initialRows)
           setOcrRunning(false)
           setScanEffect(null)
@@ -894,15 +894,15 @@ export default function KaprodiDashboard() {
         console.warn('AI OCR API error (menggunakan fallback mesin OCR lokal):', err.message)
         toast.error(err.message, { duration: 6000 })
         setOcrProgress('Mengaktifkan pemrosesan pintar lokal (fallback)...')
-        
+
         try {
           const prodiName = selectedItem.prodi?.nama || 'Teknik Informatika'
           const hasTranscript = !!selectedItem.file_transkrip_url
           const hasCertificates = selectedItem.sertifikat_kompetensi && selectedItem.sertifikat_kompetensi.length > 0
           const hasExperiences = selectedItem.pengalaman_kerja && selectedItem.pengalaman_kerja.length > 0
-          
+
           let fallbackResults = []
-          
+
           if (hasTranscript) {
             let text = ''
             if (!isMock && selectedItem.file_transkrip_url?.includes('/')) {
@@ -924,7 +924,7 @@ export default function KaprodiDashboard() {
               }
             }))
           }
-          
+
           if (hasCertificates) {
             selectedItem.sertifikat_kompetensi.forEach((c, idx) => {
               const { bestMatch, confidence } = findBestMatch(c.nama, curriculumMK)
@@ -939,7 +939,7 @@ export default function KaprodiDashboard() {
               })
             })
           }
-          
+
           if (hasExperiences) {
             selectedItem.pengalaman_kerja.forEach((ex, idx) => {
               const { bestMatch, confidence } = findBestMatch(`${ex.posisi} ${ex.deskripsi || ''}`, curriculumMK)
@@ -954,9 +954,9 @@ export default function KaprodiDashboard() {
               })
             })
           }
-          
+
           setOcrResults(fallbackResults)
-          
+
           const mockRows = fallbackResults.map((pr, idx) => ({
             id: `row-ai-fallback-${idx}-${Date.now()}`,
             kategoriAsal: pr.kategoriAsal,
@@ -966,7 +966,7 @@ export default function KaprodiDashboard() {
             mkTujuanId: pr.recommendedMkId,
             status: 'diakui'
           }))
-          
+
           setRows(mockRows)
           setOcrRunning(false)
           setScanEffect(null)
@@ -1007,7 +1007,7 @@ export default function KaprodiDashboard() {
       toast.error(`Mata kuliah ${mk.nama_mk} sudah ada di tabel pemetaan!`)
       return
     }
-    
+
     setRows([
       ...rows,
       {
@@ -1059,7 +1059,7 @@ export default function KaprodiDashboard() {
 
   const addOcrResultToMapping = (ocrItem) => {
     const existsIndex = rows.findIndex(r => r.mkAsal.toLowerCase() === ocrItem.mkAsal.toLowerCase())
-    
+
     const newRow = {
       id: `row-ocr-map-${Date.now()}`,
       kategoriAsal: ocrItem.kategoriAsal || 'transkrip',
@@ -1069,7 +1069,7 @@ export default function KaprodiDashboard() {
       mkTujuanId: ocrItem.recommendedMkId,
       status: 'diakui'
     }
-    
+
     if (existsIndex !== -1) {
       const updatedRows = [...rows]
       updatedRows[existsIndex] = newRow
@@ -1083,7 +1083,7 @@ export default function KaprodiDashboard() {
 
   const addAllOcrRecommendations = () => {
     if (ocrResults.length === 0) return
-    
+
     const newRows = ocrResults.map((pr, idx) => ({
       id: `row-all-ocr-${idx}-${Date.now()}`,
       kategoriAsal: pr.kategoriAsal || 'transkrip',
@@ -1093,7 +1093,7 @@ export default function KaprodiDashboard() {
       mkTujuanId: pr.recommendedMkId,
       status: 'diakui'
     }))
-    
+
     setRows(newRows)
     toast.success(`Semua ${newRows.length} rekomendasi hasil OCR dimasukkan ke tabel pemetaan!`)
   }
@@ -1377,10 +1377,10 @@ export default function KaprodiDashboard() {
               {/* Right Column: OCR Action Options */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
                 {/* Javascript OCR Card */}
-                <div className="card" style={{ cursor: 'pointer', borderColor: 'var(--gray-200)', transition: 'border-color .15s' }} 
-                     onClick={runJSOCR}
-                     onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--emerald-400)'}
-                     onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--gray-200)'}>
+                <div className="card" style={{ cursor: 'pointer', borderColor: 'var(--gray-200)', transition: 'border-color .15s' }}
+                  onClick={runJSOCR}
+                  onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--emerald-400)'}
+                  onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--gray-200)'}>
                   <div className="card-body" style={{ padding: 20 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
                       <div style={{ background: '#ecfdf5', color: '#059669', width: 32, height: 32, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: 12 }}>JS</div>
@@ -1397,17 +1397,17 @@ export default function KaprodiDashboard() {
                   <div className="card-body" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <div style={{ background: '#e0e7ff', color: 'var(--indigo-600)', width: 32, height: 32, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Brain size={16} /></div>
-                      <h4 style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>Smart AI OCR (Sumopod AI)</h4>
+                      <h4 style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>Smart AI OCR (AISYS Engine)</h4>
                     </div>
                     <p style={{ fontSize: 12, color: 'var(--gray-500)', lineHeight: 1.5, margin: 0 }}>
-                      Ekstraksi berkas & OBE matching pintar menggunakan model Vision AI pilihan Anda.
+                      Ekstraksi berkas dan matching pintar menggunakan model Vision AI.
                     </p>
-                    
+
                     {/* Model Dropdown Selector */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                       <label style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--gray-600)', letterSpacing: '0.5px' }}>PILIH MODEL VISION AI:</label>
-                      <select 
-                        value={selectedAiModel} 
+                      <select
+                        value={selectedAiModel}
                         onChange={(e) => setSelectedAiModel(e.target.value)}
                         className="input"
                         style={{ padding: '6px 10px', fontSize: 12.5, fontWeight: 600, background: '#fff', borderColor: 'var(--indigo-200)', borderRadius: 6 }}
@@ -1419,7 +1419,7 @@ export default function KaprodiDashboard() {
                       </select>
                     </div>
 
-                    <button 
+                    <button
                       onClick={runAIOCR}
                       className="btn btn-primary btn-sm"
                       style={{ marginTop: 4, width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontWeight: 700 }}
@@ -1430,10 +1430,10 @@ export default function KaprodiDashboard() {
                 </div>
 
                 {/* Manual Input Alternative */}
-                <div className="card" style={{ cursor: 'pointer', borderColor: 'var(--gray-200)', transition: 'border-color .15s' }} 
-                     onClick={handleManualInput}
-                     onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--gray-400)'}
-                     onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--gray-200)'}>
+                <div className="card" style={{ cursor: 'pointer', borderColor: 'var(--gray-200)', transition: 'border-color .15s' }}
+                  onClick={handleManualInput}
+                  onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--gray-400)'}
+                  onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--gray-200)'}>
                   <div className="card-body" style={{ padding: 16 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
                       <Plus size={16} color="var(--gray-500)" />
@@ -1458,7 +1458,7 @@ export default function KaprodiDashboard() {
                 </div>
                 <div className="card-body" style={{ padding: 12 }}>
                   <div style={{ border: '1px solid var(--gray-200)', borderRadius: 8, overflow: 'hidden', height: 420, position: 'relative' }}>
-                    
+
                     {/* Laser scan animation overlay */}
                     {scanEffect === 'javascript' && (
                       <div style={{
@@ -1765,20 +1765,20 @@ export default function KaprodiDashboard() {
                             {ocrResults.map(ocrItem => {
                               const recommendedMk = curriculumMK.find(mk => mk.id === ocrItem.recommendedMkId)
                               const isMapped = rows.some(r => r.mkAsal.toLowerCase() === ocrItem.mkAsal.toLowerCase() && r.mkTujuanId === ocrItem.recommendedMkId)
-                              
+
                               return (
                                 <tr key={ocrItem.id} style={{ opacity: isMapped ? 0.75 : 1 }}>
                                   <td style={{ padding: '8px 10px', fontSize: 12 }}>
-                                    <span style={{ 
-                                      display: 'inline-block', 
-                                      fontSize: '10px', 
-                                      padding: '1px 5px', 
-                                      borderRadius: 4, 
-                                      marginRight: 6, 
-                                      fontWeight: 700, 
-                                      textTransform: 'uppercase', 
-                                      background: ocrItem.kategoriAsal === 'sertifikat' ? '#e6f4ea' : ocrItem.kategoriAsal === 'pengalaman' ? '#fef7e0' : '#e8eaed', 
-                                      color: ocrItem.kategoriAsal === 'sertifikat' ? '#137333' : ocrItem.kategoriAsal === 'pengalaman' ? '#b06000' : '#3c4043' 
+                                    <span style={{
+                                      display: 'inline-block',
+                                      fontSize: '10px',
+                                      padding: '1px 5px',
+                                      borderRadius: 4,
+                                      marginRight: 6,
+                                      fontWeight: 700,
+                                      textTransform: 'uppercase',
+                                      background: ocrItem.kategoriAsal === 'sertifikat' ? '#e6f4ea' : ocrItem.kategoriAsal === 'pengalaman' ? '#fef7e0' : '#e8eaed',
+                                      color: ocrItem.kategoriAsal === 'sertifikat' ? '#137333' : ocrItem.kategoriAsal === 'pengalaman' ? '#b06000' : '#3c4043'
                                     }}>
                                       {ocrItem.kategoriAsal === 'sertifikat' ? '🏆 Sertifikat' : ocrItem.kategoriAsal === 'pengalaman' ? '💼 Kerja' : '📄 Transkrip'}
                                     </span>
@@ -1889,14 +1889,13 @@ export default function KaprodiDashboard() {
                                     <option value="pengalaman">💼 Kerja</option>
                                   </select>
                                 ) : (
-                                  <span className={`badge-pill ${
-                                    row.kategoriAsal === 'sertifikat' ? 'badge-green' :
+                                  <span className={`badge-pill ${row.kategoriAsal === 'sertifikat' ? 'badge-green' :
                                     row.kategoriAsal === 'pengalaman' ? 'badge-amber' :
-                                    'badge-indigo'
-                                  }`}>
+                                      'badge-indigo'
+                                    }`}>
                                     {row.kategoriAsal === 'sertifikat' ? '🏆 Sertifikat' :
-                                     row.kategoriAsal === 'pengalaman' ? '💼 Kerja' :
-                                     '📄 Transkrip'}
+                                      row.kategoriAsal === 'pengalaman' ? '💼 Kerja' :
+                                        '📄 Transkrip'}
                                   </span>
                                 )}
                               </td>
