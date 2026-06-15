@@ -347,7 +347,7 @@ export default function KaprodiDashboard() {
   const [ocrRunning, setOcrRunning] = useState(false)
   const [ocrProgress, setOcrProgress] = useState('')
   const [recognitionMethod, setRecognitionMethod] = useState('') // 'ai' or 'manual' or 'javascript'
-  const [selectedAiModel, setSelectedAiModel] = useState('gemini/gemini-2.5-flash')
+  const [selectedAiModel, setSelectedAiModel] = useState('gpt-5-mini')
 
   // Recognition Table Rows State
   // Row structure: { id, kategoriAsal, mkAsal, sksAsal, nilaiAsal, mkTujuanId, status }
@@ -1400,24 +1400,8 @@ export default function KaprodiDashboard() {
                       <h4 style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>Smart AI OCR (AISYS Engine)</h4>
                     </div>
                     <p style={{ fontSize: 12, color: 'var(--gray-500)', lineHeight: 1.5, margin: 0 }}>
-                      Ekstraksi berkas dan matching pintar menggunakan model Vision AI.
+                      Ekstraksi berkas dan matching pintar menggunakan model Vision AI (GPT-5 Mini).
                     </p>
-
-                    {/* Model Dropdown Selector */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                      <label style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--gray-600)', letterSpacing: '0.5px' }}>PILIH MODEL VISION AI:</label>
-                      <select
-                        value={selectedAiModel}
-                        onChange={(e) => setSelectedAiModel(e.target.value)}
-                        className="input"
-                        style={{ padding: '6px 10px', fontSize: 12.5, fontWeight: 600, background: '#fff', borderColor: 'var(--indigo-200)', borderRadius: 6 }}
-                      >
-                        <option value="gemini/gemini-2.5-flash">Gemini 2.5 Flash (Standard - Rp1.000/run)</option>
-                        <option value="gpt-5-nano">GPT-5 Nano (Sangat Murah - Rp25/run)</option>
-                        <option value="gpt-5-mini">GPT-5 Mini (Murah - Rp100/run)</option>
-                        <option value="gpt-4.1-mini">GPT-4.1 Mini (Stabil - Rp120/run)</option>
-                      </select>
-                    </div>
 
                     <button
                       onClick={runAIOCR}
