@@ -473,8 +473,8 @@ export default function KaprodiDashboard() {
         Daftar Kurikulum resmi Program Studi ${prodiName} yang tersedia:
         ${JSON.stringify(curriculumCourses.map(c => ({ id: c.id, kode: c.kode_mk, nama: c.nama_mk, sks: c.sks })))}
         
-        Tolong lakukan langkah-langkah berikut:
-        1. Untuk Transkrip: Ekstrak mata kuliah asal yang sah (nama, SKS, nilai huruf) dan petakan ke ID kurikulum tujuan yang cocok (kategoriAsal="transkrip").
+        Tolong lakukan langkah-langkah berikut secara lengkap dan menyeluruh (PENTING: JANGAN ADA MATA KULIAH/BERKAS YANG DILEWATKAN):
+        1. Untuk Transkrip: Ekstrak SEMUA mata kuliah asal yang sah yang tertera pada berkas (nama, SKS, nilai huruf) tanpa ada yang terlewat atau diringkas, lalu petakan ke ID kurikulum tujuan yang cocok (kategoriAsal="transkrip").
         2. Untuk Sertifikat Kompetensi: Bandingkan nama dan deskripsi sertifikat dengan kurikulum resmi. Petakan ke mata kuliah yang paling cocok dengan set kategoriAsal="sertifikat", sksAsal=0, nilaiAsal="A".
         3. Untuk Pengalaman Kerja: Bandingkan posisi dan perusahaan dengan kurikulum resmi. Petakan ke mata kuliah yang paling cocok dengan set kategoriAsal="pengalaman", sksAsal=0, nilaiAsal="A".
         
@@ -553,6 +553,7 @@ export default function KaprodiDashboard() {
       },
       body: JSON.stringify({
         model: selectedModel || 'gemini/gemini-2.5-flash',
+        temperature: 0,
         messages: [
           {
             role: 'system',
@@ -1400,7 +1401,7 @@ export default function KaprodiDashboard() {
                       <h4 style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>Smart AI OCR (AISYS Engine)</h4>
                     </div>
                     <p style={{ fontSize: 12, color: 'var(--gray-500)', lineHeight: 1.5, margin: 0 }}>
-                      Ekstraksi berkas dan matching pintar menggunakan model Vision AI (GPT-5 Mini).
+                      Ekstraksi berkas dan matching pintar menggunakan model Vision AI (AISYS Engine).
                     </p>
 
                     <button
