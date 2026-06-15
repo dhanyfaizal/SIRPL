@@ -455,7 +455,7 @@ export default function KaprodiDashboard() {
   const [scanEffect, setScanEffect] = useState(null) // 'javascript' | 'ai' | null
 
   // API Call to Sumopod AI
-  const callSumopodAI = async (prodiName, curriculumCourses, payload) => {
+  const callSumopodAI = async (prodiName, curriculumCourses, payload, selectedModel) => {
     const apiKey = import.meta.env.VITE_SUMOPOD_API_KEY
     const apiUrl = import.meta.env.VITE_SUMOPOD_API_URL || 'https://ai.sumopod.com/v1'
 
@@ -552,7 +552,7 @@ export default function KaprodiDashboard() {
         'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        model: 'gemini/gemini-2.5-flash',
+        model: selectedModel || 'gemini/gemini-2.5-flash',
         messages: [
           {
             role: 'system',
