@@ -358,7 +358,7 @@ export default function KaprodiDashboard() {
     }
   }
 
-  const loadRecognitionTable = async (pengajuanId) => {
+  const loadRecognitionTable = async (pengajuanId, isPending) => {
     try {
       const { data } = await dbRekognisi.getByPengajuanId(pengajuanId)
       if (data && data.data_mapping_mk) {
@@ -372,7 +372,9 @@ export default function KaprodiDashboard() {
           status: item.Status || 'diakui'
         }))
         setRows(initialRows)
-        setRecognitionMethod('manual')
+        if (!isPending) {
+          setRecognitionMethod('manual')
+        }
       }
     } catch (e) {
       console.error(e)
@@ -383,9 +385,9 @@ export default function KaprodiDashboard() {
     if (selectedItem) {
       const pId = selectedItem.prodi_pilihan_id || selectedItem.prodi?.id
       loadCurriculum(pId)
-      loadRecognitionTable(selectedItem.id)
-      
       const isPending = selectedItem.status === 'validated_baak' || selectedItem.status === 'returned_asessor'
+      loadRecognitionTable(selectedItem.id, isPending)
+      
       if (!isPending) {
         setRecognitionMethod('manual')
       }
@@ -398,7 +400,8 @@ export default function KaprodiDashboard() {
   const [scanEffect, setScanEffect] = useState(null) // 'javascript' | 'ai' | null
 
   // API Call to Sumopod AI
-  const callSumopodAI = async (prodiName, curriculumCourses, rawTranscriptText) => {
+  // API Call to Sumopod AI
+  const callSumopodAI = async (prodiName, curriculumCourses, payload) => {
     const apiKey = import.meta.env.VITE_SUMOPOD_API_KEY
     const apiUrl = import.meta.env.VITE_SUMOPOD_API_URL || 'https://ai.sumopod.com/v1'
 
@@ -417,33 +420,30 @@ export default function KaprodiDashboard() {
         messages: [
           {
             role: 'system',
-            content: 'Anda adalah koordinator akademik SI-RPL STIKOM Yos Sudarso. Bantu memetakan transkrip mahasiswa ke mata kuliah prodi. Respon HARUS berupa JSON objek.'
+            content: 'Anda adalah koordinator akademik SI-RPL STIKOM Yos Sudarso. Bantu memetakan berkas calon mahasiswa (transkrip, sertifikat, pengalaman kerja) ke mata kuliah prodi. Respon HARUS berupa JSON objek.'
           },
           {
             role: 'user',
-            content: `Anda adalah koordinator akademik SI-RPL STIKOM Yos Sudarso. Tugas Anda adalah memetakan transkrip akademik asal calon mahasiswa ke mata kuliah kurikulum Program Studi ${prodiName}.
+            content: `Anda adalah koordinator akademik SI-RPL STIKOM Yos Sudarso. Tugas Anda adalah memetakan berkas akademik asal calon mahasiswa ke mata kuliah kurikulum Program Studi ${prodiName}.
             
-            Berikut adalah teks transkrip asal (hasil pembacaan OCR):
-            ---
-            ${rawTranscriptText}
-            ---
+            Berikut adalah data berkas calon mahasiswa yang tersedia:
+            ${payload.transcriptText ? `- TEKS TRANSKRIP ASAL (OCR):\n${payload.transcriptText}\n` : ''}
+            ${payload.certificates && payload.certificates.length > 0 ? `- SERTIFIKAT KOMPETENSI:\n${JSON.stringify(payload.certificates)}\n` : ''}
+            ${payload.experiences && payload.experiences.length > 0 ? `- PENGALAMAN KERJA / PORTOFOLIO:\n${JSON.stringify(payload.experiences)}\n` : ''}
 
             Daftar Kurikulum resmi Program Studi ${prodiName} yang tersedia:
             ${JSON.stringify(curriculumCourses.map(c => ({ id: c.id, kode: c.kode_mk, nama: c.nama_mk, sks: c.sks })))}
             
             Tolong lakukan langkah-langkah berikut:
-            1. Analisis teks transkrip di atas secara menyeluruh. Temukan semua baris mata kuliah yang sah (memiliki nama mata kuliah, SKS, dan nilai kelulusan A/B/C/D/E).
-            2. Ekstrak informasi dari setiap mata kuliah asal tersebut:
-               - Nama Mata Kuliah Asal (bersihkan dari nomor urut atau karakter aneh)
-               - Jumlah SKS Asal (biasanya angka 1-6)
-               - Nilai Huruf Asal (A, B, C, D, E, dll.)
-            3. Bandingkan nama mata kuliah asal tersebut dengan daftar kurikulum resmi yang tersedia di atas. Cari mata kuliah yang memiliki nama sama atau mirip (sinonim/ekuivalen secara makna akademik).
-            4. Petakan ke mata kuliah kurikulum tujuan yang paling cocok (masukkan ID mata kuliah kurikulum tersebut ke dalam field "mkTujuanId").
+            1. Untuk Transkrip: Ekstrak mata kuliah asal yang sah (nama, SKS, nilai huruf) dan petakan ke ID kurikulum tujuan yang cocok (kategoriAsal="transkrip").
+            2. Untuk Sertifikat Kompetensi: Bandingkan nama dan deskripsi sertifikat dengan kurikulum resmi. Petakan ke mata kuliah yang paling cocok dengan set kategoriAsal="sertifikat", sksAsal=0, nilaiAsal="A".
+            3. Untuk Pengalaman Kerja: Bandingkan posisi dan perusahaan dengan kurikulum resmi. Petakan ke mata kuliah yang paling cocok dengan set kategoriAsal="pengalaman", sksAsal=0, nilaiAsal="A".
             
             Respon Anda HARUS berupa objek JSON dengan struktur berikut dan tidak boleh ada teks tambahan di luar JSON:
             {
               "courses": [
                 {
+                  "kategoriAsal": "transkrip",
                   "mkAsal": "Nama Mata Kuliah Asal",
                   "sksAsal": 3,
                   "nilaiAsal": "A",
@@ -478,40 +478,108 @@ export default function KaprodiDashboard() {
   const runJSOCR = () => {
     setOcrRunning(true)
     setScanEffect('javascript')
-    setOcrProgress('Mengunduh berkas transkrip nilai...')
     
     setTimeout(async () => {
       try {
         const prodiName = selectedItem.prodi?.nama || 'Teknik Informatika'
-        let text = ''
+        const hasTranscript = !!selectedItem.file_transkrip_url
+        const hasCertificates = selectedItem.sertifikat_kompetensi && selectedItem.sertifikat_kompetensi.length > 0
+        const hasExperiences = selectedItem.pengalaman_kerja && selectedItem.pengalaman_kerja.length > 0
         
-        if (!isMock && selectedItem.file_transkrip_url?.includes('/')) {
-          setOcrProgress('Mengekstrak layer teks berkas PDF...')
-          text = await extractTextFromPdf(selectedItem.file_transkrip_url, (msg) => setOcrProgress(msg))
-        } else {
-          text = 'Mock text'
+        let allResults = []
+        
+        // 1. Process Transcript
+        if (hasTranscript) {
+          setOcrProgress('Mengunduh berkas transkrip nilai...')
+          let text = ''
+          if (!isMock && selectedItem.file_transkrip_url?.includes('/')) {
+            setOcrProgress('Mengekstrak layer teks berkas PDF Transkrip...')
+            text = await extractTextFromPdf(selectedItem.file_transkrip_url, (msg) => setOcrProgress(msg))
+          } else {
+            text = `TRANSKRIP NILAI AKADEMIK ASAL
+            - Pendidikan Pancasila 2 SKS Nilai A`
+          }
+          
+          setOcrProgress('Menganalisis transkrip dengan kurikulum...')
+          const localParsed = parseLocalOcrText(text, curriculumMK, prodiName)
+          const transcriptResults = localParsed.map((ec, idx) => {
+            const { bestMatch, confidence } = findBestMatch(ec.nama, curriculumMK)
+            return {
+              id: `ocr-js-tx-${idx}-${Date.now()}`,
+              kategoriAsal: 'transkrip',
+              mkAsal: ec.nama,
+              sksAsal: ec.sks,
+              nilaiAsal: ec.nilai,
+              recommendedMkId: bestMatch ? bestMatch.id : '',
+              confidence: confidence
+            }
+          })
+          allResults.push(...transcriptResults)
         }
         
-        setOcrProgress('Menganalisis kemiripan dengan kurikulum prodi...')
-        const localParsed = parseLocalOcrText(text, curriculumMK, prodiName)
-        
-        const parsedResults = localParsed.map((ec, idx) => {
-          const { bestMatch, confidence } = findBestMatch(ec.nama, curriculumMK)
-          return {
-            id: `ocr-js-${idx}-${Date.now()}`,
-            mkAsal: ec.nama,
-            sksAsal: ec.sks,
-            nilaiAsal: ec.nilai,
-            recommendedMkId: bestMatch ? bestMatch.id : '',
-            confidence: confidence
+        // 2. Process Certificates
+        if (hasCertificates) {
+          setOcrProgress('Menganalisis berkas sertifikat kompetensi...')
+          for (let idx = 0; idx < selectedItem.sertifikat_kompetensi.length; idx++) {
+            const c = selectedItem.sertifikat_kompetensi[idx]
+            let fileText = ''
+            if (!isMock && c.file_url?.includes('/')) {
+              setOcrProgress(`Mengekstrak teks Sertifikat ${idx + 1}: ${c.nama}...`)
+              try {
+                fileText = await extractTextFromPdf(c.file_url)
+              } catch (e) {
+                console.warn(`Gagal ekstraksi sertifikat ${c.nama}:`, e)
+              }
+            }
+            
+            const queryName = c.nama
+            const { bestMatch, confidence } = findBestMatch(queryName, curriculumMK)
+            allResults.push({
+              id: `ocr-js-cert-${idx}-${Date.now()}`,
+              kategoriAsal: 'sertifikat',
+              mkAsal: c.nama,
+              sksAsal: 0,
+              nilaiAsal: 'A',
+              recommendedMkId: bestMatch ? bestMatch.id : '',
+              confidence: confidence
+            })
           }
-        })
+        }
         
-        setOcrResults(parsedResults)
+        // 3. Process Experience
+        if (hasExperiences) {
+          setOcrProgress('Menganalisis berkas pengalaman kerja...')
+          for (let idx = 0; idx < selectedItem.pengalaman_kerja.length; idx++) {
+            const ex = selectedItem.pengalaman_kerja[idx]
+            let fileText = ''
+            if (!isMock && ex.file_url?.includes('/')) {
+              setOcrProgress(`Mengekstrak teks Pengalaman ${idx + 1}: ${ex.posisi}...`)
+              try {
+                fileText = await extractTextFromPdf(ex.file_url)
+              } catch (e) {
+                console.warn(`Gagal ekstraksi pengalaman ${ex.posisi}:`, e)
+              }
+            }
+            
+            const queryName = `${ex.posisi} ${ex.deskripsi || ''}`
+            const { bestMatch, confidence } = findBestMatch(queryName, curriculumMK)
+            allResults.push({
+              id: `ocr-js-exp-${idx}-${Date.now()}`,
+              kategoriAsal: 'pengalaman',
+              mkAsal: `${ex.posisi} di ${ex.perusahaan}`,
+              sksAsal: 0,
+              nilaiAsal: 'A',
+              recommendedMkId: bestMatch ? bestMatch.id : '',
+              confidence: confidence
+            })
+          }
+        }
         
-        const initialRows = parsedResults.map((pr, idx) => ({
+        setOcrResults(allResults)
+        
+        const initialRows = allResults.map((pr, idx) => ({
           id: `row-js-map-${idx}-${Date.now()}`,
-          kategoriAsal: 'transkrip',
+          kategoriAsal: pr.kategoriAsal,
           mkAsal: pr.mkAsal,
           sksAsal: pr.sksAsal,
           nilaiAsal: pr.nilaiAsal,
@@ -523,7 +591,7 @@ export default function KaprodiDashboard() {
         setOcrRunning(false)
         setScanEffect(null)
         setRecognitionMethod('javascript')
-        toast.success(`OCR lokal berhasil memetakan ${parsedResults.length} mata kuliah!`)
+        toast.success(`OCR lokal berhasil memetakan ${allResults.length} data!`)
       } catch (err) {
         console.error(err)
         toast.error('Gagal menjalankan scan lokal: ' + err.message)
@@ -537,31 +605,90 @@ export default function KaprodiDashboard() {
   const runAIOCR = () => {
     setOcrRunning(true)
     setScanEffect('ai')
-    setOcrProgress('Mengunduh berkas transkrip nilai...')
     
     setTimeout(async () => {
       try {
         const prodiName = selectedItem.prodi?.nama || 'Teknik Informatika'
-        let text = ''
-        
-        if (!isMock && selectedItem.file_transkrip_url?.includes('/')) {
-          setOcrProgress('Membaca berkas PDF...')
-          text = await extractTextFromPdf(selectedItem.file_transkrip_url, (msg) => setOcrProgress(msg))
-        } else {
-          // Mock mode text
-          text = `TRANSKRIP NILAI AKADEMIK ASAL
-          Nama Pendaftar: ${selectedItem.profile?.nama_lengkap}
-          Prodi RPL Pilihan: ${prodiName}
-          
-          Mata Kuliah:
-          - SI-101 Pengantar Sistem Informasi 3 SKS Nilai A
-          - SI-102 Analisis & Perancangan Sistem 3 SKS Nilai B
-          - SI-103 Pengantar E-Business 3 SKS Nilai A
-          - SI-104 Pendidikan Pancasila 2 SKS Nilai A`
+        const hasTranscript = !!selectedItem.file_transkrip_url
+        const hasCertificates = selectedItem.sertifikat_kompetensi && selectedItem.sertifikat_kompetensi.length > 0
+        const hasExperiences = selectedItem.pengalaman_kerja && selectedItem.pengalaman_kerja.length > 0
+
+        let transcriptText = ''
+        let certificatesPayload = []
+        let experiencesPayload = []
+
+        // 1. Transcript OCR
+        if (hasTranscript) {
+          setOcrProgress('Mengunduh berkas transkrip nilai...')
+          if (!isMock && selectedItem.file_transkrip_url?.includes('/')) {
+            setOcrProgress('Membaca berkas PDF Transkrip...')
+            transcriptText = await extractTextFromPdf(selectedItem.file_transkrip_url, (msg) => setOcrProgress(msg))
+          } else {
+            transcriptText = `TRANSKRIP NILAI AKADEMIK ASAL
+            Nama Pendaftar: ${selectedItem.profile?.nama_lengkap}
+            Prodi RPL Pilihan: ${prodiName}
+            
+            Mata Kuliah:
+            - SI-101 Pengantar Sistem Informasi 3 SKS Nilai A
+            - SI-102 Analisis & Perancangan Sistem 3 SKS Nilai B
+            - SI-103 Pengantar E-Business 3 SKS Nilai A
+            - SI-104 Pendidikan Pancasila 2 SKS Nilai A`
+          }
         }
 
-        setOcrProgress('Menganalisis dan memetakan mata kuliah dengan DeepSeek AI...')
-        const results = await callSumopodAI(prodiName, curriculumMK, text)
+        // 2. Certificate OCR / details
+        if (hasCertificates) {
+          setOcrProgress('Mengumpulkan berkas sertifikat kompetensi...')
+          for (let idx = 0; idx < selectedItem.sertifikat_kompetensi.length; idx++) {
+            const c = selectedItem.sertifikat_kompetensi[idx]
+            let fileText = ''
+            if (!isMock && c.file_url?.includes('/')) {
+              setOcrProgress(`Membaca PDF Sertifikat ${idx + 1}: ${c.nama}...`)
+              try {
+                fileText = await extractTextFromPdf(c.file_url)
+              } catch (e) {
+                console.warn(`Gagal membaca sertifikat:`, e)
+              }
+            }
+            certificatesPayload.push({
+              nama: c.nama,
+              penerbit: c.penerbit,
+              tahun: c.tahun,
+              textExtracted: fileText
+            })
+          }
+        }
+
+        // 3. Experience OCR / details
+        if (hasExperiences) {
+          setOcrProgress('Mengumpulkan berkas pengalaman kerja...')
+          for (let idx = 0; idx < selectedItem.pengalaman_kerja.length; idx++) {
+            const ex = selectedItem.pengalaman_kerja[idx]
+            let fileText = ''
+            if (!isMock && ex.file_url?.includes('/')) {
+              setOcrProgress(`Membaca PDF Pengalaman ${idx + 1}: ${ex.posisi}...`)
+              try {
+                fileText = await extractTextFromPdf(ex.file_url)
+              } catch (e) {
+                console.warn(`Gagal membaca pengalaman:`, e)
+              }
+            }
+            experiencesPayload.push({
+              posisi: ex.posisi,
+              perusahaan: ex.perusahaan,
+              durasi: ex.durasi,
+              deskripsi: ex.deskripsi,
+              textExtracted: fileText
+            })
+          }
+        }
+
+        setOcrProgress('Menganalisis dan memetakan berkas dengan DeepSeek AI...')
+        const results = await callSumopodAI(prodiName, curriculumMK, {
+          transcriptText,
+          certificates: certificatesPayload,
+          experiences: experiencesPayload
+        })
         
         if (results && results.length > 0) {
           const parsedResults = results.map((r, idx) => {
@@ -573,8 +700,9 @@ export default function KaprodiDashboard() {
             }
             return {
               id: `ocr-ai-${idx}-${Date.now()}`,
+              kategoriAsal: r.kategoriAsal || 'transkrip',
               mkAsal: r.mkAsal || r.MK_Asal || 'Mata Kuliah',
-              sksAsal: parseInt(r.sksAsal || r.SKS_Asal) || 3,
+              sksAsal: parseInt(r.sksAsal || r.SKS_Asal) || 0,
               nilaiAsal: r.nilaiAsal || r.Nilai || 'A',
               recommendedMkId: r.mkTujuanId || r.MK_Tujuan_ID || '',
               confidence: similarity
@@ -585,7 +713,7 @@ export default function KaprodiDashboard() {
           
           const initialRows = parsedResults.map((pr, idx) => ({
             id: `row-ai-${idx}-${Date.now()}`,
-            kategoriAsal: 'transkrip',
+            kategoriAsal: pr.kategoriAsal,
             mkAsal: pr.mkAsal,
             sksAsal: pr.sksAsal,
             nilaiAsal: pr.nilaiAsal,
@@ -597,9 +725,9 @@ export default function KaprodiDashboard() {
           setOcrRunning(false)
           setScanEffect(null)
           setRecognitionMethod('ai')
-          toast.success(`AI OCR berhasil memetakan ${parsedResults.length} mata kuliah secara otomatis!`)
+          toast.success(`AI OCR berhasil memetakan ${parsedResults.length} berkas secara otomatis!`)
         } else {
-          throw new Error('Hasil AI kosong atau format tidak valid')
+          throw new Error('Hasil AI OCR kosong atau tidak valid')
         }
       } catch (err) {
         console.warn('AI OCR API error (menggunakan fallback mesin OCR lokal):', err.message)
@@ -608,31 +736,69 @@ export default function KaprodiDashboard() {
         
         try {
           const prodiName = selectedItem.prodi?.nama || 'Teknik Informatika'
-          let text = ''
-          if (!isMock && selectedItem.file_transkrip_url?.includes('/')) {
-            text = await extractTextFromPdf(selectedItem.file_transkrip_url, (msg) => setOcrProgress(msg))
-          } else {
-            text = 'Mock text'
-          }
-          const localParsed = parseLocalOcrText(text, curriculumMK, prodiName)
+          const hasTranscript = !!selectedItem.file_transkrip_url
+          const hasCertificates = selectedItem.sertifikat_kompetensi && selectedItem.sertifikat_kompetensi.length > 0
+          const hasExperiences = selectedItem.pengalaman_kerja && selectedItem.pengalaman_kerja.length > 0
           
-          const parsedResults = localParsed.map((ec, idx) => {
-            const { bestMatch, confidence } = findBestMatch(ec.nama, curriculumMK)
-            return {
-              id: `ocr-ai-fallback-${idx}-${Date.now()}`,
-              mkAsal: ec.nama,
-              sksAsal: ec.sks,
-              nilaiAsal: ec.nilai,
-              recommendedMkId: bestMatch ? bestMatch.id : '',
-              confidence: confidence
+          let fallbackResults = []
+          
+          if (hasTranscript) {
+            let text = ''
+            if (!isMock && selectedItem.file_transkrip_url?.includes('/')) {
+              text = await extractTextFromPdf(selectedItem.file_transkrip_url, (msg) => setOcrProgress(msg))
+            } else {
+              text = 'Mock text'
             }
-          })
+            const localParsed = parseLocalOcrText(text, curriculumMK, prodiName)
+            fallbackResults.push(...localParsed.map((ec, idx) => {
+              const { bestMatch, confidence } = findBestMatch(ec.nama, curriculumMK)
+              return {
+                id: `ocr-ai-fallback-tx-${idx}-${Date.now()}`,
+                kategoriAsal: 'transkrip',
+                mkAsal: ec.nama,
+                sksAsal: ec.sks,
+                nilaiAsal: ec.nilai,
+                recommendedMkId: bestMatch ? bestMatch.id : '',
+                confidence: confidence
+              }
+            }))
+          }
           
-          setOcrResults(parsedResults)
+          if (hasCertificates) {
+            selectedItem.sertifikat_kompetensi.forEach((c, idx) => {
+              const { bestMatch, confidence } = findBestMatch(c.nama, curriculumMK)
+              fallbackResults.push({
+                id: `ocr-ai-fallback-cert-${idx}-${Date.now()}`,
+                kategoriAsal: 'sertifikat',
+                mkAsal: c.nama,
+                sksAsal: 0,
+                nilaiAsal: 'A',
+                recommendedMkId: bestMatch ? bestMatch.id : '',
+                confidence: confidence
+              })
+            })
+          }
           
-          const mockRows = parsedResults.map((pr, idx) => ({
+          if (hasExperiences) {
+            selectedItem.pengalaman_kerja.forEach((ex, idx) => {
+              const { bestMatch, confidence } = findBestMatch(`${ex.posisi} ${ex.deskripsi || ''}`, curriculumMK)
+              fallbackResults.push({
+                id: `ocr-ai-fallback-exp-${idx}-${Date.now()}`,
+                kategoriAsal: 'pengalaman',
+                mkAsal: `${ex.posisi} di ${ex.perusahaan}`,
+                sksAsal: 0,
+                nilaiAsal: 'A',
+                recommendedMkId: bestMatch ? bestMatch.id : '',
+                confidence: confidence
+              })
+            })
+          }
+          
+          setOcrResults(fallbackResults)
+          
+          const mockRows = fallbackResults.map((pr, idx) => ({
             id: `row-ai-fallback-${idx}-${Date.now()}`,
-            kategoriAsal: 'transkrip',
+            kategoriAsal: pr.kategoriAsal,
             mkAsal: pr.mkAsal,
             sksAsal: pr.sksAsal,
             nilaiAsal: pr.nilaiAsal,
@@ -657,9 +823,11 @@ export default function KaprodiDashboard() {
 
   const handleManualInput = () => {
     setRecognitionMethod('manual')
-    setRows([
-      { id: 'row-manual-1', kategoriAsal: 'transkrip', mkAsal: '', sksAsal: 0, nilaiAsal: 'A', mkTujuanId: '', status: 'diakui' }
-    ])
+    if (rows.length === 0) {
+      setRows([
+        { id: 'row-manual-1', kategoriAsal: 'transkrip', mkAsal: '', sksAsal: 0, nilaiAsal: 'A', mkTujuanId: '', status: 'diakui' }
+      ])
+    }
   }
 
   const handleCancel = () => {
@@ -733,7 +901,7 @@ export default function KaprodiDashboard() {
     
     const newRow = {
       id: `row-ocr-map-${Date.now()}`,
-      kategoriAsal: 'transkrip',
+      kategoriAsal: ocrItem.kategoriAsal || 'transkrip',
       mkAsal: ocrItem.mkAsal,
       sksAsal: ocrItem.sksAsal,
       nilaiAsal: ocrItem.nilaiAsal,
@@ -757,7 +925,7 @@ export default function KaprodiDashboard() {
     
     const newRows = ocrResults.map((pr, idx) => ({
       id: `row-all-ocr-${idx}-${Date.now()}`,
-      kategoriAsal: 'transkrip',
+      kategoriAsal: pr.kategoriAsal || 'transkrip',
       mkAsal: pr.mkAsal,
       sksAsal: pr.sksAsal,
       nilaiAsal: pr.nilaiAsal,
@@ -1381,7 +1549,7 @@ export default function KaprodiDashboard() {
                           ✨ Hasil Ekstraksi OCR & Rekomendasi AI
                         </h3>
                         <p style={{ margin: 0, fontSize: 11, color: '#065f46' }}>
-                          Mata kuliah hasil scan transkrip disandingkan dengan rekomendasi kurikulum terdekat
+                          Hasil ekstraksi berkas transkrip, sertifikat, & pengalaman disandingkan dengan kurikulum prodi
                         </p>
                       </div>
                       <button
@@ -1405,7 +1573,7 @@ export default function KaprodiDashboard() {
                         <table style={{ background: '#fff' }}>
                           <thead>
                             <tr>
-                              <th style={{ padding: '8px 10px', fontSize: 11.5, background: '#f0fdf4' }}>Mata Kuliah Asal (Transkrip)</th>
+                              <th style={{ padding: '8px 10px', fontSize: 11.5, background: '#f0fdf4' }}>Berkas / Mata Kuliah Asal</th>
                               <th style={{ padding: '8px 10px', fontSize: 11.5, background: '#f0fdf4', width: 80, textAlign: 'center' }}>SKS/Nilai</th>
                               <th style={{ padding: '8px 10px', fontSize: 11.5, background: '#f0fdf4' }}>Rekomendasi AI / Kemiripan</th>
                               <th style={{ padding: '8px 10px', fontSize: 11.5, background: '#f0fdf4', width: 90, textAlign: 'center' }}>Aksi</th>
@@ -1419,6 +1587,19 @@ export default function KaprodiDashboard() {
                               return (
                                 <tr key={ocrItem.id} style={{ opacity: isMapped ? 0.75 : 1 }}>
                                   <td style={{ padding: '8px 10px', fontSize: 12 }}>
+                                    <span style={{ 
+                                      display: 'inline-block', 
+                                      fontSize: '10px', 
+                                      padding: '1px 5px', 
+                                      borderRadius: 4, 
+                                      marginRight: 6, 
+                                      fontWeight: 700, 
+                                      textTransform: 'uppercase', 
+                                      background: ocrItem.kategoriAsal === 'sertifikat' ? '#e6f4ea' : ocrItem.kategoriAsal === 'pengalaman' ? '#fef7e0' : '#e8eaed', 
+                                      color: ocrItem.kategoriAsal === 'sertifikat' ? '#137333' : ocrItem.kategoriAsal === 'pengalaman' ? '#b06000' : '#3c4043' 
+                                    }}>
+                                      {ocrItem.kategoriAsal === 'sertifikat' ? '🏆 Sertifikat' : ocrItem.kategoriAsal === 'pengalaman' ? '💼 Kerja' : '📄 Transkrip'}
+                                    </span>
                                     <strong>{ocrItem.mkAsal}</strong>
                                   </td>
                                   <td style={{ padding: '8px 10px', fontSize: 12, textAlign: 'center' }}>
