@@ -347,6 +347,7 @@ export default function KaprodiDashboard() {
   const [ocrRunning, setOcrRunning] = useState(false)
   const [ocrProgress, setOcrProgress] = useState('')
   const [recognitionMethod, setRecognitionMethod] = useState('') // 'ai' or 'manual' or 'javascript'
+  const [selectedAiModel, setSelectedAiModel] = useState('gemini/gemini-2.5-flash')
 
   // Recognition Table Rows State
   // Row structure: { id, kategoriAsal, mkAsal, sksAsal, nilaiAsal, mkTujuanId, status }
@@ -833,7 +834,14 @@ export default function KaprodiDashboard() {
           }
         }
 
-        setOcrProgress('Menganalisis dan memetakan berkas dengan Gemini Vision AI...')
+        const friendlyModelNames = {
+          'gemini/gemini-2.5-flash': 'Gemini 2.5 Flash',
+          'gpt-5-nano': 'GPT-5 Nano',
+          'gpt-5-mini': 'GPT-5 Mini',
+          'gpt-4.1-mini': 'GPT-4.1 Mini'
+        }
+        const modelLabel = friendlyModelNames[selectedAiModel] || 'Vision AI'
+        setOcrProgress(`Menganalisis dan memetakan berkas dengan ${modelLabel}...`)
         const results = await callSumopodAI(prodiName, curriculumMK, {
           transcriptText,
           transcriptImages,
@@ -841,7 +849,7 @@ export default function KaprodiDashboard() {
           certificateImages,
           experiences: experiencesPayload,
           experienceImages
-        })
+        }, selectedAiModel)
         
         if (results && results.length > 0) {
           const parsedResults = results.map((r, idx) => {
@@ -1385,18 +1393,39 @@ export default function KaprodiDashboard() {
                 </div>
 
                 {/* AI OCR Card */}
-                <div className="card" style={{ cursor: 'pointer', borderColor: 'var(--gray-200)', transition: 'border-color .15s' }} 
-                     onClick={runAIOCR}
-                     onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--indigo-400)'}
-                     onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--gray-200)'}>
-                  <div className="card-body" style={{ padding: 20 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                <div className="card" style={{ borderColor: 'var(--gray-200)', transition: 'border-color .15s' }}>
+                  <div className="card-body" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <div style={{ background: '#e0e7ff', color: 'var(--indigo-600)', width: 32, height: 32, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Brain size={16} /></div>
                       <h4 style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>Smart AI OCR (Sumopod AI)</h4>
                     </div>
                     <p style={{ fontSize: 12, color: 'var(--gray-500)', lineHeight: 1.5, margin: 0 }}>
-                      Mengirim transkrip ke Gemini 1.5 Pro (via Sumopod AI API) untuk ekstraksi pintar dan OBE matching otomatis.
+                      Ekstraksi berkas & OBE matching pintar menggunakan model Vision AI pilihan Anda.
                     </p>
+                    
+                    {/* Model Dropdown Selector */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      <label style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--gray-600)', letterSpacing: '0.5px' }}>PILIH MODEL VISION AI:</label>
+                      <select 
+                        value={selectedAiModel} 
+                        onChange={(e) => setSelectedAiModel(e.target.value)}
+                        className="input"
+                        style={{ padding: '6px 10px', fontSize: 12.5, fontWeight: 600, background: '#fff', borderColor: 'var(--indigo-200)', borderRadius: 6 }}
+                      >
+                        <option value="gemini/gemini-2.5-flash">Gemini 2.5 Flash (Standard - Rp1.000/run)</option>
+                        <option value="gpt-5-nano">GPT-5 Nano (Sangat Murah - Rp25/run)</option>
+                        <option value="gpt-5-mini">GPT-5 Mini (Murah - Rp100/run)</option>
+                        <option value="gpt-4.1-mini">GPT-4.1 Mini (Stabil - Rp120/run)</option>
+                      </select>
+                    </div>
+
+                    <button 
+                      onClick={runAIOCR}
+                      className="btn btn-primary btn-sm"
+                      style={{ marginTop: 4, width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontWeight: 700 }}
+                    >
+                      <Brain size={14} /> Jalankan AI OCR
+                    </button>
                   </div>
                 </div>
 
