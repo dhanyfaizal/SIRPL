@@ -230,6 +230,60 @@ const extractTextFromPdf = async (fileUrl, onProgress) => {
   }
 }
 
+// Helper: Extract images from PDF file in Supabase Storage using pdf.js dynamically
+const extractImagesFromPdf = async (fileUrl, onProgress) => {
+  try {
+    const { data, error } = await supabase.storage
+      .from('rpl-documents')
+      .download(fileUrl)
+      
+    if (error || !data) {
+      throw new Error(error?.message || 'Gagal mengunduh berkas dari storage')
+    }
+
+    if (onProgress) onProgress('Memuat modul PDF untuk Vision...')
+    if (!window.pdfjsLib) {
+      await new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js'
+        script.onload = resolve
+        script.onerror = reject
+        document.head.appendChild(script)
+      })
+    }
+
+    window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js'
+
+    const arrayBuffer = await data.arrayBuffer()
+    const loadingTask = window.pdfjsLib.getDocument({ data: arrayBuffer })
+    const pdf = await loadingTask.promise
+    const images = []
+
+    for (let i = 1; i <= pdf.numPages; i++) {
+      if (onProgress) onProgress(`Merender halaman ${i} dari ${pdf.numPages} untuk Vision...`)
+      const page = await pdf.getPage(i)
+      const viewport = page.getViewport({ scale: 1.5 })
+      const canvas = document.createElement('canvas')
+      const context = canvas.getContext('2d')
+      canvas.height = viewport.height
+      canvas.width = viewport.width
+      
+      await page.render({
+        canvasContext: context,
+        viewport: viewport
+      }).promise
+      
+      const base64 = canvas.toDataURL('image/jpeg', 0.8)
+      images.push(base64)
+    }
+
+    return images
+  } catch (e) {
+    console.error('[extractImagesFromPdf] Error:', e)
+    throw e
+  }
+}
+
 // Helper: Parse line to match courses pattern locally
 const parseLine = (line) => {
   const gradeRegex = /\b([A-E][+-]?)\b/
@@ -400,13 +454,94 @@ export default function KaprodiDashboard() {
   const [scanEffect, setScanEffect] = useState(null) // 'javascript' | 'ai' | null
 
   // API Call to Sumopod AI
-  // API Call to Sumopod AI
   const callSumopodAI = async (prodiName, curriculumCourses, payload) => {
     const apiKey = import.meta.env.VITE_SUMOPOD_API_KEY
     const apiUrl = import.meta.env.VITE_SUMOPOD_API_URL || 'https://ai.sumopod.com/v1'
 
     if (!apiKey || apiKey.includes('placeholder')) {
       throw new Error('API Key tidak terkonfigurasi')
+    }
+
+    const systemPrompt = 'Anda adalah koordinator akademik SI-RPL STIKOM Yos Sudarso. Bantu memetakan berkas calon mahasiswa (transkrip, sertifikat, pengalaman kerja) ke mata kuliah prodi. Respon HARUS berupa JSON objek.'
+    
+    const userContent = [
+      {
+        type: 'text',
+        text: `Anda adalah koordinator akademik SI-RPL STIKOM Yos Sudarso. Tugas Anda adalah memetakan berkas akademik asal calon mahasiswa ke mata kuliah kurikulum Program Studi ${prodiName}.
+        
+        Daftar Kurikulum resmi Program Studi ${prodiName} yang tersedia:
+        ${JSON.stringify(curriculumCourses.map(c => ({ id: c.id, kode: c.kode_mk, nama: c.nama_mk, sks: c.sks })))}
+        
+        Tolong lakukan langkah-langkah berikut:
+        1. Untuk Transkrip: Ekstrak mata kuliah asal yang sah (nama, SKS, nilai huruf) dan petakan ke ID kurikulum tujuan yang cocok (kategoriAsal="transkrip").
+        2. Untuk Sertifikat Kompetensi: Bandingkan nama dan deskripsi sertifikat dengan kurikulum resmi. Petakan ke mata kuliah yang paling cocok dengan set kategoriAsal="sertifikat", sksAsal=0, nilaiAsal="A".
+        3. Untuk Pengalaman Kerja: Bandingkan posisi dan perusahaan dengan kurikulum resmi. Petakan ke mata kuliah yang paling cocok dengan set kategoriAsal="pengalaman", sksAsal=0, nilaiAsal="A".
+        
+        Respon Anda HARUS berupa objek JSON dengan struktur berikut dan tidak boleh ada teks tambahan di luar JSON:
+        {
+          "courses": [
+            {
+              "kategoriAsal": "transkrip" | "sertifikat" | "pengalaman",
+              "mkAsal": "Nama Mata Kuliah Asal / Nama Sertifikat / Posisi & Perusahaan",
+              "sksAsal": 3,
+              "nilaiAsal": "A",
+              "mkTujuanId": "ID_Mata_Kuliah_Kurikulum_Tujuan_Yang_Cocok",
+              "status": "diakui"
+            }
+          ]
+        }`
+      }
+    ]
+
+    let textInfo = ''
+    if (payload.transcriptText) {
+      textInfo += `\n[TEKS TRANSKRIP ASAL]:\n${payload.transcriptText}\n`
+    }
+    if (payload.certificates && payload.certificates.length > 0) {
+      textInfo += `\n[SERTIFIKAT KOMPETENSI (Form)]:\n${JSON.stringify(payload.certificates.map(c => ({ nama: c.nama, penerbit: c.penerbit, tahun: c.tahun })))}\n`
+    }
+    if (payload.experiences && payload.experiences.length > 0) {
+      textInfo += `\n[PENGALAMAN KERJA (Form)]:\n${JSON.stringify(payload.experiences.map(ex => ({ posisi: ex.posisi, perusahaan: ex.perusahaan, durasi: ex.durasi, deskripsi: ex.deskripsi })))}\n`
+    }
+
+    if (textInfo) {
+      userContent.push({
+        type: 'text',
+        text: `Berikut adalah detail teks / form berkas pendaftaran:\n${textInfo}`
+      })
+    }
+
+    if (payload.transcriptImages && payload.transcriptImages.length > 0) {
+      payload.transcriptImages.forEach((imgBase64) => {
+        userContent.push({
+          type: 'image_url',
+          image_url: {
+            url: imgBase64
+          }
+        })
+      })
+    }
+
+    if (payload.certificateImages && payload.certificateImages.length > 0) {
+      payload.certificateImages.forEach((imgBase64) => {
+        userContent.push({
+          type: 'image_url',
+          image_url: {
+            url: imgBase64
+          }
+        })
+      })
+    }
+
+    if (payload.experienceImages && payload.experienceImages.length > 0) {
+      payload.experienceImages.forEach((imgBase64) => {
+        userContent.push({
+          type: 'image_url',
+          image_url: {
+            url: imgBase64
+          }
+        })
+      })
     }
 
     const response = await fetch(`${apiUrl}/chat/completions`, {
@@ -416,42 +551,15 @@ export default function KaprodiDashboard() {
         'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        model: 'deepseek-v4-flash',
+        model: 'gemini/gemini-2.5-flash',
         messages: [
           {
             role: 'system',
-            content: 'Anda adalah koordinator akademik SI-RPL STIKOM Yos Sudarso. Bantu memetakan berkas calon mahasiswa (transkrip, sertifikat, pengalaman kerja) ke mata kuliah prodi. Respon HARUS berupa JSON objek.'
+            content: systemPrompt
           },
           {
             role: 'user',
-            content: `Anda adalah koordinator akademik SI-RPL STIKOM Yos Sudarso. Tugas Anda adalah memetakan berkas akademik asal calon mahasiswa ke mata kuliah kurikulum Program Studi ${prodiName}.
-            
-            Berikut adalah data berkas calon mahasiswa yang tersedia:
-            ${payload.transcriptText ? `- TEKS TRANSKRIP ASAL (OCR):\n${payload.transcriptText}\n` : ''}
-            ${payload.certificates && payload.certificates.length > 0 ? `- SERTIFIKAT KOMPETENSI:\n${JSON.stringify(payload.certificates)}\n` : ''}
-            ${payload.experiences && payload.experiences.length > 0 ? `- PENGALAMAN KERJA / PORTOFOLIO:\n${JSON.stringify(payload.experiences)}\n` : ''}
-
-            Daftar Kurikulum resmi Program Studi ${prodiName} yang tersedia:
-            ${JSON.stringify(curriculumCourses.map(c => ({ id: c.id, kode: c.kode_mk, nama: c.nama_mk, sks: c.sks })))}
-            
-            Tolong lakukan langkah-langkah berikut:
-            1. Untuk Transkrip: Ekstrak mata kuliah asal yang sah (nama, SKS, nilai huruf) dan petakan ke ID kurikulum tujuan yang cocok (kategoriAsal="transkrip").
-            2. Untuk Sertifikat Kompetensi: Bandingkan nama dan deskripsi sertifikat dengan kurikulum resmi. Petakan ke mata kuliah yang paling cocok dengan set kategoriAsal="sertifikat", sksAsal=0, nilaiAsal="A".
-            3. Untuk Pengalaman Kerja: Bandingkan posisi dan perusahaan dengan kurikulum resmi. Petakan ke mata kuliah yang paling cocok dengan set kategoriAsal="pengalaman", sksAsal=0, nilaiAsal="A".
-            
-            Respon Anda HARUS berupa objek JSON dengan struktur berikut dan tidak boleh ada teks tambahan di luar JSON:
-            {
-              "courses": [
-                {
-                  "kategoriAsal": "transkrip",
-                  "mkAsal": "Nama Mata Kuliah Asal",
-                  "sksAsal": 3,
-                  "nilaiAsal": "A",
-                  "mkTujuanId": "ID_Mata_Kuliah_Kurikulum_Tujuan_Yang_Cocok",
-                  "status": "diakui"
-                }
-              ]
-            }`
+            content: userContent
           }
         ],
         response_format: { type: "json_object" }
@@ -614,15 +722,29 @@ export default function KaprodiDashboard() {
         const hasExperiences = selectedItem.pengalaman_kerja && selectedItem.pengalaman_kerja.length > 0
 
         let transcriptText = ''
+        let transcriptImages = []
         let certificatesPayload = []
+        let certificateImages = []
         let experiencesPayload = []
+        let experienceImages = []
 
         // 1. Transcript OCR
         if (hasTranscript) {
           setOcrProgress('Mengunduh berkas transkrip nilai...')
           if (!isMock && selectedItem.file_transkrip_url?.includes('/')) {
-            setOcrProgress('Membaca berkas PDF Transkrip...')
-            transcriptText = await extractTextFromPdf(selectedItem.file_transkrip_url, (msg) => setOcrProgress(msg))
+            setOcrProgress('Mengekstrak layer teks transkrip...')
+            try {
+              transcriptText = await extractTextFromPdf(selectedItem.file_transkrip_url, (msg) => setOcrProgress(msg))
+            } catch (e) {
+              console.warn('Gagal membaca text layer, mencoba render gambar...', e)
+            }
+            
+            // If the PDF is scanned (has no text layer or very short text), render pages as images
+            if (!transcriptText || transcriptText.trim() === 'MOCK_OCR_FALLBACK_TEXT' || transcriptText.trim().length < 50) {
+              setOcrProgress('Mengonversi PDF transkrip ke gambar untuk AI Vision...')
+              transcriptImages = await extractImagesFromPdf(selectedItem.file_transkrip_url, (msg) => setOcrProgress(msg))
+              transcriptText = ''
+            }
           } else {
             transcriptText = `TRANSKRIP NILAI AKADEMIK ASAL
             Nama Pendaftar: ${selectedItem.profile?.nama_lengkap}
@@ -642,12 +764,23 @@ export default function KaprodiDashboard() {
           for (let idx = 0; idx < selectedItem.sertifikat_kompetensi.length; idx++) {
             const c = selectedItem.sertifikat_kompetensi[idx]
             let fileText = ''
+            let images = []
             if (!isMock && c.file_url?.includes('/')) {
               setOcrProgress(`Membaca PDF Sertifikat ${idx + 1}: ${c.nama}...`)
               try {
                 fileText = await extractTextFromPdf(c.file_url)
               } catch (e) {
                 console.warn(`Gagal membaca sertifikat:`, e)
+              }
+              // Fallback to images if text is scanned
+              if (!fileText || fileText.trim() === 'MOCK_OCR_FALLBACK_TEXT' || fileText.trim().length < 50) {
+                setOcrProgress(`Mengonversi PDF Sertifikat ${idx + 1} ke gambar...`)
+                try {
+                  images = await extractImagesFromPdf(c.file_url, (msg) => setOcrProgress(msg))
+                  fileText = ''
+                } catch (imgErr) {
+                  console.warn('Gagal merender gambar sertifikat:', imgErr)
+                }
               }
             }
             certificatesPayload.push({
@@ -656,6 +789,9 @@ export default function KaprodiDashboard() {
               tahun: c.tahun,
               textExtracted: fileText
             })
+            if (images && images.length > 0) {
+              certificateImages.push(...images)
+            }
           }
         }
 
@@ -665,12 +801,23 @@ export default function KaprodiDashboard() {
           for (let idx = 0; idx < selectedItem.pengalaman_kerja.length; idx++) {
             const ex = selectedItem.pengalaman_kerja[idx]
             let fileText = ''
+            let images = []
             if (!isMock && ex.file_url?.includes('/')) {
               setOcrProgress(`Membaca PDF Pengalaman ${idx + 1}: ${ex.posisi}...`)
               try {
                 fileText = await extractTextFromPdf(ex.file_url)
               } catch (e) {
                 console.warn(`Gagal membaca pengalaman:`, e)
+              }
+              // Fallback to images if text is scanned
+              if (!fileText || fileText.trim() === 'MOCK_OCR_FALLBACK_TEXT' || fileText.trim().length < 50) {
+                setOcrProgress(`Mengonversi PDF Pengalaman ${idx + 1} ke gambar...`)
+                try {
+                  images = await extractImagesFromPdf(ex.file_url, (msg) => setOcrProgress(msg))
+                  fileText = ''
+                } catch (imgErr) {
+                  console.warn('Gagal merender gambar pengalaman:', imgErr)
+                }
               }
             }
             experiencesPayload.push({
@@ -680,14 +827,20 @@ export default function KaprodiDashboard() {
               deskripsi: ex.deskripsi,
               textExtracted: fileText
             })
+            if (images && images.length > 0) {
+              experienceImages.push(...images)
+            }
           }
         }
 
-        setOcrProgress('Menganalisis dan memetakan berkas dengan DeepSeek AI...')
+        setOcrProgress('Menganalisis dan memetakan berkas dengan Gemini Vision AI...')
         const results = await callSumopodAI(prodiName, curriculumMK, {
           transcriptText,
+          transcriptImages,
           certificates: certificatesPayload,
-          experiences: experiencesPayload
+          certificateImages,
+          experiences: experiencesPayload,
+          experienceImages
         })
         
         if (results && results.length > 0) {
