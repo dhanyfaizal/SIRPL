@@ -411,6 +411,14 @@ export const dbRekognisi = {
     return supabase.from('tabel_rekognisi').select('*').eq('pengajuan_id', pengajuanId).maybeSingle()
   },
 
+  getAll: async () => {
+    if (isMock) {
+      const store = JSON.parse(localStorage.getItem('si_rpl_rekognisi') || '{}')
+      return { data: Object.values(store), error: null }
+    }
+    return supabase.from('tabel_rekognisi').select('*')
+  },
+
   upsert: async (pengajuanId, data) => {
     if (isMock) {
       const store = JSON.parse(localStorage.getItem('si_rpl_rekognisi') || '{}')
