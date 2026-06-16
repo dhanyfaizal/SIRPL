@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { dbPengajuan } from '../../lib/db'
+import { dbPengajuan, getDocumentProgress } from '../../lib/db'
 import { supabase, isMock } from '../../lib/supabase'
 import { ClipboardCheck, FileText, CheckCircle, XCircle, Award } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -287,6 +287,7 @@ export default function BaakDashboard() {
                         <th>Email</th>
                         <th>Prodi Pilihan</th>
                         <th>Tanggal Masuk</th>
+                        <th style={{ width: 150 }}>Progress Berkas</th>
                         <th>Status Internal</th>
                         <th style={{ width: 100 }}>Aksi</th>
                       </tr>
@@ -305,6 +306,21 @@ export default function BaakDashboard() {
                           <td>{item.profile?.email}</td>
                           <td><span className="badge-pill badge-slate">{item.prodi?.nama}</span></td>
                           <td>{new Date(item.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
+                          <td>
+                            {(() => {
+                              const prog = getDocumentProgress(item);
+                              return (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, fontWeight: 700, color: 'var(--gray-500)' }}>
+                                    <span>SMA: {prog.percent}%</span>
+                                  </div>
+                                  <div style={{ height: 4, background: 'var(--gray-100)', borderRadius: 2, overflow: 'hidden', display: 'flex', width: 120 }}>
+                                    <div style={{ width: `${prog.percent}%`, background: prog.percent === 100 ? 'var(--success)' : 'var(--amber-500)', height: '100%', borderRadius: 2 }} />
+                                  </div>
+                                </div>
+                              );
+                            })()}
+                          </td>
                           <td><span className={`badge-pill status-${item.status}`}>{item.status.toUpperCase()}</span></td>
                           <td>
                             <button
@@ -362,18 +378,42 @@ export default function BaakDashboard() {
                       Pratinjau: {previewType.toUpperCase()}
                     </span>
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                      <button 
-                        onClick={() => handlePreviewFile('ijazah', selectedItem.file_ijazah_url)} 
-                        className={`btn btn-sm ${previewType === 'ijazah' ? 'btn-primary' : 'btn-secondary'}`}
-                      >
-                        Ijazah
-                      </button>
-                      <button 
-                        onClick={() => handlePreviewFile('transkrip', selectedItem.file_transkrip_url)} 
-                        className={`btn btn-sm ${previewType === 'transkrip' ? 'btn-primary' : 'btn-secondary'}`}
-                      >
-                        Transkrip
-                      </button>
+                      {selectedItem.file_ijazah_sma_url && (
+                        <button 
+                          onClick={() => handlePreviewFile('ijazah_sma', selectedItem.file_ijazah_sma_url)} 
+                          className={`btn btn-sm ${previewType === 'ijazah_sma' ? 'btn-primary' : 'btn-secondary'}`}
+                          style={{ fontSize: 11 }}
+                        >
+                          Ijazah SMA
+                        </button>
+                      )}
+                      {selectedItem.file_transkrip_sma_url && (
+                        <button 
+                          onClick={() => handlePreviewFile('transkrip_sma', selectedItem.file_transkrip_sma_url)} 
+                          className={`btn btn-sm ${previewType === 'transkrip_sma' ? 'btn-primary' : 'btn-secondary'}`}
+                          style={{ fontSize: 11 }}
+                        >
+                          Transkrip SMA
+                        </button>
+                      )}
+                      {selectedItem.file_ijazah_url && (
+                        <button 
+                          onClick={() => handlePreviewFile('ijazah', selectedItem.file_ijazah_url)} 
+                          className={`btn btn-sm ${previewType === 'ijazah' ? 'btn-primary' : 'btn-secondary'}`}
+                          style={{ fontSize: 11 }}
+                        >
+                          Ijazah D3
+                        </button>
+                      )}
+                      {selectedItem.file_transkrip_url && (
+                        <button 
+                          onClick={() => handlePreviewFile('transkrip', selectedItem.file_transkrip_url)} 
+                          className={`btn btn-sm ${previewType === 'transkrip' ? 'btn-primary' : 'btn-secondary'}`}
+                          style={{ fontSize: 11 }}
+                        >
+                          Transkrip D3
+                        </button>
+                      )}
                       {selectedItem.sertifikat_kompetensi?.map((c, idx) => (
                         <button
                           key={`cert-${idx}`}
@@ -414,7 +454,7 @@ export default function BaakDashboard() {
             <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               <p style={{ fontSize: 12, color: 'var(--gray-50)' }}>Status Pemeriksaan Kelayakan Dokumen:</p>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <label style={{
                   display: 'flex', alignItems: 'center', gap: 12, fontSize: 13, cursor: canApprove ? 'pointer' : 'default',
                   padding: '12px 14px', borderRadius: 8,
@@ -430,11 +470,11 @@ export default function BaakDashboard() {
                     style={{ width: 18, height: 18, accentColor: 'var(--success)' }}
                   />
                   <div>
-                    <div style={{ fontWeight: 700, marginBottom: 2 }}>✅ Ijazah Terverifikasi</div>
-                    <div style={{ fontSize: 11.5, color: 'var(--gray-50)' }}>Dokumen ijazah terbaca jelas, nama sesuai, dan tanda tangan/stempel sah.</div>
+                    <div style={{ fontWeight: 700, marginBottom: 2 }}>✅ Ijazah SMA Terverifikasi</div>
+                    <div style={{ fontSize: 11.5, color: 'var(--gray-50)' }}>Dokumen ijazah SMA terbaca jelas, nama sesuai, dan tanda tangan/stempel sah.</div>
                   </div>
                 </label>
-
+ 
                 <label style={{
                   display: 'flex', alignItems: 'center', gap: 12, fontSize: 13, cursor: canApprove ? 'pointer' : 'default',
                   padding: '12px 14px', borderRadius: 8,
@@ -450,8 +490,8 @@ export default function BaakDashboard() {
                     style={{ width: 18, height: 18, accentColor: 'var(--success)' }}
                   />
                   <div>
-                    <div style={{ fontWeight: 700, marginBottom: 2 }}>✅ Transkrip Terverifikasi</div>
-                    <div style={{ fontSize: 11.5, color: 'var(--gray-50)' }}>Transkrip menampilkan mata kuliah, SKS, dan nilai dengan jelas untuk OCR.</div>
+                    <div style={{ fontWeight: 700, marginBottom: 2 }}>✅ Transkrip SMA Terverifikasi</div>
+                    <div style={{ fontSize: 11.5, color: 'var(--gray-50)' }}>Transkrip SMA menampilkan mata kuliah, SKS, dan nilai dengan jelas.</div>
                   </div>
                 </label>
 

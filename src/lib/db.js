@@ -2,9 +2,10 @@ import { supabase, isMock } from './supabase'
 
 // ── Seed Data Awal untuk Mode Mock ─────────────────────────────
 const MOCK_PRODI = [
-  { id: 'prodi-if', kode: 'IF', nama: 'Teknik Informatika' },
-  { id: 'prodi-si', kode: 'SI', nama: 'Sistem Informasi' },
-  { id: 'prodi-dkv', kode: 'DKV', nama: 'Desain Komunikasi Visual' }
+  { id: 'prodi-if', kode: 'IF', nama: 'Teknik Informatika', is_active: true },
+  { id: 'prodi-si', kode: 'SI', nama: 'Sistem Informasi', is_active: true },
+  { id: 'prodi-dkv', kode: 'DKV', nama: 'Desain Komunikasi Visual', is_active: true },
+  { id: 'prodi-ka', kode: 'KA', nama: 'Komputerisasi Akuntansi', is_active: true }
 ]
 
 const MOCK_MK = [
@@ -41,7 +42,8 @@ const MOCK_MK = [
 
 // Inisialisasi data mock ke local storage jika belum ada
 function initMockStorage() {
-  if (!localStorage.getItem('si_rpl_program_studi')) {
+  const existingProdi = localStorage.getItem('si_rpl_program_studi')
+  if (!existingProdi || !existingProdi.includes('prodi-ka')) {
     localStorage.setItem('si_rpl_program_studi', JSON.stringify(MOCK_PRODI))
   }
   if (!localStorage.getItem('si_rpl_mata_kuliah')) {
@@ -83,6 +85,19 @@ export const dbProdi = {
       return { data, error: data ? null : new Error('Prodi tidak ditemukan') }
     }
     return supabase.from('program_studi').select('*').eq('id', id).single()
+  },
+  update: async (id, data) => {
+    if (isMock) {
+      const list = getLocalData('si_rpl_program_studi')
+      const idx = list.findIndex(x => x.id === id)
+      if (idx !== -1) {
+        list[idx] = { ...list[idx], ...data }
+        saveLocalData('si_rpl_program_studi', list)
+        return { data: list[idx], error: null }
+      }
+      return { data: null, error: new Error('Prodi tidak ditemukan') }
+    }
+    return supabase.from('program_studi').update(data).eq('id', id).select().single()
   }
 }
 
@@ -210,16 +225,29 @@ export const dbPengajuan = {
       const newItem = {
         sertifikat_kompetensi: [],
         pengalaman_kerja: [],
+        status: 'draft',
+        is_archived: false,
+        file_ijazah_sma_url: null,
+        file_transkrip_sma_url: null,
+        file_ijazah_url: null,
+        file_transkrip_url: null,
+        submitted_at: null,
         ...data,
         id: 'pengajuan-' + Math.random().toString(36).slice(2, 10),
-        status: 'submitted',
         created_at: new Date().toISOString()
+      }
+      if (newItem.status === 'submitted' && !newItem.submitted_at) {
+        newItem.submitted_at = new Date().toISOString()
       }
       list.push(newItem)
       saveLocalData('si_rpl_pengajuan', list)
       return { data: newItem, error: null }
     }
-    const { data: resData, error } = await supabase.from('pengajuan_rpl').insert({ status: 'submitted', sertifikat_kompetensi: [], pengalaman_kerja: [], ...data }).select().single()
+    const insertPayload = { status: 'draft', is_archived: false, file_ijazah_sma_url: null, file_transkrip_sma_url: null, file_ijazah_url: null, file_transkrip_url: null, ...data }
+    if (insertPayload.status === 'submitted' && !insertPayload.submitted_at) {
+      insertPayload.submitted_at = new Date().toISOString()
+    }
+    const { data: resData, error } = await supabase.from('pengajuan_rpl').insert(insertPayload).select().single()
     if (error) throw new Error(error.message)
     return { data: resData, error: null }
   },
@@ -231,6 +259,9 @@ export const dbPengajuan = {
       if (idx !== -1) {
         list[idx].status = status
         list[idx].catatan_revisi = catatanRevisi
+        if (status === 'submitted' && !list[idx].submitted_at) {
+          list[idx].submitted_at = new Date().toISOString()
+        }
         list[idx].updated_at = new Date().toISOString()
         saveLocalData('si_rpl_pengajuan', list)
         return { data: list[idx], error: null }
@@ -238,6 +269,9 @@ export const dbPengajuan = {
       return { data: null, error: new Error('Pengajuan tidak ditemukan') }
     }
     const updatePayload = { status, updated_at: new Date().toISOString() }
+    if (status === 'submitted') {
+      updatePayload.submitted_at = new Date().toISOString()
+    }
     if (catatanRevisi !== undefined) {
       updatePayload.catatan_revisi = catatanRevisi
     }
@@ -251,15 +285,61 @@ export const dbPengajuan = {
       const list = getLocalData('si_rpl_pengajuan')
       const idx = list.findIndex(x => x.id === id)
       if (idx !== -1) {
-        list[idx] = { ...list[idx], ...data, updated_at: new Date().toISOString() }
+        const original = list[idx]
+        let submitted_at = original.submitted_at
+        if (data.status === 'submitted' && !original.submitted_at) {
+          submitted_at = new Date().toISOString()
+        }
+        list[idx] = { ...original, ...data, submitted_at, updated_at: new Date().toISOString() }
         saveLocalData('si_rpl_pengajuan', list)
         return { data: list[idx], error: null }
       }
       return { data: null, error: new Error('Pengajuan tidak ditemukan') }
     }
-    const { data: resData, error } = await supabase.from('pengajuan_rpl').update({ ...data, updated_at: new Date().toISOString() }).eq('id', id).select().single()
+    const payload = { ...data, updated_at: new Date().toISOString() }
+    if (data.status === 'submitted' && !data.submitted_at) {
+      payload.submitted_at = new Date().toISOString()
+    }
+    const { data: resData, error } = await supabase.from('pengajuan_rpl').update(payload).eq('id', id).select().single()
     if (error) throw new Error(error.message)
     return { data: resData, error: null }
+  },
+
+  archive: async (id) => {
+    if (isMock) {
+      const list = getLocalData('si_rpl_pengajuan')
+      const idx = list.findIndex(x => x.id === id)
+      if (idx !== -1) {
+        list[idx].is_archived = true
+        list[idx].updated_at = new Date().toISOString()
+        saveLocalData('si_rpl_pengajuan', list)
+        return { data: list[idx], error: null }
+      }
+      return { data: null, error: new Error('Pengajuan tidak ditemukan') }
+    }
+    const { data: resData, error } = await supabase.from('pengajuan_rpl').update({ is_archived: true, updated_at: new Date().toISOString() }).eq('id', id).select().single()
+    if (error) throw new Error(error.message)
+    return { data: resData, error: null }
+  },
+
+  delete: async (id) => {
+    if (isMock) {
+      const list = getLocalData('si_rpl_pengajuan')
+      const filtered = list.filter(x => x.id !== id)
+      saveLocalData('si_rpl_pengajuan', filtered)
+
+      // cascade delete mock
+      const rekognisi = JSON.parse(localStorage.getItem('si_rpl_rekognisi') || '{}')
+      delete rekognisi[id]
+      localStorage.setItem('si_rpl_rekognisi', JSON.stringify(rekognisi))
+
+      const penetapan = JSON.parse(localStorage.getItem('si_rpl_penetapan') || '{}')
+      delete penetapan[id]
+      localStorage.setItem('si_rpl_penetapan', JSON.stringify(penetapan))
+
+      return { data: { id }, error: null }
+    }
+    return supabase.from('pengajuan_rpl').delete().eq('id', id)
   }
 }
 
@@ -378,5 +458,21 @@ export const dbProfiles = {
 
   updateRole: async (id, role) => {
     return dbProfiles.updateUser(id, { role })
+  }
+}
+
+// ── 7. Progress Dokumen Helper ─────────────────────────────────
+export function getDocumentProgress(item) {
+  if (!item) return { percent: 0, uploaded: 0, total: 2 }
+  let uploaded = 0
+  let total = 2 // Ijazah & Transkrip SMA
+  if (item.file_ijazah_sma_url) uploaded++
+  if (item.file_transkrip_sma_url) uploaded++
+
+  const percent = Math.round((uploaded / total) * 100)
+  return {
+    uploaded,
+    total,
+    percent
   }
 }

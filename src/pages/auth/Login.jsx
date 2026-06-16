@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
+import { isMock } from '../../lib/supabase'
 
 const ERROR_MESSAGES = {
   domain_not_allowed: 'Email Anda tidak terdaftar dalam domain institusi yang diizinkan.',
@@ -32,10 +33,14 @@ function MiniSpinner() {
 }
 
 export default function Login() {
-  const { signInWithGoogle } = useAuth()
+  const { signInWithGoogle, signInMock } = useAuth()
   const [searchParams] = useSearchParams()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+
+  // Mock states
+  const [mockRole, setMockRole] = useState('calon_rpl')
+  const [mockName, setMockName] = useState('Calon Mahasiswa')
 
   const urlError = searchParams.get('error')
   const urlEmail = searchParams.get('email')
@@ -51,6 +56,30 @@ export default function Login() {
       await signInWithGoogle()
     } catch (err) {
       setError(err.message || 'Terjadi kesalahan. Silakan coba lagi.')
+      setLoading(false)
+    }
+  }
+
+  const handleMockRoleChange = (roleVal) => {
+    setMockRole(roleVal)
+    if (roleVal === 'calon_rpl') setMockName('Calon Mahasiswa')
+    else if (roleVal === 'pmb') setMockName('PMB Officer')
+    else if (roleVal === 'baak') setMockName('BAAK Officer')
+    else if (roleVal === 'kaprodi_si') setMockName('Ka. Prodi SI')
+    else if (roleVal === 'kaprodi_ti') setMockName('Ka. Prodi TI')
+    else if (roleVal === 'kaprodi_dkv') setMockName('Ka. Prodi DKV')
+    else if (roleVal === 'kaprodi_ka') setMockName('Ka. Prodi KA')
+    else if (roleVal === 'asessor') setMockName('Asessor RPL')
+    else if (roleVal === 'admin') setMockName('Admin Akademik')
+  }
+
+  async function handleMockLogin() {
+    setError(null)
+    setLoading(true)
+    try {
+      await signInMock(mockRole, mockName)
+    } catch (err) {
+      setError(err.message || 'Gagal simulasi login')
       setLoading(false)
     }
   }
@@ -111,7 +140,7 @@ export default function Login() {
 
           {/* Description */}
           <p style={{ textAlign: 'center', fontSize: 14, color: '#6b7280', margin: '0 0 20px' }}>
-            Daftar dan Login hanya dengan Akun Google Anda.
+            {isMock ? 'Gunakan Simulasi Login Peran untuk masuk' : 'Daftar dan Login hanya dengan Akun Google Anda.'}
           </p>
 
           {/* Error Alert */}
@@ -132,29 +161,98 @@ export default function Login() {
             </div>
           )}
 
-          {/* Login Button — identik SIRASYS */}
-          <button
-            id="btn-login-google"
-            onClick={handleLogin}
-            disabled={loading}
-            style={{
-              width: '100%',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-              padding: '10px 16px', borderRadius: 6, border: 'none',
-              backgroundColor: '#4f46e5',
-              color: '#ffffff', fontSize: 14, fontWeight: 600,
-              cursor: loading ? 'not-allowed' : 'pointer',
-              boxShadow: '0 1px 3px rgba(0,0,0,.12)',
-              transition: 'background-color .15s, box-shadow .15s',
-              opacity: loading ? .7 : 1,
-              fontFamily: "'Inter', system-ui, sans-serif",
-            }}
-            onMouseEnter={e => { if (!loading) { e.currentTarget.style.backgroundColor = '#4338ca'; e.currentTarget.style.boxShadow = '0 4px 8px rgba(67,56,202,.35)' } }}
-            onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#4f46e5'; e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,.12)' }}
-          >
-            {loading ? <MiniSpinner /> : <GoogleIcon />}
-            <span>{loading ? 'Mengalihkan...' : 'Login dengan Email Google'}</span>
-          </button>
+          {isMock ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div style={{ background: '#f8fafc', padding: 12, borderRadius: 6, border: '1px solid var(--gray-200)', marginBottom: 6 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--indigo-600)', display: 'block', marginBottom: 4, textTransform: 'uppercase' }}>
+                  🔧 Simulasi Mode Mock Aktif
+                </span>
+                <span style={{ fontSize: 12, color: 'var(--gray-500)', lineHeight: 1.4, display: 'block' }}>
+                  Aplikasi berjalan tanpa koneksi database Supabase. Silakan pilih peran simulasi di bawah untuk masuk.
+                </span>
+              </div>
+
+              <div className="input-group">
+                <label className="input-label" style={{ fontWeight: 600, display: 'block', marginBottom: 4, fontSize: 12 }}>Pilih Peran Simulasi</label>
+                <select
+                  value={mockRole}
+                  onChange={(e) => handleMockRoleChange(e.target.value)}
+                  className="input"
+                  style={{ fontSize: 13, height: 38, width: '100%', padding: '6px 10px', borderRadius: 6, border: '1px solid var(--gray-200)' }}
+                >
+                  <option value="calon_rpl">Calon Pendaftar RPL</option>
+                  <option value="pmb">PMB Officer</option>
+                  <option value="baak">BAAK Officer</option>
+                  <option value="kaprodi_ti">Ka. Prodi TI</option>
+                  <option value="kaprodi_si">Ka. Prodi SI</option>
+                  <option value="kaprodi_dkv">Ka. Prodi DKV</option>
+                  <option value="kaprodi_ka">Ka. Prodi KA</option>
+                  <option value="asessor">Asessor RPL</option>
+                  <option value="admin">Admin Akademik</option>
+                </select>
+              </div>
+
+              <div className="input-group">
+                <label className="input-label" style={{ fontWeight: 600, display: 'block', marginBottom: 4, fontSize: 12 }}>Nama Lengkap Simulasi</label>
+                <input
+                  type="text"
+                  value={mockName}
+                  onChange={(e) => setMockName(e.target.value)}
+                  className="input"
+                  placeholder="Nama Lengkap"
+                  style={{ fontSize: 13, height: 38, width: '100%', padding: '6px 10px', borderRadius: 6, border: '1px solid var(--gray-200)', boxSizing: 'border-box' }}
+                  required
+                />
+              </div>
+
+              <button
+                id="btn-login-mock"
+                onClick={handleMockLogin}
+                disabled={loading}
+                style={{
+                  width: '100%',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                  padding: '10px 16px', borderRadius: 6, border: 'none',
+                  backgroundColor: '#4f46e5',
+                  color: '#ffffff', fontSize: 14, fontWeight: 600,
+                  cursor: loading ? 'not-allowed' : 'pointer',
+                  boxShadow: '0 1px 3px rgba(0,0,0,.12)',
+                  transition: 'background-color .15s, box-shadow .15s',
+                  opacity: loading ? .7 : 1,
+                  fontFamily: "'Inter', system-ui, sans-serif",
+                  marginTop: 6
+                }}
+                onMouseEnter={e => { if (!loading) { e.currentTarget.style.backgroundColor = '#4338ca'; e.currentTarget.style.boxShadow = '0 4px 8px rgba(67,56,202,.35)' } }}
+                onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#4f46e5'; e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,.12)' }}
+              >
+                {loading ? <MiniSpinner /> : null}
+                <span>{loading ? 'Masuk...' : 'Masuk ke Sistem'}</span>
+              </button>
+            </div>
+          ) : (
+            <button
+              id="btn-login-google"
+              onClick={handleLogin}
+              disabled={loading}
+              style={{
+                width: '100%',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                padding: '10px 16px', borderRadius: 6, border: 'none',
+                backgroundColor: '#4f46e5',
+                color: '#ffffff', fontSize: 14, fontWeight: 600,
+                cursor: loading ? 'not-allowed' : 'pointer',
+                boxShadow: '0 1px 3px rgba(0,0,0,.12)',
+                transition: 'background-color .15s, box-shadow .15s',
+                opacity: loading ? .7 : 1,
+                fontFamily: "'Inter', system-ui, sans-serif",
+              }}
+              onMouseEnter={e => { if (!loading) { e.currentTarget.style.backgroundColor = '#4338ca'; e.currentTarget.style.boxShadow = '0 4px 8px rgba(67,56,202,.35)' } }}
+              onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#4f46e5'; e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,.12)' }}
+            >
+              {loading ? <MiniSpinner /> : <GoogleIcon />}
+              <span>{loading ? 'Mengalihkan...' : 'Login dengan Email Google'}</span>
+            </button>
+          )}
 
           {/* Footer note */}
           <p style={{ marginTop: 24, textAlign: 'center', fontSize: 12, color: '#9ca3af', lineHeight: 1.6, margin: '24px 0 0' }}>

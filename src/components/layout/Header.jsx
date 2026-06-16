@@ -35,9 +35,13 @@ export default function Header() {
   const handleRoleSwitch = async (newRole) => {
     try {
       let label = ''
-      if (newRole === 'calon_mhs') label = 'Pendaftar (Calon Mhs)'
+      if (newRole === 'calon_rpl') label = 'Pendaftar RPL (Calon)'
+      if (newRole === 'pmb') label = 'PMB Officer'
       if (newRole === 'baak') label = 'BAAK Officer'
-      if (newRole === 'kaprodi') label = 'Ka. Prodi'
+      if (newRole === 'kaprodi_ti') label = 'Ka. Prodi TI'
+      if (newRole === 'kaprodi_si') label = 'Ka. Prodi SI'
+      if (newRole === 'kaprodi_dkv') label = 'Ka. Prodi DKV'
+      if (newRole === 'kaprodi_ka') label = 'Ka. Prodi KA'
       if (newRole === 'asessor') label = 'Asessor RPL'
       if (newRole === 'admin') label = 'Admin Akademik'
 
@@ -56,21 +60,21 @@ export default function Header() {
       <button onClick={toggle} className="btn btn-ghost btn-icon" title={open ? 'Sembunyikan sidebar' : 'Tampilkan sidebar'}>
         {open ? <PanelLeftClose size={18} /> : <PanelLeftOpen size={18} />}
       </button>
-
+ 
       <span className="header-sep" />
-
+ 
       {/* Brand */}
       <span style={{ fontSize: 15, fontWeight: 800, color: 'var(--gray-900)', letterSpacing: '-.3px' }}>
         SI-RPL
       </span>
-
+ 
       {/* Actions */}
       <div className="header-actions">
         {/* Theme toggle */}
         <button className="btn btn-ghost btn-icon" onClick={toggleTheme} title={theme === 'dark' ? 'Mode Terang' : 'Mode Gelap'}>
           {theme === 'dark' ? <Sun size={16} color="#fbbf24" /> : <Moon size={16} />}
         </button>
-
+ 
         {/* User dropdown */}
         <div ref={dropRef} style={{ position: 'relative' }}>
           <button className="avatar-btn" onClick={() => setDropOpen(v => !v)}>
@@ -86,7 +90,7 @@ export default function Header() {
             </span>
             <ChevronDown size={12} color="var(--gray-400)" />
           </button>
-
+ 
           {dropOpen && (
             <div className="dropdown-menu">
               <div style={{ padding: '12px 14px', borderBottom: '1px solid var(--gray-100)' }}>
@@ -98,6 +102,38 @@ export default function Header() {
                 </div>
               </div>
 
+              {isMock && (
+                <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--gray-100)', background: 'var(--gray-50)' }}>
+                  <label style={{ fontSize: 10.5, fontWeight: 700, color: 'var(--gray-500)', display: 'block', marginBottom: 6 }}>SIMULASI PERAN:</label>
+                  <select
+                    value={role}
+                    onChange={(e) => handleRoleSwitch(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '6px 8px',
+                      borderRadius: 6,
+                      border: '1px solid var(--gray-200)',
+                      fontSize: 12,
+                      background: 'var(--surface)',
+                      color: 'var(--gray-700)',
+                      outline: 'none',
+                      cursor: 'pointer',
+                      fontWeight: 600
+                    }}
+                  >
+                    <option value="calon_rpl">Calon RPL</option>
+                    <option value="pmb">PMB Officer</option>
+                    <option value="baak">BAAK Officer</option>
+                    <option value="kaprodi_ti">Ka. Prodi TI</option>
+                    <option value="kaprodi_si">Ka. Prodi SI</option>
+                    <option value="kaprodi_dkv">Ka. Prodi DKV</option>
+                    <option value="kaprodi_ka">Ka. Prodi KA</option>
+                    <option value="asessor">Asessor RPL</option>
+                    <option value="admin">Admin Akademik</option>
+                  </select>
+                </div>
+              )}
+ 
               <button className="dropdown-item" onClick={() => { navigate('/profile'); setDropOpen(false) }}>
                 <User size={14} /> Profil Saya
               </button>
@@ -106,7 +142,7 @@ export default function Header() {
                   <KeyRound size={14} /> Pengaturan AI Key
                 </button>
               )}
-
+ 
               <div className="dropdown-sep" />
 
               <button className="dropdown-item danger" onClick={signOut}>

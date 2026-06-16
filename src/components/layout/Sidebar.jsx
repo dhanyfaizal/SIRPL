@@ -14,6 +14,7 @@ const ROLE_META = {
   kaprodi_dkv: { label: 'Ka. Prodi DKV', color: 'badge-indigo' },
   kaprodi_ka: { label: 'Ka. Prodi KA', color: 'badge-indigo' },
   baak: { label: 'BAAK Officer', color: 'badge-slate' },
+  pmb: { label: 'PMB Officer', color: 'badge-emerald' },
   calon_rpl: { label: 'Pendaftar RPL', color: 'badge-amber' },
 }
 
@@ -70,6 +71,14 @@ export default function Sidebar() {
           <>
             <div className="sidebar-section-label">Layanan RPL</div>
             <NavItem label="Ajukan RPL Baru" icon={PlusCircle} to="/pengajuan/baru" />
+          </>
+        )}
+
+        {/* Menu PMB */}
+        {role === 'pmb' && (
+          <>
+            <div className="sidebar-section-label">Monitoring PMB</div>
+            <NavItem label="Progress Dokumen" icon={ClipboardCheck} to="/dashboard" />
           </>
         )}
 

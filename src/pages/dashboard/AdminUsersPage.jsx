@@ -6,6 +6,7 @@ import toast from 'react-hot-toast'
 
 const ROLES_LIST = [
   { value: 'calon_rpl', label: 'Calon RPL' },
+  { value: 'pmb', label: 'PMB Officer' },
   { value: 'baak', label: 'BAAK' },
   { value: 'kaprodi_si', label: 'Ka. Prodi SI' },
   { value: 'kaprodi_ti', label: 'Ka. Prodi TI' },

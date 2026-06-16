@@ -1,7 +1,34 @@
 import { useState, useEffect } from 'react'
-import { dbPengajuan, dbMK, dbRekognisi, dbPenetapan } from '../../lib/db'
+import { dbPengajuan, dbMK, dbRekognisi, dbPenetapan, getDocumentProgress } from '../../lib/db'
 import { BookOpen, FileText, CheckCircle, Percent, DollarSign, Calendar, Edit2, RotateCcw, AlertCircle, Eye, Settings, ArrowLeft } from 'lucide-react'
 import toast from 'react-hot-toast'
+
+// Helper to format duration to human readable format
+function formatWaitingTime(submittedAtStr, finishedAtStr = null) {
+  if (!submittedAtStr) return '-'
+  const submittedAt = new Date(submittedAtStr)
+  const end = finishedAtStr ? new Date(finishedAtStr) : new Date()
+  const diffMs = end - submittedAt
+
+  if (diffMs < 0) return 'Baru saja'
+
+  const diffMins = Math.floor(diffMs / 60000)
+  const diffHours = Math.floor(diffMs / 3600000)
+  const diffDays = Math.floor(diffMs / 86400000)
+
+  if (diffDays > 0) {
+    const hoursPart = diffHours % 24
+    return `${diffDays} Hari ${hoursPart > 0 ? `${hoursPart} Jam` : ''}`
+  }
+  if (diffHours > 0) {
+    const minsPart = diffMins % 60
+    return `${diffHours} Jam ${minsPart > 0 ? `${minsPart} Menit` : ''}`
+  }
+  if (diffMins > 0) {
+    return `${diffMins} Menit`
+  }
+  return '1 Menit'
+}
 
 export default function AdminDashboard() {
   const [submissions, setSubmissions] = useState([])
@@ -220,6 +247,36 @@ export default function AdminDashboard() {
     }
   }
 
+  const handleArchive = async (id) => {
+    try {
+      await dbPengajuan.archive(id)
+      toast.success('Pengajuan berhasil diarsipkan!')
+      loadSubmissions()
+    } catch (e) {
+      console.error(e)
+      toast.error('Gagal mengarsipkan pengajuan')
+    }
+  }
+
+  const handleDelete = (id) => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Hapus Permanen Pengajuan',
+      message: 'Apakah Anda yakin ingin menghapus pengajuan ini secara permanen dari sistem? Semua data rekognisi, penetapan biaya, dan berkas akan dihapus secara permanen.',
+      confirmText: 'Ya, Hapus Permanen',
+      onConfirm: async () => {
+        try {
+          await dbPengajuan.delete(id)
+          toast.success('Pengajuan berhasil dihapus secara permanen!')
+          loadSubmissions()
+        } catch (e) {
+          console.error(e)
+          toast.error('Gagal menghapus pengajuan')
+        }
+      }
+    })
+  }
+
   const handleReturnToAsessor = async () => {
     if (!catatanRevisi.trim()) {
       toast.error('Silakan isi catatan revisi / alasan pengembalian!')
@@ -291,10 +348,11 @@ export default function AdminDashboard() {
   }
 
   // Filter lists based on states
-  const needActionList = submissions.filter(item => item.status === 'assessed_asessor')
-  const inProgressList = submissions.filter(item => ['submitted', 'returned_baak', 'validated_baak', 'returned_kaprodi', 'recognized_kaprodi', 'returned_asessor'].includes(item.status))
-  const completedList = submissions.filter(item => item.status === 'mapped_admin')
-  const returnedList = submissions.filter(item => item.status === 'returned_admin')
+  const needActionList = submissions.filter(item => item.status === 'assessed_asessor' && !item.is_archived)
+  const inProgressList = submissions.filter(item => ['submitted', 'returned_baak', 'validated_baak', 'returned_kaprodi', 'recognized_kaprodi', 'returned_asessor'].includes(item.status) && !item.is_archived)
+  const completedList = submissions.filter(item => item.status === 'mapped_admin' && !item.is_archived)
+  const returnedList = submissions.filter(item => item.status === 'returned_admin' && !item.is_archived)
+  const archivedList = submissions.filter(item => item.is_archived)
 
   const activeList = activeTab === 'need_action'
     ? needActionList
@@ -302,6 +360,8 @@ export default function AdminDashboard() {
     ? inProgressList
     : activeTab === 'completed'
     ? completedList
+    : activeTab === 'archived'
+    ? archivedList
     : returnedList
 
   const isReadOnly = selectedItem && selectedItem.status !== 'assessed_asessor'
@@ -319,6 +379,70 @@ export default function AdminDashboard() {
       <div className="page-header">
         <h1 className="page-title">Dashboard Admin RPL</h1>
         <p className="page-subtitle">Kelola pengajuan calon mahasiswa, finalisasi rencana studi & biaya, dan atur batasan sistem</p>
+      </div>
+
+      {/* Visual Analytics Widgets */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 24 }}>
+        <div className="card" style={{ background: 'linear-gradient(135deg, var(--indigo-50), var(--indigo-100))', borderColor: 'var(--indigo-200)' }}>
+          <div className="card-body" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{ padding: 10, background: '#fff', borderRadius: 8, color: 'var(--indigo-600)', display: 'flex', alignItems: 'center' }}>
+              <span style={{ fontSize: 20 }}>👥</span>
+            </div>
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--gray-500)', textTransform: 'uppercase' }}>Total Pendaftar Aktif</div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--indigo-900)', marginTop: 2 }}>{submissions.filter(s => !s.is_archived).length}</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="card" style={{ background: 'linear-gradient(135deg, #ecfdf5, #d1fae5)', borderColor: '#a7f3d0' }}>
+          <div className="card-body" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{ padding: 10, background: '#fff', borderRadius: 8, color: '#059669', display: 'flex', alignItems: 'center' }}>
+              <span style={{ fontSize: 20 }}>✓</span>
+            </div>
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--gray-500)', textTransform: 'uppercase' }}>RPL Selesai (Final)</div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: '#064e3b', marginTop: 2 }}>{submissions.filter(s => s.status === 'mapped_admin' && !s.is_archived).length}</div>
+            </div>
+          </div>
+        </div>
+
+        <div className="card" style={{ background: 'linear-gradient(135deg, #fffbeb, #fef3c7)', borderColor: '#fde68a' }}>
+          <div className="card-body" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{ padding: 10, background: '#fff', borderRadius: 8, color: '#d97706', display: 'flex', alignItems: 'center' }}>
+              <span style={{ fontSize: 20 }}>⏳</span>
+            </div>
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--gray-500)', textTransform: 'uppercase' }}>Rerata Waktu Tunggu</div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: '#78350f', marginTop: 2 }}>
+                {(() => {
+                  const subCount = submissions.filter(s => s.submitted_at).length
+                  if (subCount === 0) return '-'
+                  let totalMs = 0
+                  submissions.filter(s => s.submitted_at).forEach(s => {
+                    const sub = new Date(s.submitted_at)
+                    const end = s.status === 'mapped_admin' ? new Date(s.updated_at) : new Date()
+                    totalMs += (end - sub)
+                  })
+                  const avgDays = (totalMs / subCount / 86400000).toFixed(1)
+                  return `${avgDays} Hari`
+                })()}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="card" style={{ background: 'linear-gradient(135deg, #f1f5f9, #e2e8f0)', borderColor: '#cbd5e1' }}>
+          <div className="card-body" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 14 }}>
+            <div style={{ padding: 10, background: '#fff', borderRadius: 8, color: '#475569', display: 'flex', alignItems: 'center' }}>
+              <span style={{ fontSize: 20 }}>📂</span>
+            </div>
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--gray-500)', textTransform: 'uppercase' }}>Berkas Diarsipkan</div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: '#1e293b', marginTop: 2 }}>{submissions.filter(s => s.is_archived).length}</div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {!selectedItem ? (
@@ -346,6 +470,13 @@ export default function AdminDashboard() {
               style={{ fontWeight: 600 }}
             >
               Selesai / Final ({completedList.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('archived')}
+              className={`btn btn-sm ${activeTab === 'archived' ? 'btn-primary' : 'btn-secondary'}`}
+              style={{ fontWeight: 600 }}
+            >
+              Arsip ({archivedList.length})
             </button>
             <button
               onClick={() => setActiveTab('returned')}
@@ -381,41 +512,81 @@ export default function AdminDashboard() {
                 ) : (
                   <div className="table-wrap">
                     <table>
-                      <thead>
-                        <tr>
-                          <th>Nama Pendaftar</th>
-                          <th>Email</th>
-                          <th>Prodi Pilihan</th>
-                          <th>SKS Diakui</th>
-                          <th>Status</th>
-                          <th style={{ width: 120 }}>Aksi</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {activeList.map(item => {
-                          const statusInfo = getStatusInfo(item.status);
-                          return (
-                            <tr key={item.id}>
-                              <td>
-                                <strong>{item.profile?.nama_lengkap}</strong>
-                                {item.status === 'returned_admin' && item.catatan_revisi && (
-                                  <span style={{ display: 'block', fontSize: 11, color: 'var(--danger)', marginTop: 2 }}>
-                                    Alasan: "{item.catatan_revisi}"
-                                  </span>
-                                )}
-                              </td>
-                              <td>{item.profile?.email}</td>
-                              <td><span className="badge-pill badge-slate">{item.prodi?.nama}</span></td>
-                              <td><span style={{ fontWeight: 600 }}>{item.total_sks_diakui || 0} SKS</span></td>
-                              <td><span className={`badge-pill ${statusInfo.className}`}>{statusInfo.label}</span></td>
-                              <td>
-                                <button
-                                  onClick={() => setSelectedItem(item)}
-                                  className="btn btn-primary btn-sm"
-                                >
-                                  {activeTab === 'need_action' ? 'Finalisasi' : 'Lihat Detail'}
-                                </button>
-                              </td>
+                       <thead>
+                         <tr>
+                           <th>Nama Pendaftar</th>
+                           <th>Email</th>
+                           <th>Prodi Pilihan</th>
+                           <th style={{ width: 140 }}>Progress Berkas</th>
+                           <th>SKS Diakui</th>
+                           <th>Status</th>
+                           <th>Waktu Tunggu</th>
+                           <th style={{ width: 140 }}>Aksi</th>
+                         </tr>
+                       </thead>
+                       <tbody>
+                         {activeList.map(item => {
+                           const statusInfo = getStatusInfo(item.status);
+                           return (
+                             <tr key={item.id}>
+                               <td>
+                                 <strong>{item.profile?.nama_lengkap}</strong>
+                                 {item.status === 'returned_admin' && item.catatan_revisi && (
+                                   <span style={{ display: 'block', fontSize: 11, color: 'var(--danger)', marginTop: 2 }}>
+                                     Alasan: "{item.catatan_revisi}"
+                                   </span>
+                                 )}
+                               </td>
+                               <td>{item.profile?.email}</td>
+                               <td><span className="badge-pill badge-slate">{item.prodi?.nama}</span></td>
+                               <td>
+                                 {(() => {
+                                   const prog = getDocumentProgress(item);
+                                   return (
+                                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, fontWeight: 700, color: 'var(--gray-500)' }}>
+                                         <span>SMA: {prog.percent}%</span>
+                                       </div>
+                                       <div style={{ height: 4, background: 'var(--gray-100)', borderRadius: 2, overflow: 'hidden', display: 'flex', width: 100 }}>
+                                         <div style={{ width: `${prog.percent}%`, background: prog.percent === 100 ? 'var(--success)' : 'var(--amber-500)', height: '100%', borderRadius: 2 }} />
+                                       </div>
+                                     </div>
+                                   );
+                                 })()}
+                               </td>
+                               <td><span style={{ fontWeight: 600 }}>{item.total_sks_diakui || 0} SKS</span></td>
+                               <td><span className={`badge-pill ${statusInfo.className}`}>{statusInfo.label}</span></td>
+                               <td style={{ fontSize: 12 }}>
+                                 {formatWaitingTime(item.submitted_at, item.status === 'mapped_admin' ? item.updated_at : null)}
+                                </td>
+                               <td>
+                                 <div style={{ display: 'flex', gap: 6 }}>
+                                   <button
+                                     onClick={() => setSelectedItem(item)}
+                                     className="btn btn-primary btn-sm"
+                                   >
+                                     {activeTab === 'need_action' ? 'Finalisasi' : 'Lihat'}
+                                   </button>
+                                   {activeTab === 'completed' && (
+                                     <button
+                                       onClick={() => handleArchive(item.id)}
+                                       className="btn btn-secondary btn-sm"
+                                       style={{ fontSize: 11, padding: '4px 8px' }}
+                                     >
+                                       Arsipkan
+                                     </button>
+                                   )}
+                                   {activeTab === 'archived' && (
+                                     <button
+                                       onClick={() => handleDelete(item.id)}
+                                       className="btn btn-danger btn-sm"
+                                       style={{ background: 'var(--danger)', color: '#fff', fontSize: 11, padding: '4px 8px' }}
+                                     >
+                                       Hapus
+                                     </button>
+                                   )}
+                                 </div>
+                               </td>
                             </tr>
                           );
                         })}
@@ -706,9 +877,31 @@ export default function AdminDashboard() {
 
                 <div className="card-footer">
                   {isReadOnly ? (
-                    selectedItem.status === 'mapped_admin' ? (
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, color: 'var(--success)', fontWeight: 700, padding: '6px 0', fontSize: 13 }}>
-                        <CheckCircle size={16} /> Rencana Studi & Biaya Diterbitkan
+                    selectedItem.is_archived ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, color: 'var(--gray-500)', fontWeight: 700, padding: '6px 0', fontSize: 13 }}>
+                          📂 Berkas di dalam Arsip
+                        </div>
+                        <button
+                          onClick={() => handleDelete(selectedItem.id)}
+                          className="btn btn-danger"
+                          style={{ width: '100%', justifyContent: 'center', background: 'var(--danger)', color: '#fff', fontWeight: 600 }}
+                        >
+                          Hapus Permanen
+                        </button>
+                      </div>
+                    ) : selectedItem.status === 'mapped_admin' ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, color: 'var(--success)', fontWeight: 700, padding: '6px 0', fontSize: 13 }}>
+                          <CheckCircle size={16} /> Rencana Studi & Biaya Diterbitkan
+                        </div>
+                        <button
+                          onClick={() => handleArchive(selectedItem.id)}
+                          className="btn btn-secondary"
+                          style={{ width: '100%', justifyContent: 'center', fontWeight: 600 }}
+                        >
+                          Arsipkan Berkas Ini
+                        </button>
                       </div>
                     ) : (
                       <div style={{ padding: '6px 0', textAlign: 'center', fontSize: 12.5, color: 'var(--gray-500)', fontWeight: 500 }}>

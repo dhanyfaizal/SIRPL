@@ -190,6 +190,22 @@ export default function AdminCurriculumPage() {
     })
   }
 
+  const handleToggleProdi = async (id, currentStatus) => {
+    try {
+      const nextStatus = currentStatus === false ? true : false
+      const { error } = await dbProdi.update(id, { is_active: nextStatus })
+      if (error) throw error
+      
+      toast.success(`Program Studi berhasil ${nextStatus ? 'diaktifkan' : 'dinonaktifkan'}`)
+      
+      // Update local state
+      setProdis(prev => prev.map(p => p.id === id ? { ...p, is_active: nextStatus } : p))
+    } catch (e) {
+      console.error(e)
+      toast.error('Gagal memperbarui status Program Studi')
+    }
+  }
+
   // ── Download Template CSV ───────────────────────────────────
   const downloadTemplate = () => {
     const header = 'Kode MK,Nama MK,SKS,Jenis\n'
@@ -346,74 +362,117 @@ export default function AdminCurriculumPage() {
 
       {/* Single Add Form + Table in Grid */}
       <div style={{ display: 'grid', gridTemplateColumns: '380px 1fr', gap: 24, alignItems: 'start' }}>
-        {/* Left: Single Add Card */}
-        <div className="card">
-          <div className="card-header">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--indigo-600)' }}>
-              <Plus size={16} />
-              <h3 style={{ fontSize: 14, fontWeight: 700 }}>Tambah Mata Kuliah</h3>
+        {/* Left Column: Single Add Card & Program Studi Card */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+          <div className="card">
+            <div className="card-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--indigo-600)' }}>
+                <Plus size={16} />
+                <h3 style={{ fontSize: 14, fontWeight: 700 }}>Tambah Mata Kuliah</h3>
+              </div>
             </div>
-          </div>
-          <form onSubmit={handleAddSingle}>
-            <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <div className="input-group">
-                <label className="input-label">Program Studi</label>
-                <select value={formProdi} onChange={(e) => setFormProdi(e.target.value)} className="input" required>
-                  <option value="">-- Pilih Prodi --</option>
-                  {prodis.map(p => (
-                    <option key={p.id} value={p.id}>{p.kode} - {p.nama}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="input-group">
-                <label className="input-label">Kode Mata Kuliah</label>
-                <input
-                  type="text"
-                  value={formKode}
-                  onChange={(e) => setFormKode(e.target.value.toUpperCase())}
-                  placeholder="cth: MKI201"
-                  className="input"
-                  required
-                />
-              </div>
-
-              <div className="input-group">
-                <label className="input-label">Nama Mata Kuliah</label>
-                <input
-                  type="text"
-                  value={formNama}
-                  onChange={(e) => setFormNama(e.target.value)}
-                  placeholder="cth: Dasar-Dasar Pemrograman"
-                  className="input"
-                  required
-                />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <form onSubmit={handleAddSingle}>
+              <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                 <div className="input-group">
-                  <label className="input-label">SKS</label>
-                  <select value={formSKS} onChange={(e) => setFormSKS(e.target.value)} className="input">
-                    {[1, 2, 3, 4, 5, 6].map(n => (
-                      <option key={n} value={n}>{n} SKS</option>
+                  <label className="input-label">Program Studi</label>
+                  <select value={formProdi} onChange={(e) => setFormProdi(e.target.value)} className="input" required>
+                    <option value="">-- Pilih Prodi --</option>
+                    {prodis.map(p => (
+                      <option key={p.id} value={p.id}>{p.kode} - {p.nama}</option>
                     ))}
                   </select>
                 </div>
+
                 <div className="input-group">
-                  <label className="input-label">Jenis</label>
-                  <select value={formJenis} onChange={(e) => setFormJenis(e.target.value)} className="input">
-                    <option value="inti">MK Prodi (Inti)</option>
-                    <option value="umum">MK Institusi (Umum)</option>
-                  </select>
+                  <label className="input-label">Kode Mata Kuliah</label>
+                  <input
+                    type="text"
+                    value={formKode}
+                    onChange={(e) => setFormKode(e.target.value.toUpperCase())}
+                    placeholder="cth: MKI201"
+                    className="input"
+                    required
+                  />
+                </div>
+
+                <div className="input-group">
+                  <label className="input-label">Nama Mata Kuliah</label>
+                  <input
+                    type="text"
+                    value={formNama}
+                    onChange={(e) => setFormNama(e.target.value)}
+                    placeholder="cth: Dasar-Dasar Pemrograman"
+                    className="input"
+                    required
+                  />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div className="input-group">
+                    <label className="input-label">SKS</label>
+                    <select value={formSKS} onChange={(e) => setFormSKS(e.target.value)} className="input">
+                      {[1, 2, 3, 4, 5, 6].map(n => (
+                        <option key={n} value={n}>{n} SKS</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="input-group">
+                    <label className="input-label">Jenis</label>
+                    <select value={formJenis} onChange={(e) => setFormJenis(e.target.value)} className="input">
+                      <option value="inti">MK Prodi (Inti)</option>
+                      <option value="umum">MK Institusi (Umum)</option>
+                    </select>
+                  </div>
                 </div>
               </div>
+              <div className="card-footer">
+                <button type="submit" disabled={submitting} className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', gap: 6 }}>
+                  <Plus size={14} /> {submitting ? 'Menyimpan...' : 'Tambahkan'}
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {/* Program Studi Toggle Card */}
+          <div className="card">
+            <div className="card-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--indigo-600)' }}>
+                <BookOpen size={16} />
+                <h3 style={{ fontSize: 14, fontWeight: 700 }}>Program Studi Pilihan</h3>
+              </div>
             </div>
-            <div className="card-footer">
-              <button type="submit" disabled={submitting} className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', gap: 6 }}>
-                <Plus size={14} /> {submitting ? 'Menyimpan...' : 'Tambahkan'}
-              </button>
+            <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <p style={{ fontSize: 12, color: 'var(--gray-500)', lineHeight: 1.5, margin: 0 }}>
+                Aktifkan atau nonaktifkan program studi yang tampil di dropdown pilihan pendaftaran calon.
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 4 }}>
+                {prodis.map(p => (
+                  <div key={p.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', border: '1px solid var(--gray-100)', borderRadius: 8, background: 'var(--gray-50)' }}>
+                    <div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gray-700)' }}>{p.nama}</div>
+                      <div style={{ fontSize: 11, color: 'var(--gray-400)', fontFamily: 'monospace' }}>Kode: {p.kode}</div>
+                    </div>
+                    <button
+                      onClick={() => handleToggleProdi(p.id, p.is_active)}
+                      className="btn btn-sm"
+                      style={{
+                        padding: '4px 10px',
+                        fontSize: 11,
+                        borderRadius: 6,
+                        minWidth: 72,
+                        justifyContent: 'center',
+                        background: p.is_active !== false ? 'var(--emerald-600)' : 'var(--gray-400)',
+                        borderColor: p.is_active !== false ? 'var(--emerald-700)' : 'var(--gray-500)',
+                        color: '#fff'
+                      }}
+                    >
+                      {p.is_active !== false ? 'Aktif' : 'Nonaktif'}
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
-          </form>
+          </div>
         </div>
 
         {/* Right: Course Table */}

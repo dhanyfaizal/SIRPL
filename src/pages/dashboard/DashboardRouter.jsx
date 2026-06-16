@@ -4,6 +4,7 @@ import BaakDashboard from './BaakDashboard'
 import KaprodiDashboard from './KaprodiDashboard'
 import AsessorDashboard from './AsessorDashboard'
 import AdminDashboard from './AdminDashboard'
+import PmbDashboard from './PmbDashboard'
 
 export default function DashboardRouter() {
   const { role, loading } = useAuth()
@@ -18,6 +19,7 @@ export default function DashboardRouter() {
   }
 
   if (role === 'calon_rpl') return <PendaftarDashboard />
+  if (role === 'pmb') return <PmbDashboard />
   if (role === 'baak') return <BaakDashboard />
   if (role?.startsWith('kaprodi_')) return <KaprodiDashboard />
   if (role === 'asessor') return <AsessorDashboard />

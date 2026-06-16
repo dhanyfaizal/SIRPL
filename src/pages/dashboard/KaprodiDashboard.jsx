@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { dbPengajuan, dbMK, dbRekognisi } from '../../lib/db'
+import { dbPengajuan, dbMK, dbRekognisi, getDocumentProgress } from '../../lib/db'
 import { Award, Brain, RefreshCw, FileText, CheckCircle, Save, Plus, Trash2, Briefcase } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../contexts/AuthContext'
@@ -1266,6 +1266,7 @@ export default function KaprodiDashboard() {
                         <th>Nama Pendaftar</th>
                         <th>Email</th>
                         <th>Prodi Pilihan</th>
+                        <th style={{ width: 130 }}>Progress Berkas</th>
                         <th>Status Internal</th>
                         <th style={{ width: 120 }}>Aksi</th>
                       </tr>
@@ -1283,6 +1284,21 @@ export default function KaprodiDashboard() {
                           </td>
                           <td>{item.profile?.email}</td>
                           <td><span className="badge-pill badge-slate">{item.prodi?.nama}</span></td>
+                          <td>
+                            {(() => {
+                              const prog = getDocumentProgress(item);
+                              return (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, fontWeight: 700, color: 'var(--gray-500)' }}>
+                                    <span>SMA: {prog.percent}%</span>
+                                  </div>
+                                  <div style={{ height: 4, background: 'var(--gray-100)', borderRadius: 2, overflow: 'hidden', display: 'flex', width: 100 }}>
+                                    <div style={{ width: `${prog.percent}%`, background: prog.percent === 100 ? 'var(--success)' : 'var(--amber-500)', height: '100%', borderRadius: 2 }} />
+                                  </div>
+                                </div>
+                              );
+                            })()}
+                          </td>
                           <td><span className={`badge-pill status-${item.status}`}>{item.status.toUpperCase()}</span></td>
                           <td>
                             <button
