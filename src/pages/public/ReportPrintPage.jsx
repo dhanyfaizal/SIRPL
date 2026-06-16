@@ -483,7 +483,7 @@ export default function ReportPrintPage() {
 
           {/* Footer Halaman Cetak */}
           <div className="print-footer no-screen">
-            <span style={{ fontWeight: 600 }}>STIKOM Yos Sudarso Purwokerto - Rencana Studi RPL · {pengajuan.profile?.nama_lengkap} Prodi Tujuan ({pengajuan.prodi?.nama})</span>
+            <span style={{ fontWeight: 600 }}>STIKOM Yos Sudarso Purwokerto - Rencana Studi RPL · {pengajuan.profile?.nama_lengkap} · Prodi Tujuan {pengajuan.prodi?.nama}</span>
             <span className="page-number"></span>
           </div>
         </div>
