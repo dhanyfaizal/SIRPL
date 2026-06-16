@@ -86,6 +86,9 @@ export default function ReportPrintPage() {
     <div className="report-page-container">
       <style dangerouslySetInnerHTML={{ __html: `
         @media screen {
+          .no-screen {
+            display: none !important;
+          }
           .report-page-container {
             background-color: #f1f5f9;
             height: 100vh;
@@ -126,8 +129,32 @@ export default function ReportPrintPage() {
         }
 
         @media print {
+          .no-screen {
+            display: none !important;
+          }
           .no-print {
             display: none !important;
+          }
+          body {
+            counter-reset: page;
+          }
+          .print-footer {
+            position: fixed;
+            bottom: -10mm;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: space-between;
+            font-size: 9px;
+            color: #64748b;
+            border-top: 1.5px solid #cbd5e1;
+            padding-top: 6px;
+            background: #ffffff;
+            font-family: 'Inter', system-ui, sans-serif;
+          }
+          .page-number::after {
+            counter-increment: page;
+            content: "Halaman " counter(page);
           }
           .report-page-container {
             background: none !important;
@@ -168,7 +195,7 @@ export default function ReportPrintPage() {
             break-before: page !important;
           }
           @page {
-            margin: 15mm 20mm 15mm 20mm;
+            margin: 15mm 20mm 20mm 20mm;
           }
         }
       `}} />
@@ -454,6 +481,12 @@ export default function ReportPrintPage() {
               <p style={{ margin: '0 0 70px 0', lineHeight: 1.6 }}>Menyetujui,<br /><strong>Ketua Sekolah Tinggi</strong></p>
               <p style={{ margin: 0, textDecoration: 'underline', fontWeight: 700 }}>Romanus Edy Prabowo, S.Si., M.Sc., Ph.D.</p>
             </div>
+          </div>
+
+          {/* Footer Halaman Cetak */}
+          <div className="print-footer no-screen">
+            <span style={{ fontWeight: 600 }}>Lembar Rencana Studi RPL · {pengajuan.profile?.nama_lengkap} ({pengajuan.prodi?.nama})</span>
+            <span className="page-number"></span>
           </div>
         </div>
       </div>
