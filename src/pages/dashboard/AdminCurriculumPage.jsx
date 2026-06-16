@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Fragment } from 'react'
 import { dbMK, dbProdi } from '../../lib/db'
-import { BookOpen, Upload, Trash2, Plus, Download, Filter, FileSpreadsheet, RotateCw, Edit2, Check, X } from 'lucide-react'
+import { BookOpen, Upload, Trash2, Plus, Download, Filter, FileSpreadsheet, RotateCw, Edit2, Check, X, Search } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const TEMPLATE_EXAMPLE = `MKU101,Pancasila,2,Institusi,1
@@ -14,6 +14,7 @@ export default function AdminCurriculumPage() {
   const [allMK, setAllMK] = useState([])
   const [loading, setLoading] = useState(true)
   const [filterProdi, setFilterProdi] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
 
   // Single Add Form
   const [formKode, setFormKode] = useState('')
@@ -284,12 +285,43 @@ export default function AdminCurriculumPage() {
     URL.revokeObjectURL(url)
   }
 
-  // ── Filter logic ────────────────────────────────────────────
-  const filteredMK = filterProdi
-    ? allMK.filter(mk => mk.prodi_id === filterProdi)
-    : allMK
+  // ── Filter & Sort & Group logic ─────────────────────────────
+  const sortedMK = (() => {
+    const processed = allMK.filter(mk => {
+      const matchesProdi = filterProdi ? mk.prodi_id === filterProdi : true
+      const matchesSearch = searchQuery
+        ? mk.kode_mk.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          mk.nama_mk.toLowerCase().includes(searchQuery.toLowerCase())
+        : true
+      return matchesProdi && matchesSearch
+    })
 
-  // Group by prodi for display
+    return [...processed].sort((a, b) => {
+      const semA = a.semester || 1
+      const semB = b.semester || 1
+      if (semA !== semB) return semA - semB
+      return a.kode_mk.localeCompare(b.kode_mk)
+    })
+  })()
+
+  // Group by program studi
+  const prodiGroups = (() => {
+    const groups = prodis.map(prodi => {
+      const courses = sortedMK.filter(mk => mk.prodi_id === prodi.id)
+      return { prodi, courses }
+    }).filter(g => g.courses.length > 0)
+
+    // Handle courses with unknown prodi (if any)
+    const unknownCourses = sortedMK.filter(mk => !prodis.some(p => p.id === mk.prodi_id))
+    if (unknownCourses.length > 0) {
+      groups.push({
+        prodi: { id: 'unknown', nama: 'Program Studi Lainnya', kode: 'LAIN' },
+        courses: unknownCourses
+      })
+    }
+    return groups
+  })()
+
   const getProdiName = (prodiId) => {
     const p = prodis.find(pr => pr.id === prodiId)
     return p ? `${p.kode} - ${p.nama}` : prodiId
@@ -567,35 +599,86 @@ export default function AdminCurriculumPage() {
 
         {/* Right: Course Table */}
         <div className="card">
-          <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--indigo-600)' }}>
               <BookOpen size={16} />
               <h3 style={{ fontSize: 14, fontWeight: 700 }}>Daftar Mata Kuliah Kurikulum</h3>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Filter size={14} color="var(--gray-400)" />
-              <select
-                value={filterProdi}
-                onChange={(e) => setFilterProdi(e.target.value)}
-                style={{
-                  padding: '5px 10px', borderRadius: 6, border: '1px solid var(--gray-200)',
-                  background: 'var(--surface)', fontSize: 12, fontWeight: 500, outline: 'none'
-                }}
-              >
-                <option value="">Semua Prodi</option>
-                {prodis.map(p => (
-                  <option key={p.id} value={p.id}>{p.kode} - {p.nama}</option>
-                ))}
-              </select>
-              <span className="badge-pill badge-indigo">{filteredMK.length} MK</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              {/* Search Input */}
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                <Search size={14} color="var(--gray-400)" style={{ position: 'absolute', left: 10 }} />
+                <input
+                  type="text"
+                  placeholder="Cari Kode atau Nama MK..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  style={{
+                    padding: '6px 10px 6px 30px',
+                    borderRadius: 6,
+                    border: '1px solid var(--gray-200)',
+                    background: 'var(--surface)',
+                    fontSize: 12,
+                    outline: 'none',
+                    width: '200px',
+                    transition: 'border-color 0.15s ease',
+                  }}
+                  onFocus={(e) => e.target.style.borderColor = 'var(--indigo-500)'}
+                  onBlur={(e) => e.target.style.borderColor = 'var(--gray-200)'}
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    style={{
+                      position: 'absolute',
+                      right: 8,
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      color: 'var(--gray-400)',
+                      padding: 0,
+                      display: 'flex',
+                      alignItems: 'center'
+                    }}
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+
+              {/* Prodi Filter */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <Filter size={14} color="var(--gray-400)" />
+                <select
+                  value={filterProdi}
+                  onChange={(e) => setFilterProdi(e.target.value)}
+                  style={{
+                    padding: '6px 10px', borderRadius: 6, border: '1px solid var(--gray-200)',
+                    background: 'var(--surface)', fontSize: 12, fontWeight: 500, outline: 'none'
+                  }}
+                >
+                  <option value="">Semua Prodi</option>
+                  {prodis.map(p => (
+                    <option key={p.id} value={p.id}>{p.kode} - {p.nama}</option>
+                  ))}
+                </select>
+              </div>
+
+              <span className="badge-pill badge-indigo">{sortedMK.length} MK</span>
             </div>
           </div>
           <div className="card-body" style={{ padding: 0 }}>
-            {filteredMK.length === 0 ? (
+            {allMK.length === 0 ? (
               <div className="empty-state">
                 <div className="empty-state-icon">📚</div>
                 <div className="empty-state-text">Belum ada mata kuliah</div>
                 <div className="empty-state-sub">Tambahkan mata kuliah secara manual atau impor dari Excel.</div>
+              </div>
+            ) : sortedMK.length === 0 ? (
+              <div className="empty-state" style={{ padding: '40px 20px' }}>
+                <div className="empty-state-icon">🔍</div>
+                <div className="empty-state-text">Mata kuliah tidak ditemukan</div>
+                <div className="empty-state-sub">Tidak ada mata kuliah yang cocok dengan kata kunci pencarian Anda.</div>
               </div>
             ) : (
               <div className="table-wrap" style={{ maxHeight: 520, overflow: 'auto' }}>
@@ -607,137 +690,142 @@ export default function AdminCurriculumPage() {
                       <th style={{ width: 60 }}>SKS</th>
                       <th style={{ width: 110 }}>Jenis</th>
                       <th style={{ width: 60 }}>Smt</th>
-                      <th style={{ width: 140 }}>Program Studi</th>
                       <th style={{ width: 90 }}>Aksi</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredMK.map(mk => {
-                      const isEditing = editingMkId === mk.id
-                      return (
-                        <tr key={mk.id} style={{ background: isEditing ? '#f0f4ff' : 'transparent' }}>
-                          <td>
-                            {isEditing ? (
-                              <input
-                                type="text"
-                                value={editForm.kode_mk}
-                                onChange={(e) => setEditForm({ ...editForm, kode_mk: e.target.value.toUpperCase() })}
-                                className="input"
-                                style={{ padding: '4px 6px', fontSize: 12, minWidth: 70 }}
-                              />
-                            ) : (
-                              <code style={{ fontWeight: 700, fontSize: 12, color: 'var(--indigo-700)' }}>{mk.kode_mk}</code>
-                            )}
-                          </td>
-                          <td>
-                            {isEditing ? (
-                              <input
-                                type="text"
-                                value={editForm.nama_mk}
-                                onChange={(e) => setEditForm({ ...editForm, nama_mk: e.target.value })}
-                                className="input"
-                                style={{ padding: '4px 6px', fontSize: 12 }}
-                              />
-                            ) : (
-                              <span style={{ fontWeight: 500 }}>{mk.nama_mk}</span>
-                            )}
-                          </td>
-                          <td style={{ textAlign: 'center' }}>
-                            {isEditing ? (
-                              <select
-                                value={editForm.sks}
-                                onChange={(e) => setEditForm({ ...editForm, sks: parseInt(e.target.value) })}
-                                className="input"
-                                style={{ padding: '4px 4px', fontSize: 12, minWidth: 50 }}
-                              >
-                                {[1, 2, 3, 4, 5, 6].map(n => (
-                                  <option key={n} value={n}>{n}</option>
-                                ))}
-                              </select>
-                            ) : (
-                              <span style={{ fontWeight: 600 }}>{mk.sks}</span>
-                            )}
-                          </td>
-                          <td>
-                            {isEditing ? (
-                              <select
-                                value={editForm.jenis}
-                                onChange={(e) => setEditForm({ ...editForm, jenis: e.target.value })}
-                                className="input"
-                                style={{ padding: '4px 4px', fontSize: 11, minWidth: 80 }}
-                              >
-                                <option value="inti">MK Prodi</option>
-                                <option value="umum">MK Institusi</option>
-                              </select>
-                            ) : (
-                              <span className={`badge-pill ${mk.jenis === 'inti' ? 'badge-indigo' : 'badge-slate'}`}>
-                                {mk.jenis === 'inti' ? 'MK Prodi' : 'MK Institusi'}
-                              </span>
-                            )}
-                          </td>
-                          <td style={{ textAlign: 'center' }}>
-                            {isEditing ? (
-                              <select
-                                value={editForm.semester}
-                                onChange={(e) => setEditForm({ ...editForm, semester: parseInt(e.target.value) })}
-                                className="input"
-                                style={{ padding: '4px 4px', fontSize: 12, minWidth: 50 }}
-                              >
-                                {[1, 2, 3, 4, 5, 6, 7, 8].map(n => (
-                                  <option key={n} value={n}>{n}</option>
-                                ))}
-                              </select>
-                            ) : (
-                              <span style={{ fontWeight: 500, fontSize: 12 }}>{mk.semester || 1}</span>
-                            )}
-                          </td>
-                          <td style={{ fontSize: 12, color: 'var(--gray-500)' }}>
-                            {mk.prodi?.kode ? `${mk.prodi.kode} - ${mk.prodi.nama}` : getProdiName(mk.prodi_id)}
-                          </td>
-                          <td>
-                            {isEditing ? (
-                              <div style={{ display: 'flex', gap: 4 }}>
-                                <button
-                                  onClick={handleSaveEdit}
-                                  className="btn btn-ghost btn-icon"
-                                  style={{ color: 'var(--success)' }}
-                                  title="Simpan"
-                                >
-                                  <Check size={15} />
-                                </button>
-                                <button
-                                  onClick={handleCancelEdit}
-                                  className="btn btn-ghost btn-icon"
-                                  style={{ color: 'var(--gray-400)' }}
-                                  title="Batal"
-                                >
-                                  <X size={15} />
-                                </button>
-                              </div>
-                            ) : (
-                              <div style={{ display: 'flex', gap: 4 }}>
-                                <button
-                                  onClick={() => handleStartEdit(mk)}
-                                  className="btn btn-ghost btn-icon"
-                                  style={{ color: 'var(--indigo-600)' }}
-                                  title="Edit mata kuliah"
-                                >
-                                  <Edit2 size={14} />
-                                </button>
-                                <button
-                                  onClick={() => handleDelete(mk)}
-                                  className="btn btn-ghost btn-icon"
-                                  style={{ color: 'var(--danger)' }}
-                                  title="Hapus mata kuliah"
-                                >
-                                  <Trash2 size={14} />
-                                </button>
-                              </div>
-                            )}
+                    {prodiGroups.map(group => (
+                      <Fragment key={group.prodi.id}>
+                        <tr>
+                          <td colSpan={6} style={{ background: '#f5f3ff', color: 'var(--indigo-800)', fontWeight: 700, padding: '10px 14px', fontSize: 13, borderBottom: '1px solid var(--indigo-100)' }}>
+                            {group.prodi.kode} - {group.prodi.nama} ({group.courses.length} MK)
                           </td>
                         </tr>
-                      )
-                    })}
+                        {group.courses.map(mk => {
+                          const isEditing = editingMkId === mk.id
+                          return (
+                            <tr key={mk.id} style={{ background: isEditing ? '#f0f4ff' : 'transparent' }}>
+                              <td>
+                                {isEditing ? (
+                                  <input
+                                    type="text"
+                                    value={editForm.kode_mk}
+                                    onChange={(e) => setEditForm({ ...editForm, kode_mk: e.target.value.toUpperCase() })}
+                                    className="input"
+                                    style={{ padding: '4px 6px', fontSize: 12, minWidth: 70 }}
+                                  />
+                                ) : (
+                                  <code style={{ fontWeight: 700, fontSize: 12, color: 'var(--indigo-700)' }}>{mk.kode_mk}</code>
+                                )}
+                              </td>
+                              <td>
+                                {isEditing ? (
+                                  <input
+                                    type="text"
+                                    value={editForm.nama_mk}
+                                    onChange={(e) => setEditForm({ ...editForm, nama_mk: e.target.value })}
+                                    className="input"
+                                    style={{ padding: '4px 6px', fontSize: 12 }}
+                                  />
+                                ) : (
+                                  <span style={{ fontWeight: 500 }}>{mk.nama_mk}</span>
+                                )}
+                              </td>
+                              <td style={{ textAlign: 'center' }}>
+                                {isEditing ? (
+                                  <select
+                                    value={editForm.sks}
+                                    onChange={(e) => setEditForm({ ...editForm, sks: parseInt(e.target.value) })}
+                                    className="input"
+                                    style={{ padding: '4px 4px', fontSize: 12, minWidth: 50 }}
+                                  >
+                                    {[1, 2, 3, 4, 5, 6].map(n => (
+                                      <option key={n} value={n}>{n}</option>
+                                    ))}
+                                  </select>
+                                ) : (
+                                  <span style={{ fontWeight: 600 }}>{mk.sks}</span>
+                                )}
+                              </td>
+                              <td>
+                                {isEditing ? (
+                                  <select
+                                    value={editForm.jenis}
+                                    onChange={(e) => setEditForm({ ...editForm, jenis: e.target.value })}
+                                    className="input"
+                                    style={{ padding: '4px 4px', fontSize: 11, minWidth: 80 }}
+                                  >
+                                    <option value="inti">MK Prodi</option>
+                                    <option value="umum">MK Institusi</option>
+                                  </select>
+                                ) : (
+                                  <span className={`badge-pill ${mk.jenis === 'inti' ? 'badge-indigo' : 'badge-slate'}`}>
+                                    {mk.jenis === 'inti' ? 'MK Prodi' : 'MK Institusi'}
+                                  </span>
+                                )}
+                              </td>
+                              <td style={{ textAlign: 'center' }}>
+                                {isEditing ? (
+                                  <select
+                                    value={editForm.semester}
+                                    onChange={(e) => setEditForm({ ...editForm, semester: parseInt(e.target.value) })}
+                                    className="input"
+                                    style={{ padding: '4px 4px', fontSize: 12, minWidth: 50 }}
+                                  >
+                                    {[1, 2, 3, 4, 5, 6, 7, 8].map(n => (
+                                      <option key={n} value={n}>{n}</option>
+                                    ))}
+                                  </select>
+                                ) : (
+                                  <span style={{ fontWeight: 500, fontSize: 12 }}>{mk.semester || 1}</span>
+                                )}
+                              </td>
+                              <td>
+                                {isEditing ? (
+                                  <div style={{ display: 'flex', gap: 4 }}>
+                                    <button
+                                      onClick={handleSaveEdit}
+                                      className="btn btn-ghost btn-icon"
+                                      style={{ color: 'var(--success)' }}
+                                      title="Simpan"
+                                    >
+                                      <Check size={15} />
+                                    </button>
+                                    <button
+                                      onClick={handleCancelEdit}
+                                      className="btn btn-ghost btn-icon"
+                                      style={{ color: 'var(--gray-400)' }}
+                                      title="Batal"
+                                    >
+                                      <X size={15} />
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <div style={{ display: 'flex', gap: 4 }}>
+                                    <button
+                                      onClick={() => handleStartEdit(mk)}
+                                      className="btn btn-ghost btn-icon"
+                                      style={{ color: 'var(--indigo-600)' }}
+                                      title="Edit mata kuliah"
+                                    >
+                                      <Edit2 size={14} />
+                                    </button>
+                                    <button
+                                      onClick={() => handleDelete(mk)}
+                                      className="btn btn-ghost btn-icon"
+                                      style={{ color: 'var(--danger)' }}
+                                      title="Hapus mata kuliah"
+                                    >
+                                      <Trash2 size={14} />
+                                    </button>
+                                  </div>
+                                )}
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </Fragment>
+                    ))}
                   </tbody>
                 </table>
               </div>
