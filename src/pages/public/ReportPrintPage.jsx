@@ -231,7 +231,7 @@ export default function ReportPrintPage() {
                 STIKOM Yos Sudarso Purwokerto
               </h2>
               <p style={{ fontSize: '11px', color: '#64748b', margin: '0 0 4px 0' }}>
-                Jl. Jend. Sudirman No. 507 Purwokerto Barat, Banyumas · Telp: (0281) 641505
+                Jl. SMP5 No. 1, Windusara, Karangklesem, Purwokerto Selatan, Banyumas · Telp: (0281) 6840952
               </p>
               <p style={{ fontSize: '10px', color: '#94a3b8', margin: 0, fontStyle: 'italic' }}>
                 Email: info@stikomyos.ac.id · Website: www.stikomyos.ac.id
