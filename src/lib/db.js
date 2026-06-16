@@ -526,7 +526,77 @@ export const dbProfiles = {
   }
 }
 
-// ── 7. Progress Dokumen Helper ─────────────────────────────────
+// ── 7. Feedback Pelayanan ──────────────────────────────────────
+export const dbFeedback = {
+  submit: async (pengajuanId, userId, payload) => {
+    if (isMock) {
+      const store = JSON.parse(localStorage.getItem('si_rpl_feedback') || '{}')
+      const data = {
+        id: 'fb-' + Math.random().toString(36).slice(2, 10),
+        pengajuan_id: pengajuanId,
+        user_id: userId,
+        created_at: new Date().toISOString(),
+        ...payload
+      }
+      store[pengajuanId] = data
+      localStorage.setItem('si_rpl_feedback', JSON.stringify(store))
+      return { data, error: null }
+    }
+    return supabase
+      .from('feedback_pelayanan')
+      .insert({ pengajuan_id: pengajuanId, user_id: userId, ...payload })
+      .select()
+      .single()
+  },
+  getByPengajuanId: async (pengajuanId) => {
+    if (isMock) {
+      const store = JSON.parse(localStorage.getItem('si_rpl_feedback') || '{}')
+      return { data: store[pengajuanId] || null, error: null }
+    }
+    return supabase
+      .from('feedback_pelayanan')
+      .select('*')
+      .eq('pengajuan_id', pengajuanId)
+      .maybeSingle()
+  },
+  getAll: async () => {
+    if (isMock) {
+      const store = JSON.parse(localStorage.getItem('si_rpl_feedback') || '{}')
+      const submissions = getLocalData('si_rpl_pengajuan')
+      const profiles = getLocalData('si_rpl_profiles')
+      const prodis = getLocalData('si_rpl_program_studi')
+      
+      const data = Object.values(store).map(fb => {
+        const sub = submissions.find(s => s.id === fb.pengajuan_id) || {}
+        return {
+          ...fb,
+          profile: profiles.find(p => p.id === fb.user_id) || { nama_lengkap: 'Calon Mahasiswa' },
+          prodi: prodis.find(p => p.id === sub.prodi_pilihan_id) || { nama: '-' }
+        }
+      })
+      return { data, error: null }
+    }
+    const { data, error } = await supabase
+      .from('feedback_pelayanan')
+      .select(`
+        *,
+        profile:profiles!user_id(*),
+        pengajuan:pengajuan_rpl!pengajuan_id(
+          prodi:program_studi!prodi_pilihan_id(*)
+        )
+      `)
+      .order('created_at', { ascending: false })
+    
+    const normalized = (data || []).map(fb => ({
+      ...fb,
+      prodi: fb.pengajuan?.prodi || { nama: '-' }
+    }))
+    
+    return { data: normalized, error }
+  }
+}
+
+// ── 8. Progress Dokumen Helper ─────────────────────────────────
 export function getDocumentProgress(item) {
   if (!item) return { percent: 0, uploaded: 0, total: 4 }
   let uploaded = 0

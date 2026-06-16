@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { dbPengajuan, dbProdi, dbPenetapan, getDocumentProgress } from '../../lib/db'
+import { dbPengajuan, dbProdi, dbPenetapan, dbFeedback, getDocumentProgress } from '../../lib/db'
 import { supabase, isMock } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import { FileUp, Clipboard, Award, Shield, CheckCircle, FileText, Trash2, Plus, Eye, ArrowLeft, ArrowRight, HelpCircle, RotateCw } from 'lucide-react'
@@ -113,6 +113,13 @@ export default function PendaftarDashboard() {
   const [candidateSemTab, setCandidateSemTab] = useState(1)
   const [showSanggahModal, setShowSanggahModal] = useState(false)
   const [alasanSanggah, setAlasanSanggah] = useState('')
+  
+  const [existingFeedback, setExistingFeedback] = useState(null)
+  const [ratingKemudahan, setRatingKemudahan] = useState(0)
+  const [ratingKejelasan, setRatingKejelasan] = useState(0)
+  const [ratingKecepatan, setRatingKecepatan] = useState(0)
+  const [komentarFeedback, setKomentarFeedback] = useState('')
+  const [submittingFeedback, setSubmittingFeedback] = useState(false)
 
   const handleViewFile = (type, index = null) => {
     let fileUrl = ''
@@ -240,8 +247,12 @@ export default function PendaftarDashboard() {
         if (activePengajuan.status === 'mapped_admin') {
           const { data: penetapanData } = await dbPenetapan.getByPengajuanId(activePengajuan.id)
           setPenetapan(penetapanData || null)
+          
+          const { data: fbData } = await dbFeedback.getByPengajuanId(activePengajuan.id)
+          setExistingFeedback(fbData || null)
         } else {
           setPenetapan(null)
+          setExistingFeedback(null)
         }
       } else {
         setPengajuan(null)
@@ -273,6 +284,31 @@ export default function PendaftarDashboard() {
       toast.error('Gagal mengirim sanggahan')
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  const handleSubmitFeedback = async (e) => {
+    e.preventDefault()
+    if (ratingKemudahan === 0 || ratingKejelasan === 0 || ratingKecepatan === 0) {
+      toast.error('Harap berikan rating bintang untuk semua pertanyaan!')
+      return
+    }
+    setSubmittingFeedback(true)
+    try {
+      const { data, error } = await dbFeedback.submit(pengajuan.id, user.id, {
+        rating_kemudahan: ratingKemudahan,
+        rating_kejelasan: ratingKejelasan,
+        rating_kecepatan: ratingKecepatan,
+        komentar: komentarFeedback
+      })
+      if (error) throw error
+      toast.success('Terima kasih! Penilaian Anda berhasil dikirim.')
+      setExistingFeedback(data)
+    } catch (err) {
+      console.error(err)
+      toast.error('Gagal mengirim penilaian kepuasan')
+    } finally {
+      setSubmittingFeedback(false)
     }
   }
 
@@ -1186,6 +1222,153 @@ export default function PendaftarDashboard() {
                     </span>
                   </div>
 
+                </div>
+              </div>
+            )}
+
+            {/* Survei Kepuasan Pelayanan RPL */}
+            {stepIndex === 5 && (
+              <div className="card" style={{ marginTop: 20, borderTop: '4px solid var(--indigo-600)' }}>
+                <div className="card-header" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 18 }}>⭐</span>
+                  <h3 style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>Survei Kepuasan Pelayanan RPL</h3>
+                </div>
+                <div className="card-body" style={{ padding: 20 }}>
+                  {existingFeedback ? (
+                    <div style={{ textAlign: 'center', padding: '10px 0' }}>
+                      <div style={{ fontSize: 36, marginBottom: 8 }}>🎉</div>
+                      <h4 style={{ fontSize: 14, fontWeight: 700, color: 'var(--success)', marginBottom: 4 }}>Terima Kasih Atas Ulasan Anda!</h4>
+                      <p style={{ fontSize: 12.5, color: 'var(--gray-500)', margin: '0 0 16px 0' }}>
+                        Penilaian Anda membantu kami terus meningkatkan kualitas sistem dan pelayanan RPL kampus.
+                      </p>
+                      <div style={{ background: 'var(--gray-50)', padding: 12, borderRadius: 8, maxWidth: 360, margin: '0 auto', fontSize: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <span>Kemudahan Portal:</span>
+                          <strong style={{ color: 'var(--amber-500)' }}>{'★'.repeat(existingFeedback.rating_kemudahan)}{'☆'.repeat(5 - existingFeedback.rating_kemudahan)}</strong>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <span>Kejelasan Rencana Studi:</span>
+                          <strong style={{ color: 'var(--amber-500)' }}>{'★'.repeat(existingFeedback.rating_kejelasan)}{'☆'.repeat(5 - existingFeedback.rating_kejelasan)}</strong>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <span>Kecepatan Layanan:</span>
+                          <strong style={{ color: 'var(--amber-500)' }}>{'★'.repeat(existingFeedback.rating_kecepatan)}{'☆'.repeat(5 - existingFeedback.rating_kecepatan)}</strong>
+                        </div>
+                        {existingFeedback.komentar && (
+                          <div style={{ borderTop: '1px solid var(--gray-200)', paddingTop: 8, marginTop: 4, fontStyle: 'italic', textAlign: 'left', color: 'var(--gray-600)' }}>
+                            "{existingFeedback.komentar}"
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <form onSubmit={handleSubmitFeedback} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                      <p style={{ fontSize: 12.5, color: 'var(--gray-500)', margin: '0 0 8px 0', lineHeight: 1.4 }}>
+                        Mohon kesediaan Anda untuk memberikan penilaian terhadap proses dan pelayanan sistem pendaftaran RPL. Masukan Anda sangat berharga bagi kami.
+                      </p>
+                      
+                      {/* Question 1: Kemudahan Portal */}
+                      <div>
+                        <label style={{ fontSize: 12.5, fontWeight: 600, display: 'block', marginBottom: 4, color: 'var(--gray-700)' }}>
+                          1. Kemudahan penggunaan portal pendaftaran & unggah berkas?
+                        </label>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          {[1, 2, 3, 4, 5].map(star => (
+                            <button
+                              key={star}
+                              type="button"
+                              onClick={() => setRatingKemudahan(star)}
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                fontSize: 22,
+                                color: star <= ratingKemudahan ? 'var(--amber-500)' : 'var(--gray-300)',
+                                cursor: 'pointer',
+                                padding: 0
+                              }}
+                            >
+                              ★
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Question 2: Kejelasan Informasi */}
+                      <div>
+                        <label style={{ fontSize: 12.5, fontWeight: 600, display: 'block', marginBottom: 4, color: 'var(--gray-700)' }}>
+                          2. Kejelasan informasi rencana studi & rincian biaya yang diterbitkan?
+                        </label>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          {[1, 2, 3, 4, 5].map(star => (
+                            <button
+                              key={star}
+                              type="button"
+                              onClick={() => setRatingKejelasan(star)}
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                fontSize: 22,
+                                color: star <= ratingKejelasan ? 'var(--amber-500)' : 'var(--gray-300)',
+                                cursor: 'pointer',
+                                padding: 0
+                              }}
+                            >
+                              ★
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Question 3: Kecepatan Layanan */}
+                      <div>
+                        <label style={{ fontSize: 12.5, fontWeight: 600, display: 'block', marginBottom: 4, color: 'var(--gray-700)' }}>
+                          3. Kecepatan respon petugas BAAK & penilaian akademik Asessor?
+                        </label>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          {[1, 2, 3, 4, 5].map(star => (
+                            <button
+                              key={star}
+                              type="button"
+                              onClick={() => setRatingKecepatan(star)}
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                fontSize: 22,
+                                color: star <= ratingKecepatan ? 'var(--amber-500)' : 'var(--gray-300)',
+                                cursor: 'pointer',
+                                padding: 0
+                              }}
+                            >
+                              ★
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Text Comments */}
+                      <div className="input-group">
+                        <label className="input-label" style={{ fontWeight: 600 }}>Saran & Kritik Tambahan</label>
+                        <textarea
+                          value={komentarFeedback}
+                          onChange={(e) => setKomentarFeedback(e.target.value)}
+                          placeholder="Tuliskan saran Anda untuk penyempurnaan layanan RPL..."
+                          className="input"
+                          rows={2}
+                          style={{ resize: 'none', padding: '6px 10px', fontSize: 12.5 }}
+                          disabled={submittingFeedback}
+                        />
+                      </div>
+
+                      <button
+                        type="submit"
+                        disabled={submittingFeedback}
+                        className="btn btn-primary"
+                        style={{ alignSelf: 'flex-end', padding: '8px 16px', fontSize: 12.5, fontWeight: 700 }}
+                      >
+                        {submittingFeedback ? 'Mengirim...' : 'Kirim Penilaian'}
+                      </button>
+                    </form>
+                  )}
                 </div>
               </div>
             )}
