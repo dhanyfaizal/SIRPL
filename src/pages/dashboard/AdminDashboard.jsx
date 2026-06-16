@@ -30,6 +30,91 @@ function formatWaitingTime(submittedAtStr, finishedAtStr = null) {
   return '1 Menit'
 }
 
+function distributeCoursesToStudySemesters(courses) {
+  // 1. Group courses by original curriculum semester (ganjil/genap)
+  const oddCourses = []
+  const evenCourses = []
+  
+  courses.forEach(c => {
+    const origSem = c.semester || 1
+    if (origSem % 2 !== 0) {
+      oddCourses.push(c)
+    } else {
+      evenCourses.push(c)
+    }
+  })
+
+  // Sort by original semester ascending
+  oddCourses.sort((a, b) => (a.semester || 1) - (b.semester || 1))
+  evenCourses.sort((a, b) => (a.semester || 1) - (b.semester || 1))
+
+  // 2. Distribute:
+  // - Ganjil courses go to Smt 1 and Smt 3.
+  // - Genap courses go to Smt 2 and Smt 4.
+  const smt1 = []
+  const smt3 = []
+  const smt2 = []
+  const smt4 = []
+
+  oddCourses.forEach(c => {
+    const origSem = c.semester || 1
+    if (origSem <= 3) {
+      smt1.push(c)
+    } else {
+      smt3.push(c)
+    }
+  })
+
+  evenCourses.forEach(c => {
+    const origSem = c.semester || 2
+    if (origSem <= 4) {
+      smt2.push(c)
+    } else {
+      smt4.push(c)
+    }
+  })
+
+  // 3. Map jalur and respect max 24 SKS sinkron per study semester
+  const mapJalurForSemester = (list, targetSemester) => {
+    let currentSinkronSks = 0
+    return list.map(c => {
+      const name = c.nama.toLowerCase()
+      const isMoocDefault = c.jenis === 'umum' || 
+                            name.includes('pengantar') || 
+                            name.includes('dasar') || 
+                            name.includes('etika') || 
+                            name.includes('kewirausahaan') || 
+                            name.includes('pancasila') || 
+                            name.includes('bahasa')
+      
+      let jalur = 'sinkron'
+      if (isMoocDefault) {
+        jalur = 'asinkron'
+      } else {
+        if (currentSinkronSks + c.sks <= 24) {
+          jalur = 'sinkron'
+          currentSinkronSks += c.sks
+        } else {
+          jalur = 'asinkron'
+        }
+      }
+
+      return {
+        ...c,
+        semester: targetSemester,
+        jalur
+      }
+    })
+  }
+
+  return [
+    ...mapJalurForSemester(smt1, 1),
+    ...mapJalurForSemester(smt2, 2),
+    ...mapJalurForSemester(smt3, 3),
+    ...mapJalurForSemester(smt4, 4)
+  ]
+}
+
 export default function AdminDashboard() {
   const [submissions, setSubmissions] = useState([])
   const [selectedItem, setSelectedItem] = useState(null)
@@ -51,6 +136,7 @@ export default function AdminDashboard() {
 
   // New state variables for revision, settings, and tabs
   const [activeTab, setActiveTab] = useState('need_action')
+  const [activeSemTab, setActiveSemTab] = useState(1) // 1 | 2 | 3 | 4
   const [maxLimit, setMaxLimit] = useState('70')
   const [catatanRevisi, setCatatanRevisi] = useState('')
   const [recRows, setRecRows] = useState([])
@@ -83,40 +169,55 @@ export default function AdminDashboard() {
         // Fallback: Local rule-based mapping with 1.2s simulation delay
         await new Promise(resolve => setTimeout(resolve, 1200))
         
-        mappings = mappedCourses.map(c => {
-          const name = c.nama.toLowerCase()
-          // MOOCs conditions:
-          const isMooc = c.jenis === 'umum' || 
-                         name.includes('pengantar') || 
-                         name.includes('dasar') || 
-                         name.includes('etika') || 
-                         name.includes('kewirausahaan') || 
-                         name.includes('pancasila') || 
-                         name.includes('bahasa')
-          
+        // Restore original curriculum semesters for distribution helper
+        const rawMapping = mappedCourses.map(c => {
+          const originalMk = curriculumMK.find(m => m.id === c.mkId)
           return {
-            mkId: c.mkId,
-            jalur: isMooc ? 'asinkron' : 'sinkron'
+            ...c,
+            semester: originalMk ? (originalMk.semester || 1) : 1
           }
         })
+
+        const fallbackMappings = distributeCoursesToStudySemesters(rawMapping)
+        mappings = fallbackMappings.map(c => ({
+          mkId: c.mkId,
+          semester: c.semester,
+          jalur: c.jalur
+        }))
         
         toast.success('Menggunakan pemrosesan pintar lokal (AI Key belum diset)', { id: toastId })
       } else {
-        // Real API call to Sumopod API
-        const systemPrompt = 'Anda adalah asisten akademik RPL STIKOM Yos Sudarso. Bantu memetakan jalur pembelajaran mata kuliah sisa.'
+        // Real API call to Sumopod API using deepseek-v4-flash
+        const systemPrompt = 'Anda adalah asisten akademik RPL STIKOM Yos Sudarso. Bantu memetakan jalur pembelajaran dan semester studi untuk mata kuliah sisa.'
         const userPrompt = `Diberikan daftar mata kuliah sisa yang harus ditempuh oleh calon mahasiswa:
-        ${JSON.stringify(mappedCourses.map(c => ({ id: c.mkId, kode: c.kode, nama: c.nama, sks: c.sks, jenis: c.jenis })))}
+        ${JSON.stringify(mappedCourses.map(c => {
+          const originalMk = curriculumMK.find(m => m.id === c.mkId)
+          return {
+            id: c.mkId,
+            kode: c.kode,
+            nama: c.nama,
+            sks: c.sks,
+            jenis: c.jenis,
+            original_semester: originalMk ? (originalMk.semester || 1) : 1
+          }
+        }))}
         
-        Bantu petakan jalur pembelajaran untuk setiap mata kuliah sisa di atas menjadi 'sinkron' (tatap muka) atau 'asinkron' (MOOCs) berdasarkan nama dan jenis mata kuliah.
-        Gunakan aturan umum:
-        - Mata kuliah yang bersifat teori umum, dasar pemrograman awal, kewirausahaan, atau pengantar biasanya dipetakan ke Asinkron (MOOCs) -> 'asinkron'.
-        - Mata kuliah keahlian praktikal tingkat lanjut (inti), proyek akhir/seminar mandiri, atau studio desain biasanya dipetakan ke Sinkron (Tatap Muka) -> 'sinkron'.
+        Bantu petakan jalur pembelajaran ('sinkron' atau 'asinkron') dan semester studi (1, 2, 3, atau 4) untuk setiap mata kuliah sisa di atas dengan mengikuti instruksi ini:
+        
+        Instruksi Pemetaan:
+        1. Kelompokkan seluruh mata kuliah berdasarkan semester kurikulum aslinya (original_semester) menjadi Semester Ganjil (1, 3, 5, 7) dan Semester Genap (2, 4, 6, 8).
+        2. Buat urutan Mata Kuliah Ganjil dengan urutan semester 1, 3, 5, 7 dan urutan Mata Kuliah Genap dengan urutan semester 2, 4, 6, 8.
+        3. Lakukan Mapping Mata Kuliah untuk setiap Semester Studi mulai dari Semester 1:
+           - Semester 1 & 3 Studi: Hanya diisi sisa Mata Kuliah Semester Ganjil (original_semester 1, 3, 5, 7). Distribusikan mata kuliah semester ganjil kurikulum asli yang lebih rendah ke Semester 1 Studi, dan sisanya ke Semester 3 Studi.
+           - Semester 2 & 4 Studi: Hanya diisi sisa Mata Kuliah Semester Genap (original_semester 2, 4, 6, 8). Distribusikan mata kuliah semester genap kurikulum asli yang lebih rendah ke Semester 2 Studi, dan sisanya ke Semester 4 Studi.
+           - Pada setiap semester studi (1, 2, 3, dan 4), total SKS dari mata kuliah yang berjalur 'sinkron' (Tatap Muka) MAKSIMAL adalah 24 SKS. Jika melebihi 24 SKS, maka mata kuliah sisanya dalam semester tersebut otomatis diubah jalurnya menjadi 'asinkron' (MOOCs).
         
         Tanggapan Anda HARUS berupa objek JSON dengan struktur berikut dan tidak boleh ada teks penjelasan tambahan di luar JSON:
         {
           "mappings": [
             {
               "mkId": "ID_Mata_Kuliah",
+              "semester": 1 | 2 | 3 | 4,
               "jalur": "asinkron" | "sinkron"
             }
           ]
@@ -159,7 +260,7 @@ export default function AdminDashboard() {
         setMappedCourses(prevCourses => 
           prevCourses.map(c => {
             const found = mappings.find(m => m.mkId === c.mkId)
-            return found ? { ...c, jalur: found.jalur } : c
+            return found ? { ...c, jalur: found.jalur, semester: found.semester } : c
           })
         )
       }
@@ -275,10 +376,7 @@ export default function AdminDashboard() {
       }
 
       // 4. Map sisa mata kuliah ke Jalur (MOOCs/Tatap Muka)
-      // Auto mapping rule:
-      // - jenis 'umum' -> 'asinkron' (MOOCs)
-      // - jenis 'inti' -> 'sinkron' (Tatap Muka)
-      const initialMapping = curriculum
+      const rawMapping = curriculum
         .filter(mk => !diakuiIds.includes(mk.id))
         .map((mk) => ({
           mkId: mk.id,
@@ -286,9 +384,10 @@ export default function AdminDashboard() {
           nama: mk.nama_mk,
           sks: mk.sks,
           jenis: mk.jenis,
-          jalur: mk.jenis === 'umum' ? 'asinkron' : 'sinkron', // auto-mapping
-          semester: mk.semester || 1 // use semester from curriculum data
+          semester: mk.semester || 1
         }))
+      
+      const initialMapping = distributeCoursesToStudySemesters(rawMapping)
       setMappedCourses(initialMapping)
     } catch (e) {
       console.error(e)
@@ -324,6 +423,13 @@ export default function AdminDashboard() {
 
   const updateCourseSemester = (mkId, semester) => {
     setMappedCourses(mappedCourses.map(c => c.mkId === mkId ? { ...c, semester: parseInt(semester) } : c))
+  }
+
+  const getSemesterStats = (semNum) => {
+    const list = mappedCourses.filter(c => (c.semester || 1) === semNum)
+    const totalSks = list.reduce((sum, c) => sum + c.sks, 0)
+    const sinkronSks = list.filter(c => c.jalur === 'sinkron').reduce((sum, c) => sum + c.sks, 0)
+    return { totalSks, sinkronSks }
   }
 
   // Dynamic cost calculations based on user requirements
@@ -856,78 +962,132 @@ export default function AdminDashboard() {
                       Semua mata kuliah kurikulum diakui (0 SKS sisa untuk ditempuh).
                     </div>
                   ) : (
-                    <div className="table-wrap">
-                      <table>
-                        <thead>
-                          <tr>
-                            <th>Mata Kuliah Sisa</th>
-                            <th style={{ width: 60 }}>SKS</th>
-                            <th>Jalur Pembelajaran</th>
-                            <th style={{ width: 100 }}>Semester</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {mappedCourses.map(course => (
-                            <tr key={course.mkId}>
-                              <td>
-                                <span style={{ fontWeight: 600, display: 'block', fontSize: 12.5 }}>{course.nama}</span>
-                                <span style={{ fontSize: 11, color: 'var(--gray-400)' }}>{course.kode} · {course.jenis.toUpperCase()}</span>
-                              </td>
-                              <td>{course.sks} SKS</td>
-                              <td>
-                                {isReadOnly ? (
-                                  <span style={{ fontWeight: 500, fontSize: 12.5 }}>
-                                    {course.jalur === 'asinkron' ? '🌐 Asinkron (MOOCs)' : '🏫 Sinkron (Tatap Muka)'}
-                                  </span>
-                                ) : (
-                                  <select
-                                    value={course.jalur}
-                                    onChange={(e) => updateCourseJalur(course.mkId, e.target.value)}
-                                    style={{
-                                      padding: '5px 8px',
-                                      borderRadius: '6px',
-                                      border: '1px solid var(--gray-200)',
-                                      background: 'var(--surface)',
-                                      fontSize: '12px',
-                                      fontWeight: 500,
-                                      outline: 'none'
-                                    }}
-                                  >
-                                    <option value="asinkron">🌐 Asinkron (MOOCs)</option>
-                                    <option value="sinkron">🏫 Sinkron (Tatap Muka)</option>
-                                  </select>
-                                )}
-                              </td>
-                              <td>
-                                {isReadOnly ? (
-                                  <span style={{ fontWeight: 500, fontSize: 12.5 }}>
-                                    Semester {course.semester}
-                                  </span>
-                                ) : (
-                                  <select
-                                    value={course.semester}
-                                    onChange={(e) => updateCourseSemester(course.mkId, e.target.value)}
-                                    style={{
-                                      padding: '5px 8px',
-                                      borderRadius: '6px',
-                                      border: '1px solid var(--gray-200)',
-                                      background: 'var(--surface)',
-                                      fontSize: '12px',
-                                      fontWeight: 500,
-                                      outline: 'none'
-                                    }}
-                                  >
-                                    <option value="1">Smt 1</option>
-                                    <option value="2">Smt 2</option>
-                                    <option value="3">Smt 3</option>
-                                    <option value="4">Smt 4</option>
-                                  </select>
-                                )}
-                              </td>
+                    <div>
+                      {/* Semester Tabs */}
+                      <div style={{ display: 'flex', gap: 6, padding: '12px 16px', background: 'var(--gray-50)', borderBottom: '1px solid var(--gray-200)', flexWrap: 'wrap' }}>
+                        {[1, 2, 3, 4].map(semNum => {
+                          const stats = getSemesterStats(semNum)
+                          const isOverLimit = stats.sinkronSks > 24
+                          const isActive = activeSemTab === semNum
+                          return (
+                            <button
+                              key={semNum}
+                              onClick={() => setActiveSemTab(semNum)}
+                              className="btn btn-sm"
+                              style={{
+                                fontSize: 12,
+                                fontWeight: 600,
+                                borderColor: isOverLimit ? 'var(--danger)' : isActive ? 'var(--indigo-600)' : 'var(--gray-200)',
+                                color: isOverLimit ? 'var(--danger)' : isActive ? '#fff' : 'var(--gray-700)',
+                                background: isActive ? (isOverLimit ? 'var(--danger)' : 'var(--indigo-600)') : 'var(--surface)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 6,
+                                padding: '6px 12px',
+                                cursor: 'pointer',
+                                transition: 'all 0.15s ease'
+                              }}
+                            >
+                              Semester {semNum}
+                              <span style={{
+                                fontSize: 10.5,
+                                background: isActive ? 'rgba(255, 255, 255, 0.2)' : 'var(--gray-100)',
+                                color: isActive ? '#fff' : 'var(--gray-600)',
+                                padding: '2px 6px',
+                                borderRadius: 4,
+                                fontWeight: 600
+                              }}>
+                                {stats.totalSks} SKS ({stats.sinkronSks} SKS Sinkron)
+                              </span>
+                              {isOverLimit && (
+                                <AlertCircle size={13} color={isActive ? '#fff' : 'var(--danger)'} title="Sinkron melebihi batas 24 SKS!" />
+                              )}
+                            </button>
+                          )
+                        })}
+                      </div>
+
+                      <div className="table-wrap">
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>Mata Kuliah Sisa</th>
+                              <th style={{ width: 60 }}>SKS</th>
+                              <th>Jalur Pembelajaran</th>
+                              <th style={{ width: 100 }}>Semester</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                          </thead>
+                          <tbody>
+                            {mappedCourses.filter(c => (c.semester || 1) === activeSemTab).length === 0 ? (
+                              <tr>
+                                <td colSpan={4} style={{ textAlign: 'center', padding: 24, color: 'var(--gray-400)', fontStyle: 'italic' }}>
+                                  Tidak ada mata kuliah sisa pada Semester {activeSemTab}
+                                </td>
+                              </tr>
+                            ) : (
+                              mappedCourses.filter(c => (c.semester || 1) === activeSemTab).map(course => (
+                                <tr key={course.mkId}>
+                                  <td>
+                                    <span style={{ fontWeight: 600, display: 'block', fontSize: 12.5 }}>{course.nama}</span>
+                                    <span style={{ fontSize: 11, color: 'var(--gray-400)' }}>{course.kode} · {course.jenis.toUpperCase()}</span>
+                                  </td>
+                                  <td>{course.sks} SKS</td>
+                                  <td>
+                                    {isReadOnly ? (
+                                      <span style={{ fontWeight: 500, fontSize: 12.5 }}>
+                                        {course.jalur === 'asinkron' ? '🌐 Asinkron (MOOCs)' : '🏫 Sinkron (Tatap Muka)'}
+                                      </span>
+                                    ) : (
+                                      <select
+                                        value={course.jalur}
+                                        onChange={(e) => updateCourseJalur(course.mkId, e.target.value)}
+                                        style={{
+                                          padding: '5px 8px',
+                                          borderRadius: '6px',
+                                          border: '1px solid var(--gray-200)',
+                                          background: 'var(--surface)',
+                                          fontSize: '12px',
+                                          fontWeight: 500,
+                                          outline: 'none'
+                                        }}
+                                      >
+                                        <option value="asinkron">🌐 Asinkron (MOOCs)</option>
+                                        <option value="sinkron">🏫 Sinkron (Tatap Muka)</option>
+                                      </select>
+                                    )}
+                                  </td>
+                                  <td>
+                                    {isReadOnly ? (
+                                      <span style={{ fontWeight: 500, fontSize: 12.5 }}>
+                                        Semester {course.semester}
+                                      </span>
+                                    ) : (
+                                      <select
+                                        value={course.semester}
+                                        onChange={(e) => updateCourseSemester(course.mkId, e.target.value)}
+                                        style={{
+                                          padding: '5px 8px',
+                                          borderRadius: '6px',
+                                          border: '1px solid var(--gray-200)',
+                                          background: 'var(--surface)',
+                                          fontSize: '12px',
+                                          fontWeight: 500,
+                                          outline: 'none'
+                                        }}
+                                      >
+                                        <option value="1">Smt 1</option>
+                                        <option value="2">Smt 2</option>
+                                        <option value="3">Smt 3</option>
+                                        <option value="4">Smt 4</option>
+                                      </select>
+                                    )}
+                                  </td>
+                                </tr>
+                              ))
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
                   )}
                 </div>
