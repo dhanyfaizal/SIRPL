@@ -21,6 +21,7 @@ export default function AdminUsersPage() {
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
+  const [activeTab, setActiveTab] = useState('staff') // 'staff' or 'calon'
 
   const [refreshing, setRefreshing] = useState(false)
 
@@ -88,7 +89,13 @@ export default function AdminUsersPage() {
     }
   }
 
-  const filteredUsers = users.filter(u => 
+  const staffCount = users.filter(u => u.role !== 'calon_rpl').length
+  const calonCount = users.filter(u => u.role === 'calon_rpl').length
+
+  const tabUsers = users.filter(u => activeTab === 'calon' ? u.role === 'calon_rpl' : u.role !== 'calon_rpl')
+  const tabPendingCount = tabUsers.filter(u => !u.is_verified).length
+
+  const filteredUsers = tabUsers.filter(u => 
     u.nama_lengkap?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     u.email?.toLowerCase().includes(searchTerm.toLowerCase())
   )
@@ -119,6 +126,70 @@ export default function AdminUsersPage() {
         </button>
       </div>
 
+      {/* Tabs */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16, borderBottom: '1px solid var(--gray-200)', paddingBottom: 0 }}>
+        <button
+          onClick={() => setActiveTab('staff')}
+          style={{
+            padding: '10px 16px',
+            background: 'none',
+            border: 'none',
+            borderBottom: activeTab === 'staff' ? '2px solid var(--indigo-600)' : '2px solid transparent',
+            color: activeTab === 'staff' ? 'var(--indigo-600)' : 'var(--gray-500)',
+            fontWeight: activeTab === 'staff' ? 700 : 500,
+            fontSize: 13.5,
+            cursor: 'pointer',
+            transition: 'all 0.15s ease',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6
+          }}
+        >
+          <Shield size={14} />
+          Staf & Pengelola
+          <span style={{
+            fontSize: 11,
+            background: activeTab === 'staff' ? 'var(--indigo-50)' : 'var(--gray-100)',
+            color: activeTab === 'staff' ? 'var(--indigo-600)' : 'var(--gray-500)',
+            padding: '2px 6px',
+            borderRadius: 10,
+            fontWeight: 600
+          }}>
+            {staffCount}
+          </span>
+        </button>
+        <button
+          onClick={() => setActiveTab('calon')}
+          style={{
+            padding: '10px 16px',
+            background: 'none',
+            border: 'none',
+            borderBottom: activeTab === 'calon' ? '2px solid var(--indigo-600)' : '2px solid transparent',
+            color: activeTab === 'calon' ? 'var(--indigo-600)' : 'var(--gray-500)',
+            fontWeight: activeTab === 'calon' ? 700 : 500,
+            fontSize: 13.5,
+            cursor: 'pointer',
+            transition: 'all 0.15s ease',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6
+          }}
+        >
+          <UserCheck size={14} />
+          Calon Mahasiswa RPL
+          <span style={{
+            fontSize: 11,
+            background: activeTab === 'calon' ? 'var(--indigo-50)' : 'var(--gray-100)',
+            color: activeTab === 'calon' ? 'var(--indigo-600)' : 'var(--gray-500)',
+            padding: '2px 6px',
+            borderRadius: 10,
+            fontWeight: 600
+          }}>
+            {calonCount}
+          </span>
+        </button>
+      </div>
+
       <div className="card">
         {/* Search bar & statistics */}
         <div className="card-header" style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'center', justifyContent: 'space-between' }}>
@@ -133,8 +204,10 @@ export default function AdminUsersPage() {
             />
           </div>
           <div style={{ display: 'flex', gap: 12 }}>
-            <span className="badge-pill badge-slate">{users.length} Total Akun</span>
-            <span className="badge-pill badge-amber">{users.filter(u => !u.is_verified).length} Menunggu Verifikasi</span>
+            <span className="badge-pill badge-slate">{tabUsers.length} Akun</span>
+            {tabPendingCount > 0 && (
+              <span className="badge-pill badge-amber">{tabPendingCount} Menunggu Verifikasi</span>
+            )}
           </div>
         </div>
 
