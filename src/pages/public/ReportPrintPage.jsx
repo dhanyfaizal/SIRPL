@@ -59,8 +59,7 @@ export default function ReportPrintPage() {
   const syncCourses = rStudi.filter(c => c.jalur === 'sinkron')
 
   // Dynamic cost calculations based on user requirements for printable report
-  const totalSemesters = rStudi.length > 0 ? Math.max(...rStudi.map(c => parseInt(c.semester) || 1), 1) : 1
-  const biayaUkp = totalSemesters * 5400000
+  const biayaUkp = 5400000 // UKP 1 semester only
   const biayaRekognisi = (penetapan.total_sks_diakui || 0) * 50000
   const totalMoocs = rStudi.filter(c => c.jalur === 'asinkron').length
   const biayaMoocs = totalMoocs * 100000
@@ -360,7 +359,7 @@ export default function ReportPrintPage() {
                 <tbody>
                   <tr>
                     <td style={{ padding: '4px 0', color: '#64748b' }}>
-                      Biaya Uang Kuliah Paket (UKP) ({totalSemesters} Semester)<br />
+                      Biaya Uang Kuliah Paket (UKP) (1 Semester)<br />
                       <span style={{ fontSize: '10.5px', color: '#94a3b8', fontStyle: 'italic' }}>Rp900.000,00 per bulan (Rp5.400.000,00 per semester)</span>
                     </td>
                     <td style={{ padding: '4px 0', textAlign: 'right', width: '160px' }}>

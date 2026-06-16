@@ -156,6 +156,20 @@ export const dbMK = {
       return { data: { id }, error: null }
     }
     return supabase.from('mata_kuliah_kurikulum').delete().eq('id', id)
+  },
+
+  update: async (id, payload) => {
+    if (isMock) {
+      const list = getLocalData('si_rpl_mata_kuliah')
+      const idx = list.findIndex(mk => mk.id === id)
+      if (idx !== -1) {
+        list[idx] = { ...list[idx], ...payload }
+        saveLocalData('si_rpl_mata_kuliah', list)
+        return { data: list[idx], error: null }
+      }
+      return { data: null, error: { message: 'Not found' } }
+    }
+    return supabase.from('mata_kuliah_kurikulum').update(payload).eq('id', id).select().single()
   }
 }
 

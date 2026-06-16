@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react'
 import { dbMK, dbProdi } from '../../lib/db'
-import { BookOpen, Upload, Trash2, Plus, Download, Filter, FileSpreadsheet, RotateCw } from 'lucide-react'
+import { BookOpen, Upload, Trash2, Plus, Download, Filter, FileSpreadsheet, RotateCw, Edit2, Check, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 
-const TEMPLATE_EXAMPLE = `MKU101,Pancasila,2,Institusi
-MKU102,Kewarganegaraan,2,Institusi
-MKI201,Dasar-Dasar Pemrograman,4,Program Studi
-MKI202,Struktur Data & Algoritma,4,Program Studi
-MKI203,Basis Data Terdistribusi,3,Program Studi`
+const TEMPLATE_EXAMPLE = `MKU101,Pancasila,2,Institusi,1
+MKU102,Kewarganegaraan,2,Institusi,1
+MKI201,Dasar-Dasar Pemrograman,4,Program Studi,3
+MKI202,Struktur Data & Algoritma,4,Program Studi,3
+MKI203,Basis Data Terdistribusi,3,Program Studi,4`
 
 export default function AdminCurriculumPage() {
   const [prodis, setProdis] = useState([])
@@ -20,8 +20,13 @@ export default function AdminCurriculumPage() {
   const [formNama, setFormNama] = useState('')
   const [formSKS, setFormSKS] = useState(3)
   const [formJenis, setFormJenis] = useState('inti')
+  const [formSemester, setFormSemester] = useState(1)
   const [formProdi, setFormProdi] = useState('')
   const [submitting, setSubmitting] = useState(false)
+
+  // Inline Edit
+  const [editingMkId, setEditingMkId] = useState(null)
+  const [editForm, setEditForm] = useState({ kode_mk: '', nama_mk: '', sks: 3, jenis: 'inti', semester: 1 })
 
   // Batch Import
   const [showImport, setShowImport] = useState(false)
@@ -89,7 +94,8 @@ export default function AdminCurriculumPage() {
         kode_mk: formKode.trim().toUpperCase(),
         nama_mk: formNama.trim(),
         sks: parseInt(formSKS),
-        jenis: formJenis
+        jenis: formJenis,
+        semester: parseInt(formSemester) || 1
       }
       const { error } = await dbMK.create(payload)
       if (error) throw error
@@ -99,6 +105,7 @@ export default function AdminCurriculumPage() {
       setFormNama('')
       setFormSKS(3)
       setFormJenis('inti')
+      setFormSemester(1)
       loadData()
     } catch (e) {
       console.error(e)
@@ -126,6 +133,7 @@ export default function AdminCurriculumPage() {
       const nama = (parts[1] || '').trim()
       const sks = parseInt((parts[2] || '').trim())
       const jenisRaw = (parts[3] || 'Program Studi').trim()
+      const semesterRaw = parseInt((parts[4] || '1').trim())
 
       // Map user-friendly labels to db values
       let jenis = 'inti'
@@ -135,10 +143,12 @@ export default function AdminCurriculumPage() {
         jenis = 'inti'
       }
 
+      const semester = (!isNaN(semesterRaw) && semesterRaw >= 1 && semesterRaw <= 8) ? semesterRaw : 1
+
       if (!kode || !nama) return { idx: idx + 1, valid: false, raw: line, error: 'Kode atau Nama kosong' }
       if (isNaN(sks) || sks < 1 || sks > 8) return { idx: idx + 1, valid: false, raw: line, error: 'SKS tidak valid (1-8)' }
 
-      return { idx: idx + 1, valid: true, kode, nama, sks, jenis }
+      return { idx: idx + 1, valid: true, kode, nama, sks, jenis, semester }
     })
     setImportParsed(parsed)
   }
@@ -165,7 +175,8 @@ export default function AdminCurriculumPage() {
         kode_mk: r.kode,
         nama_mk: r.nama,
         sks: r.sks,
-        jenis: r.jenis
+        jenis: r.jenis,
+        semester: r.semester || 1
       }))
       const { error } = await dbMK.createBatch(items)
       if (error) throw error
@@ -220,10 +231,50 @@ export default function AdminCurriculumPage() {
     }
   }
 
+  // ── Inline Edit ─────────────────────────────────────────────
+  const handleStartEdit = (mk) => {
+    setEditingMkId(mk.id)
+    setEditForm({
+      kode_mk: mk.kode_mk,
+      nama_mk: mk.nama_mk,
+      sks: mk.sks,
+      jenis: mk.jenis,
+      semester: mk.semester || 1
+    })
+  }
+
+  const handleCancelEdit = () => {
+    setEditingMkId(null)
+    setEditForm({ kode_mk: '', nama_mk: '', sks: 3, jenis: 'inti', semester: 1 })
+  }
+
+  const handleSaveEdit = async () => {
+    if (!editForm.kode_mk.trim() || !editForm.nama_mk.trim()) {
+      toast.error('Kode dan Nama mata kuliah wajib diisi')
+      return
+    }
+    try {
+      const { error } = await dbMK.update(editingMkId, {
+        kode_mk: editForm.kode_mk.trim().toUpperCase(),
+        nama_mk: editForm.nama_mk.trim(),
+        sks: parseInt(editForm.sks),
+        jenis: editForm.jenis,
+        semester: parseInt(editForm.semester) || 1
+      })
+      if (error) throw error
+      toast.success('Mata kuliah berhasil diperbarui!')
+      setEditingMkId(null)
+      loadData()
+    } catch (e) {
+      console.error(e)
+      toast.error('Gagal menyimpan perubahan: ' + (e.message || ''))
+    }
+  }
+
   // ── Download Template CSV ───────────────────────────────────
   const downloadTemplate = () => {
-    const header = 'Kode MK,Nama MK,SKS,Jenis\n'
-    const rows = 'MKI001,Contoh Mata Kuliah Prodi,3,Program Studi\nMKU001,Contoh Mata Kuliah Institusi,2,Institusi\n'
+    const header = 'Kode MK,Nama MK,SKS,Jenis,Semester\n'
+    const rows = 'MKI001,Contoh Mata Kuliah Prodi,3,Program Studi,3\nMKU001,Contoh Mata Kuliah Institusi,2,Institusi,1\n'
     const blob = new Blob([header + rows], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -299,7 +350,7 @@ export default function AdminCurriculumPage() {
               <strong>Petunjuk:</strong>
               <ol style={{ paddingLeft: 18, margin: '6px 0 0' }}>
                 <li>Siapkan file CSV Anda, atau klik <strong>"Unduh Template CSV"</strong> untuk mendapatkan contoh format.</li>
-                <li>Format kolom: <code>Kode MK</code>, <code>Nama MK</code>, <code>SKS</code>, <code>Jenis</code> (Program Studi / Institusi).</li>
+                <li>Format kolom: <code>Kode MK</code>, <code>Nama MK</code>, <code>SKS</code>, <code>Jenis</code> (Program Studi / Institusi), <code>Semester</code> (1-8, opsional).</li>
                 <li>Buka file CSV dengan Notepad/teks editor, lalu <strong>Copy (Ctrl+A → Ctrl+C)</strong> seluruh isi.</li>
                 <li>Tempelkan <strong>(Ctrl+V)</strong> ke textarea di bawah ini.</li>
               </ol>
@@ -330,7 +381,7 @@ export default function AdminCurriculumPage() {
                 rows={8}
                 style={{ fontFamily: "'Fira Code', 'Consolas', monospace", fontSize: 12, resize: 'vertical', padding: '10px 14px', lineHeight: 1.7 }}
               />
-              <span className="input-hint">Format per baris: Kode MK, Nama MK, SKS, Jenis (Program Studi / Institusi)</span>
+              <span className="input-hint">Format per baris: Kode MK, Nama MK, SKS, Jenis (Program Studi / Institusi), Semester (1-8)</span>
             </div>
 
             {/* Preview parsed rows */}
@@ -348,6 +399,7 @@ export default function AdminCurriculumPage() {
                         <th>Nama MK</th>
                         <th style={{ width: 60 }}>SKS</th>
                         <th style={{ width: 80 }}>Jenis</th>
+                        <th style={{ width: 60 }}>Smt</th>
                         <th style={{ width: 100 }}>Status</th>
                       </tr>
                     </thead>
@@ -359,6 +411,7 @@ export default function AdminCurriculumPage() {
                           <td>{row.valid ? row.nama : <span style={{ color: 'var(--danger)', fontSize: 11.5 }}>{row.error}</span>}</td>
                           <td>{row.valid ? row.sks : '-'}</td>
                           <td>{row.valid ? <span className={`badge-pill ${row.jenis === 'inti' ? 'badge-indigo' : 'badge-slate'}`}>{row.jenis === 'inti' ? 'MK Prodi' : 'MK Institusi'}</span> : '-'}</td>
+                          <td>{row.valid ? row.semester : '-'}</td>
                           <td>{row.valid ? <span style={{ color: 'var(--success)', fontWeight: 600, fontSize: 12 }}>✓ Valid</span> : <span style={{ color: 'var(--danger)', fontWeight: 600, fontSize: 12 }}>✗ Error</span>}</td>
                         </tr>
                       ))}
@@ -432,7 +485,7 @@ export default function AdminCurriculumPage() {
                   />
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
                   <div className="input-group">
                     <label className="input-label">SKS</label>
                     <select value={formSKS} onChange={(e) => setFormSKS(e.target.value)} className="input">
@@ -446,6 +499,14 @@ export default function AdminCurriculumPage() {
                     <select value={formJenis} onChange={(e) => setFormJenis(e.target.value)} className="input">
                       <option value="inti">MK Prodi (Inti)</option>
                       <option value="umum">MK Institusi (Umum)</option>
+                    </select>
+                  </div>
+                  <div className="input-group">
+                    <label className="input-label">Semester</label>
+                    <select value={formSemester} onChange={(e) => setFormSemester(e.target.value)} className="input">
+                      {[1, 2, 3, 4, 5, 6, 7, 8].map(n => (
+                        <option key={n} value={n}>Smt {n}</option>
+                      ))}
                     </select>
                   </div>
                 </div>
@@ -545,36 +606,138 @@ export default function AdminCurriculumPage() {
                       <th>Nama Mata Kuliah</th>
                       <th style={{ width: 60 }}>SKS</th>
                       <th style={{ width: 110 }}>Jenis</th>
+                      <th style={{ width: 60 }}>Smt</th>
                       <th style={{ width: 140 }}>Program Studi</th>
-                      <th style={{ width: 60 }}>Aksi</th>
+                      <th style={{ width: 90 }}>Aksi</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredMK.map(mk => (
-                      <tr key={mk.id}>
-                        <td><code style={{ fontWeight: 700, fontSize: 12, color: 'var(--indigo-700)' }}>{mk.kode_mk}</code></td>
-                        <td style={{ fontWeight: 500 }}>{mk.nama_mk}</td>
-                        <td style={{ textAlign: 'center', fontWeight: 600 }}>{mk.sks}</td>
-                        <td>
-                          <span className={`badge-pill ${mk.jenis === 'inti' ? 'badge-indigo' : 'badge-slate'}`}>
-                            {mk.jenis === 'inti' ? 'MK Prodi' : 'MK Institusi'}
-                          </span>
-                        </td>
-                        <td style={{ fontSize: 12, color: 'var(--gray-500)' }}>
-                          {mk.prodi?.kode ? `${mk.prodi.kode} - ${mk.prodi.nama}` : getProdiName(mk.prodi_id)}
-                        </td>
-                        <td>
-                          <button
-                            onClick={() => handleDelete(mk)}
-                            className="btn btn-ghost btn-icon"
-                            style={{ color: 'var(--danger)' }}
-                            title="Hapus mata kuliah"
-                          >
-                            <Trash2 size={15} />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                    {filteredMK.map(mk => {
+                      const isEditing = editingMkId === mk.id
+                      return (
+                        <tr key={mk.id} style={{ background: isEditing ? '#f0f4ff' : 'transparent' }}>
+                          <td>
+                            {isEditing ? (
+                              <input
+                                type="text"
+                                value={editForm.kode_mk}
+                                onChange={(e) => setEditForm({ ...editForm, kode_mk: e.target.value.toUpperCase() })}
+                                className="input"
+                                style={{ padding: '4px 6px', fontSize: 12, minWidth: 70 }}
+                              />
+                            ) : (
+                              <code style={{ fontWeight: 700, fontSize: 12, color: 'var(--indigo-700)' }}>{mk.kode_mk}</code>
+                            )}
+                          </td>
+                          <td>
+                            {isEditing ? (
+                              <input
+                                type="text"
+                                value={editForm.nama_mk}
+                                onChange={(e) => setEditForm({ ...editForm, nama_mk: e.target.value })}
+                                className="input"
+                                style={{ padding: '4px 6px', fontSize: 12 }}
+                              />
+                            ) : (
+                              <span style={{ fontWeight: 500 }}>{mk.nama_mk}</span>
+                            )}
+                          </td>
+                          <td style={{ textAlign: 'center' }}>
+                            {isEditing ? (
+                              <select
+                                value={editForm.sks}
+                                onChange={(e) => setEditForm({ ...editForm, sks: parseInt(e.target.value) })}
+                                className="input"
+                                style={{ padding: '4px 4px', fontSize: 12, minWidth: 50 }}
+                              >
+                                {[1, 2, 3, 4, 5, 6].map(n => (
+                                  <option key={n} value={n}>{n}</option>
+                                ))}
+                              </select>
+                            ) : (
+                              <span style={{ fontWeight: 600 }}>{mk.sks}</span>
+                            )}
+                          </td>
+                          <td>
+                            {isEditing ? (
+                              <select
+                                value={editForm.jenis}
+                                onChange={(e) => setEditForm({ ...editForm, jenis: e.target.value })}
+                                className="input"
+                                style={{ padding: '4px 4px', fontSize: 11, minWidth: 80 }}
+                              >
+                                <option value="inti">MK Prodi</option>
+                                <option value="umum">MK Institusi</option>
+                              </select>
+                            ) : (
+                              <span className={`badge-pill ${mk.jenis === 'inti' ? 'badge-indigo' : 'badge-slate'}`}>
+                                {mk.jenis === 'inti' ? 'MK Prodi' : 'MK Institusi'}
+                              </span>
+                            )}
+                          </td>
+                          <td style={{ textAlign: 'center' }}>
+                            {isEditing ? (
+                              <select
+                                value={editForm.semester}
+                                onChange={(e) => setEditForm({ ...editForm, semester: parseInt(e.target.value) })}
+                                className="input"
+                                style={{ padding: '4px 4px', fontSize: 12, minWidth: 50 }}
+                              >
+                                {[1, 2, 3, 4, 5, 6, 7, 8].map(n => (
+                                  <option key={n} value={n}>{n}</option>
+                                ))}
+                              </select>
+                            ) : (
+                              <span style={{ fontWeight: 500, fontSize: 12 }}>{mk.semester || 1}</span>
+                            )}
+                          </td>
+                          <td style={{ fontSize: 12, color: 'var(--gray-500)' }}>
+                            {mk.prodi?.kode ? `${mk.prodi.kode} - ${mk.prodi.nama}` : getProdiName(mk.prodi_id)}
+                          </td>
+                          <td>
+                            {isEditing ? (
+                              <div style={{ display: 'flex', gap: 4 }}>
+                                <button
+                                  onClick={handleSaveEdit}
+                                  className="btn btn-ghost btn-icon"
+                                  style={{ color: 'var(--success)' }}
+                                  title="Simpan"
+                                >
+                                  <Check size={15} />
+                                </button>
+                                <button
+                                  onClick={handleCancelEdit}
+                                  className="btn btn-ghost btn-icon"
+                                  style={{ color: 'var(--gray-400)' }}
+                                  title="Batal"
+                                >
+                                  <X size={15} />
+                                </button>
+                              </div>
+                            ) : (
+                              <div style={{ display: 'flex', gap: 4 }}>
+                                <button
+                                  onClick={() => handleStartEdit(mk)}
+                                  className="btn btn-ghost btn-icon"
+                                  style={{ color: 'var(--indigo-600)' }}
+                                  title="Edit mata kuliah"
+                                >
+                                  <Edit2 size={14} />
+                                </button>
+                                <button
+                                  onClick={() => handleDelete(mk)}
+                                  className="btn btn-ghost btn-icon"
+                                  style={{ color: 'var(--danger)' }}
+                                  title="Hapus mata kuliah"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>

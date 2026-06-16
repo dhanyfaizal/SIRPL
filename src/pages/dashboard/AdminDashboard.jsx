@@ -280,14 +280,14 @@ export default function AdminDashboard() {
       // - jenis 'inti' -> 'sinkron' (Tatap Muka)
       const initialMapping = curriculum
         .filter(mk => !diakuiIds.includes(mk.id))
-        .map((mk, idx) => ({
+        .map((mk) => ({
           mkId: mk.id,
           kode: mk.kode_mk,
           nama: mk.nama_mk,
           sks: mk.sks,
           jenis: mk.jenis,
           jalur: mk.jenis === 'umum' ? 'asinkron' : 'sinkron', // auto-mapping
-          semester: Math.floor(idx / 4) + 1 // distribute across semesters
+          semester: mk.semester || 1 // use semester from curriculum data
         }))
       setMappedCourses(initialMapping)
     } catch (e) {
@@ -327,8 +327,7 @@ export default function AdminDashboard() {
   }
 
   // Dynamic cost calculations based on user requirements
-  const totalSemesters = mappedCourses.length > 0 ? Math.max(...mappedCourses.map(c => parseInt(c.semester) || 1), 1) : 1
-  const biayaUkp = totalSemesters * 5400000
+  const biayaUkp = 5400000 // UKP 1 semester only
   const biayaRekognisi = totalSksDiakui * 50000
   const totalMoocs = mappedCourses.filter(c => c.jalur === 'asinkron').length
   const biayaMoocs = totalMoocs * 100000
@@ -982,7 +981,7 @@ export default function AdminDashboard() {
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ color: 'var(--gray-500)' }}>Biaya UKP ({totalSemesters} Semester):</span>
+                        <span style={{ color: 'var(--gray-500)' }}>Biaya UKP (1 Semester):</span>
                         <strong>Rp{biayaUkp.toLocaleString('id-ID')}</strong>
                       </div>
                       <span style={{ fontSize: 11, color: 'var(--gray-400)', marginTop: -2 }}>
