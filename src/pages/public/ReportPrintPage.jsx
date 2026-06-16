@@ -58,6 +58,13 @@ export default function ReportPrintPage() {
   const moocsCourses = rStudi.filter(c => c.jalur === 'asinkron')
   const syncCourses = rStudi.filter(c => c.jalur === 'sinkron')
 
+  // Dynamic cost calculations based on user requirements for printable report
+  const totalSemesters = rStudi.length > 0 ? Math.max(...rStudi.map(c => parseInt(c.semester) || 1), 1) : 1
+  const biayaUkp = totalSemesters * 5400000
+  const biayaRekognisi = (penetapan.total_sks_diakui || 0) * 50000
+  const totalMoocs = rStudi.filter(c => c.jalur === 'asinkron').length
+  const biayaMoocs = totalMoocs * 100000
+
   // recognized courses
   const recognizedCourses = (rekognisi?.data_mapping_mk || []).filter(c => c.Status === 'diakui')
 
@@ -352,13 +359,30 @@ export default function ReportPrintPage() {
               <table style={{ width: '100%' }}>
                 <tbody>
                   <tr>
-                    <td style={{ padding: '4px 0', color: '#64748b' }}>Uang Kuliah Paket (UKP) Semester fasa 1-6</td>
-                    <td style={{ padding: '4px 0', textAlign: 'right', width: '160px' }}>Rp5.400.000,00</td>
+                    <td style={{ padding: '4px 0', color: '#64748b' }}>
+                      Biaya Uang Kuliah Paket (UKP) ({totalSemesters} Semester)<br />
+                      <span style={{ fontSize: '10.5px', color: '#94a3b8', fontStyle: 'italic' }}>Rp900.000,00 per bulan (Rp5.400.000,00 per semester)</span>
+                    </td>
+                    <td style={{ padding: '4px 0', textAlign: 'right', width: '160px' }}>
+                      Rp{biayaUkp.toLocaleString('id-ID')},00
+                    </td>
                   </tr>
                   <tr>
-                    <td style={{ padding: '4px 0', color: '#64748b' }}>Biaya Pengakuan Kredit SKS RPL ({penetapan.total_sks_diakui} SKS x Rp50.000,00)</td>
+                    <td style={{ padding: '4px 0', color: '#64748b' }}>
+                      Biaya Pengakuan Kredit SKS RPL ({penetapan.total_sks_diakui || 0} SKS)<br />
+                      <span style={{ fontSize: '10.5px', color: '#94a3b8', fontStyle: 'italic' }}>Rp50.000,00 per SKS diakui</span>
+                    </td>
+                    <td style={{ padding: '4px 0', textAlign: 'right' }}>
+                      Rp{biayaRekognisi.toLocaleString('id-ID')},00
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style={{ padding: '4px 0', color: '#64748b' }}>
+                      Biaya Kelas MOOCs Sisa ({totalMoocs} Mata Kuliah)<br />
+                      <span style={{ fontSize: '10.5px', color: '#94a3b8', fontStyle: 'italic' }}>Rp100.000,00 per mata kuliah sisa asinkron (MOOCs)</span>
+                    </td>
                     <td style={{ padding: '4px 0', textAlign: 'right', borderBottom: '1px solid #e2e8f0' }}>
-                      Rp{(penetapan.total_sks_diakui * 50000).toLocaleString('id-ID')},00
+                      Rp{biayaMoocs.toLocaleString('id-ID')},00
                     </td>
                   </tr>
                   {penetapan.potongan_biaya > 0 && (

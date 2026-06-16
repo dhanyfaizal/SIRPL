@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { dbPengajuan, dbMK, dbRekognisi, dbPenetapan, getDocumentProgress } from '../../lib/db'
-import { BookOpen, FileText, CheckCircle, Percent, DollarSign, Calendar, Edit2, RotateCcw, AlertCircle, Eye, Settings, ArrowLeft, RotateCw } from 'lucide-react'
+import { BookOpen, FileText, CheckCircle, Percent, DollarSign, Calendar, Edit2, RotateCcw, AlertCircle, Eye, Settings, ArrowLeft, RotateCw, Sparkles } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 // Helper to format duration to human readable format
@@ -66,6 +66,110 @@ export default function AdminDashboard() {
   })
 
   const [refreshing, setRefreshing] = useState(false)
+  const [aiMappingLoading, setAiMappingLoading] = useState(false)
+
+  const handleAiJalurMapping = async () => {
+    if (mappedCourses.length === 0) return
+
+    setAiMappingLoading(true)
+    const toastId = toast.loading('AI sedang menganalisis sisa mata kuliah...')
+    try {
+      const apiKey = import.meta.env.VITE_SUMOPOD_API_KEY
+      const apiUrl = import.meta.env.VITE_SUMOPOD_API_URL || 'https://ai.sumopod.com/v1'
+
+      let mappings = []
+
+      if (!apiKey || apiKey.includes('placeholder')) {
+        // Fallback: Local rule-based mapping with 1.2s simulation delay
+        await new Promise(resolve => setTimeout(resolve, 1200))
+        
+        mappings = mappedCourses.map(c => {
+          const name = c.nama.toLowerCase()
+          // MOOCs conditions:
+          const isMooc = c.jenis === 'umum' || 
+                         name.includes('pengantar') || 
+                         name.includes('dasar') || 
+                         name.includes('etika') || 
+                         name.includes('kewirausahaan') || 
+                         name.includes('pancasila') || 
+                         name.includes('bahasa')
+          
+          return {
+            mkId: c.mkId,
+            jalur: isMooc ? 'asinkron' : 'sinkron'
+          }
+        })
+        
+        toast.success('Menggunakan pemrosesan pintar lokal (AI Key belum diset)', { id: toastId })
+      } else {
+        // Real API call to Sumopod Gemini Endpoint
+        const systemPrompt = 'Anda adalah asisten akademik RPL STIKOM Yos Sudarso. Bantu memetakan jalur pembelajaran mata kuliah sisa.'
+        const userPrompt = `Diberikan daftar mata kuliah sisa yang harus ditempuh oleh calon mahasiswa:
+        ${JSON.stringify(mappedCourses.map(c => ({ id: c.mkId, kode: c.kode, nama: c.nama, sks: c.sks, jenis: c.jenis })))}
+        
+        Bantu petakan jalur pembelajaran untuk setiap mata kuliah sisa di atas menjadi 'sinkron' (tatap muka) atau 'asinkron' (MOOCs) berdasarkan nama dan jenis mata kuliah.
+        Gunakan aturan umum:
+        - Mata kuliah yang bersifat teori umum, dasar pemrograman awal, kewirausahaan, atau pengantar biasanya dipetakan ke Asinkron (MOOCs) -> 'asinkron'.
+        - Mata kuliah keahlian praktikal tingkat lanjut (inti), proyek akhir/seminar mandiri, atau studio desain biasanya dipetakan ke Sinkron (Tatap Muka) -> 'sinkron'.
+        
+        Tanggapan Anda HARUS berupa objek JSON dengan struktur berikut dan tidak boleh ada teks penjelasan tambahan di luar JSON:
+        {
+          "mappings": [
+            {
+              "mkId": "ID_Mata_Kuliah",
+              "jalur": "asinkron" | "sinkron"
+            }
+          ]
+        }`
+
+        const response = await fetch(`${apiUrl}/chat/completions`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`
+          },
+          body: JSON.stringify({
+            model: 'gemini/gemini-2.5-flash',
+            temperature: 0,
+            response_format: { type: 'json_object' },
+            messages: [
+              { role: 'system', content: systemPrompt },
+              { role: 'user', content: userPrompt }
+            ]
+          })
+        })
+
+        if (!response.ok) {
+          throw new Error(`AI API error: ${response.statusText}`)
+        }
+
+        const resJson = await response.json()
+        const content = resJson.choices?.[0]?.message?.content
+        if (!content) {
+          throw new Error('Tanggapan AI kosong')
+        }
+
+        const parsed = JSON.parse(content)
+        mappings = parsed.mappings || []
+        toast.success('AI berhasil memetakan jalur pembelajaran sisa mata kuliah!', { id: toastId })
+      }
+
+      // Apply mappings to state
+      if (mappings && mappings.length > 0) {
+        setMappedCourses(prevCourses => 
+          prevCourses.map(c => {
+            const found = mappings.find(m => m.mkId === c.mkId)
+            return found ? { ...c, jalur: found.jalur } : c
+          })
+        )
+      }
+    } catch (err) {
+      console.error(err)
+      toast.error(`Gagal melakukan pemetaan AI: ${err.message}`, { id: toastId })
+    } finally {
+      setAiMappingLoading(false)
+    }
+  }
 
   const handleRefresh = async () => {
     setRefreshing(true)
@@ -222,8 +326,14 @@ export default function AdminDashboard() {
     setMappedCourses(mappedCourses.map(c => c.mkId === mkId ? { ...c, semester: parseInt(semester) } : c))
   }
 
-  // Cost calculations with discounts
-  const finalBiayaTotal = Math.max(0, biayaAsessor - potonganBiaya)
+  // Dynamic cost calculations based on user requirements
+  const totalSemesters = mappedCourses.length > 0 ? Math.max(...mappedCourses.map(c => parseInt(c.semester) || 1), 1) : 1
+  const biayaUkp = totalSemesters * 5400000
+  const biayaRekognisi = totalSksDiakui * 50000
+  const totalMoocs = mappedCourses.filter(c => c.jalur === 'asinkron').length
+  const biayaMoocs = totalMoocs * 100000
+  const biayaTotalSebelumPotongan = biayaUkp + biayaRekognisi + biayaMoocs
+  const finalBiayaTotal = Math.max(0, biayaTotalSebelumPotongan - potonganBiaya)
 
   const handleFinalize = async () => {
     if (mappedCourses.length > 0) {
@@ -692,13 +802,26 @@ export default function AdminDashboard() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
               {/* Study Plan Mapping Card */}
               <div className="card">
-                <div className="card-header">
-                  <h3 style={{ fontSize: 14, fontWeight: 700 }}>
-                    {isReadOnly ? 'Rencana Studi / Jalur Pembelajaran Sisa' : 'Pemetaan Jalur Rencana Studi'}
-                  </h3>
-                  <span style={{ fontSize: 12, color: 'var(--gray-500)' }}>
-                    Pendaftar: <strong>{selectedItem.profile?.nama_lengkap}</strong> ({selectedItem.prodi?.nama})
-                  </span>
+                <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+                  <div>
+                    <h3 style={{ fontSize: 14, fontWeight: 700 }}>
+                      {isReadOnly ? 'Rencana Studi / Jalur Pembelajaran Sisa' : 'Pemetaan Jalur Rencana Studi'}
+                    </h3>
+                    <span style={{ fontSize: 12, color: 'var(--gray-500)' }}>
+                      Pendaftar: <strong>{selectedItem.profile?.nama_lengkap}</strong> ({selectedItem.prodi?.nama})
+                    </span>
+                  </div>
+                  {!isReadOnly && (
+                    <button
+                      onClick={handleAiJalurMapping}
+                      disabled={aiMappingLoading}
+                      className="btn btn-secondary btn-sm"
+                      style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--indigo-600)', borderColor: 'var(--indigo-200)', background: 'var(--indigo-50)' }}
+                    >
+                      <Sparkles size={13} className={aiMappingLoading ? 'spin-anim' : ''} />
+                      {aiMappingLoading ? 'Memetakan...' : 'Petakan via AI'}
+                    </button>
+                  )}
                 </div>
                 <div className="card-body" style={{ padding: 0 }}>
                   {!['assessed_asessor', 'mapped_admin', 'returned_admin'].includes(selectedItem.status) ? (
@@ -851,14 +974,45 @@ export default function AdminDashboard() {
                 </div>
                 <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                   {/* Cost Summary Info */}
-                  <div style={{ background: 'var(--gray-50)', padding: 12, borderRadius: 8, border: '1px solid var(--gray-200)', fontSize: 12.5 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                      <span style={{ color: 'var(--gray-500)' }}>Biaya Awal Asessor:</span>
-                      <strong>Rp{biayaAsessor.toLocaleString('id-ID')}</strong>
+                  <div style={{ background: 'var(--gray-50)', padding: 14, borderRadius: 8, border: '1px solid var(--gray-200)', fontSize: 12.5, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--gray-100)', paddingBottom: 6 }}>
+                      <span style={{ color: 'var(--gray-500)' }}>SKS Diakui / Sisa SKS:</span>
+                      <strong style={{ color: 'var(--indigo-700)' }}>{totalSksDiakui} SKS / {totalSksSisa} SKS</strong>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span style={{ color: 'var(--gray-500)' }}>SKS Diakui / Sisa:</span>
-                      <span>{totalSksDiakui} SKS / {totalSksSisa} SKS</span>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: 'var(--gray-500)' }}>Biaya UKP ({totalSemesters} Semester):</span>
+                        <strong>Rp{biayaUkp.toLocaleString('id-ID')}</strong>
+                      </div>
+                      <span style={{ fontSize: 11, color: 'var(--gray-400)', marginTop: -2 }}>
+                        Rp900.000,00 per bulan (Rp5.400.000,00/smt)
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: 'var(--gray-500)' }}>Biaya Rekognisi ({totalSksDiakui} SKS):</span>
+                        <strong>Rp{biayaRekognisi.toLocaleString('id-ID')}</strong>
+                      </div>
+                      <span style={{ fontSize: 11, color: 'var(--gray-400)', marginTop: -2 }}>
+                        Rp50.000,00 per SKS diakui
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: 'var(--gray-500)' }}>Biaya MOOCs ({totalMoocs} MK):</span>
+                        <strong>Rp{biayaMoocs.toLocaleString('id-ID')}</strong>
+                      </div>
+                      <span style={{ fontSize: 11, color: 'var(--gray-400)', marginTop: -2 }}>
+                        Rp100.000,00 per mata kuliah sisa MOOCs (Asinkron)
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--gray-100)', paddingTop: 8, marginTop: 2, fontWeight: 700 }}>
+                      <span style={{ color: 'var(--gray-700)' }}>Total Sebelum Diskon:</span>
+                      <strong>Rp{biayaTotalSebelumPotongan.toLocaleString('id-ID')}</strong>
                     </div>
                   </div>
 
