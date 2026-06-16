@@ -36,6 +36,27 @@ function PmbDocPreview({ selectedItem, fileUrl, previewType, previewSignedUrl, s
     )
   }
 
+  if (!fileUrl) {
+    return (
+      <div style={{ 
+        height: 420, 
+        background: '#f8fafc', 
+        border: '1px solid var(--gray-200)', 
+        borderRadius: 8, 
+        display: 'flex', 
+        flexDirection: 'column', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        color: 'var(--gray-500)', 
+        gap: 8 
+      }}>
+        <span style={{ fontSize: 32 }}>📂</span>
+        <div style={{ fontWeight: 600, fontSize: 13.5, color: 'var(--gray-600)' }}>Data Tidak Tersedia</div>
+        <div style={{ fontSize: 12, color: 'var(--gray-400)' }}>Berkas belum diunggah oleh calon pendaftar</div>
+      </div>
+    )
+  }
+
   if (!isMock && isStoragePath && previewSignedUrl) {
     return (
       <div style={{ height: 420, background: '#fff', border: '1px solid var(--gray-200)', borderRadius: 8, overflow: 'hidden' }}>
@@ -406,7 +427,7 @@ export default function PmbDashboard() {
                             </td>
                             <td>
                               <button onClick={() => setSelectedItem(item)} className="btn btn-secondary btn-sm" style={{ gap: 4 }}>
-                                <Eye size={12} /> Periksa
+                                <Eye size={12} /> Detail
                               </button>
                             </td>
                           </tr>
@@ -534,38 +555,46 @@ export default function PmbDashboard() {
               
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {/* Wajib Check 1 */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 10, border: '1px solid var(--gray-200)', borderRadius: 6, background: selectedItem.file_ijazah_sma_url ? '#f0fdf4' : '#fffbeb' }}>
-                  <span style={{ fontSize: 16 }}>{selectedItem.file_ijazah_sma_url ? '✓' : '⏳'}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 10, border: '1px solid var(--gray-200)', borderRadius: 6, background: '#fff' }}>
+                  <FileText size={20} color={selectedItem.file_ijazah_sma_url ? '#10b981' : '#9ca3af'} style={{ flexShrink: 0 }} />
                   <div>
                     <strong style={{ display: 'block', fontSize: 12.5 }}>Ijazah SMA/Sederajat</strong>
-                    <span style={{ fontSize: 11, color: 'var(--gray-400)' }}>{selectedItem.file_ijazah_sma_url ? 'Sudah Diunggah' : 'Belum Ada'}</span>
+                    <span style={{ fontSize: 11, color: selectedItem.file_ijazah_sma_url ? '#10b981' : '#9ca3af', fontWeight: 500 }}>
+                      {selectedItem.file_ijazah_sma_url ? 'Sudah Diunggah' : 'Belum Ada'}
+                    </span>
                   </div>
                 </div>
 
                 {/* Wajib Check 2 */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 10, border: '1px solid var(--gray-200)', borderRadius: 6, background: selectedItem.file_transkrip_sma_url ? '#f0fdf4' : '#fffbeb' }}>
-                  <span style={{ fontSize: 16 }}>{selectedItem.file_transkrip_sma_url ? '✓' : '⏳'}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 10, border: '1px solid var(--gray-200)', borderRadius: 6, background: '#fff' }}>
+                  <FileText size={20} color={selectedItem.file_transkrip_sma_url ? '#10b981' : '#9ca3af'} style={{ flexShrink: 0 }} />
                   <div>
                     <strong style={{ display: 'block', fontSize: 12.5 }}>Transkrip SMA/Sederajat</strong>
-                    <span style={{ fontSize: 11, color: 'var(--gray-400)' }}>{selectedItem.file_transkrip_sma_url ? 'Sudah Diunggah' : 'Belum Ada'}</span>
+                    <span style={{ fontSize: 11, color: selectedItem.file_transkrip_sma_url ? '#10b981' : '#9ca3af', fontWeight: 500 }}>
+                      {selectedItem.file_transkrip_sma_url ? 'Sudah Diunggah' : 'Belum Ada'}
+                    </span>
                   </div>
                 </div>
 
                 {/* Wajib Check 3 */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 10, border: '1px solid var(--gray-200)', borderRadius: 6, background: selectedItem.file_ijazah_url ? '#f0fdf4' : '#fffbeb' }}>
-                  <span style={{ fontSize: 16 }}>{selectedItem.file_ijazah_url ? '✓' : '⏳'}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 10, border: '1px solid var(--gray-200)', borderRadius: 6, background: '#fff' }}>
+                  <FileText size={20} color={selectedItem.file_ijazah_url ? '#10b981' : '#9ca3af'} style={{ flexShrink: 0 }} />
                   <div>
                     <strong style={{ display: 'block', fontSize: 12.5 }}>Ijazah D1/D2/D3 (Wajib)</strong>
-                    <span style={{ fontSize: 11, color: 'var(--gray-400)' }}>{selectedItem.file_ijazah_url ? 'Sudah Diunggah' : 'Belum Ada'}</span>
+                    <span style={{ fontSize: 11, color: selectedItem.file_ijazah_url ? '#10b981' : '#9ca3af', fontWeight: 500 }}>
+                      {selectedItem.file_ijazah_url ? 'Sudah Diunggah' : 'Belum Ada'}
+                    </span>
                   </div>
                 </div>
 
                 {/* Wajib Check 4 */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 10, border: '1px solid var(--gray-200)', borderRadius: 6, background: selectedItem.file_transkrip_url ? '#f0fdf4' : '#fffbeb' }}>
-                  <span style={{ fontSize: 16 }}>{selectedItem.file_transkrip_url ? '✓' : '⏳'}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 10, border: '1px solid var(--gray-200)', borderRadius: 6, background: '#fff' }}>
+                  <FileText size={20} color={selectedItem.file_transkrip_url ? '#10b981' : '#9ca3af'} style={{ flexShrink: 0 }} />
                   <div>
                     <strong style={{ display: 'block', fontSize: 12.5 }}>Transkrip D1/D2/D3 (Wajib)</strong>
-                    <span style={{ fontSize: 11, color: 'var(--gray-400)' }}>{selectedItem.file_transkrip_url ? 'Sudah Diunggah' : 'Belum Ada'}</span>
+                    <span style={{ fontSize: 11, color: selectedItem.file_transkrip_url ? '#10b981' : '#9ca3af', fontWeight: 500 }}>
+                      {selectedItem.file_transkrip_url ? 'Sudah Diunggah' : 'Belum Ada'}
+                    </span>
                   </div>
                 </div>
               </div>
