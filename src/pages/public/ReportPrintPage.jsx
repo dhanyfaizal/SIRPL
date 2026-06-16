@@ -66,7 +66,7 @@ export default function ReportPrintPage() {
     const ukp = 5400000
     const rekognisi = semNum === 1 ? (penetapan.total_sks_diakui || 0) * 50000 : 0
     const moocs = semMoocs * 100000
-    const potongan = semNum === 1 ? (penetapan.potongan_biaya || 0) : 0
+    const potongan = penetapan.potongan_biaya || 0
     
     const total = Math.max(0, ukp + rekognisi + moocs - potongan)
     return { ukp, rekognisi, moocs, potongan, total, semMoocs }
@@ -403,13 +403,13 @@ export default function ReportPrintPage() {
                 {penetapan.potongan_biaya > 0 && (
                   <tr style={{ color: '#ef4444' }}>
                     <td style={{ border: '1px solid #cbd5e1', padding: '8px', fontWeight: 600 }}>
-                      4. Potongan Biaya Khusus (Diskon)
-                      <div style={{ fontSize: '9px', color: '#e11d48', fontWeight: 400, marginTop: '2px' }}>Catatan: {penetapan.catatan_potongan || '-'}</div>
+                      4. Potongan Biaya Khusus (Diskon UKP)
+                      <div style={{ fontSize: '9px', color: '#e11d48', fontWeight: 400, marginTop: '2px' }}>Catatan: {penetapan.catatan_potongan || '-'} (per semester)</div>
                     </td>
                     <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right', fontWeight: 700 }}>- Rp{sem1.potongan.toLocaleString('id-ID')}</td>
-                    <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right', color: '#94a3b8' }}>-</td>
-                    <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right', color: '#94a3b8' }}>-</td>
-                    <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right', color: '#94a3b8' }}>-</td>
+                    <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right', fontWeight: 700 }}>- Rp{sem2.potongan.toLocaleString('id-ID')}</td>
+                    <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right', fontWeight: 700 }}>- Rp{sem3.potongan.toLocaleString('id-ID')}</td>
+                    <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right', fontWeight: 700 }}>- Rp{sem4.potongan.toLocaleString('id-ID')}</td>
                   </tr>
                 )}
                 <tr style={{ background: '#f8fafc', fontWeight: 800 }}>

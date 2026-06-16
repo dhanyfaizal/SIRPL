@@ -438,7 +438,7 @@ export default function AdminDashboard() {
   const totalMoocs = mappedCourses.filter(c => c.jalur === 'asinkron').length
   const biayaMoocs = totalMoocs * 100000
   const biayaTotalSebelumPotongan = biayaUkp + biayaRekognisi + biayaMoocs
-  const finalBiayaTotal = Math.max(0, biayaTotalSebelumPotongan - potonganBiaya)
+  const finalBiayaTotal = Math.max(0, biayaTotalSebelumPotongan - (4 * potonganBiaya))
 
   const handleFinalize = async () => {
     if (mappedCourses.length > 0) {
@@ -1210,11 +1210,17 @@ export default function AdminDashboard() {
                       <span style={{ color: 'var(--gray-700)' }}>Total Sebelum Diskon:</span>
                       <strong>Rp{biayaTotalSebelumPotongan.toLocaleString('id-ID')}</strong>
                     </div>
+                    {potonganBiaya > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--danger)', fontWeight: 600, fontSize: 12.5, marginTop: 2 }}>
+                        <span>Total Diskon (4 Semester):</span>
+                        <span>- Rp{(4 * potonganBiaya).toLocaleString('id-ID')}</span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Discount input Form */}
                   <div className="input-group">
-                    <label className="input-label">Diskon / Potongan Biaya (Rp)</label>
+                    <label className="input-label">Diskon / Potongan Biaya UKP per Semester (Rp)</label>
                     <div style={{ position: 'relative' }}>
                       <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', fontWeight: 600, color: 'var(--gray-400)', fontSize: 12 }}>Rp</span>
                       <input
@@ -1227,7 +1233,7 @@ export default function AdminDashboard() {
                         disabled={isReadOnly || submitting}
                       />
                     </div>
-                    <span className="input-hint">Pengurangan biaya kuliah paket (UKP) secara individu</span>
+                    <span className="input-hint">Pengurangan biaya kuliah paket (UKP) secara individu untuk setiap semester</span>
                   </div>
 
                   <div className="input-group">

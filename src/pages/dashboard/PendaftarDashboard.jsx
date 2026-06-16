@@ -1082,7 +1082,7 @@ export default function PendaftarDashboard() {
                         const costUkp = 5400000
                         const costRekognisi = candidateSemTab === 1 ? (penetapan.total_sks_diakui || 0) * 50000 : 0
                         const costMoocs = semMoocs * 100000
-                        const costPotongan = candidateSemTab === 1 ? (penetapan.potongan_biaya || 0) : 0
+                        const costPotongan = penetapan.potongan_biaya || 0
                         const semTotalBeforeDiskon = costUkp + costRekognisi + costMoocs
                         const semTotal = Math.max(0, semTotalBeforeDiskon - costPotongan)
 
@@ -1117,12 +1117,12 @@ export default function PendaftarDashboard() {
                               <span style={{ fontWeight: 700, color: 'var(--gray-800)' }}>Rp{costMoocs.toLocaleString('id-ID')}</span>
                             </div>
 
-                            {candidateSemTab === 1 && costPotongan > 0 && (
+                            {costPotongan > 0 && (
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderTop: '1px solid var(--indigo-100)', paddingTop: 8, color: 'var(--danger)' }}>
                                 <div>
-                                  <span style={{ fontWeight: 700 }}>Potongan / Diskon Khusus</span>
+                                  <span style={{ fontWeight: 700 }}>Potongan / Diskon UKP</span>
                                   <span style={{ display: 'block', fontSize: 10.5, color: 'var(--gray-500)', marginTop: 2 }}>
-                                    Catatan: {penetapan.catatan_potongan || '-'}
+                                    Catatan: {penetapan.catatan_potongan || '-'} (per semester)
                                   </span>
                                 </div>
                                   <span style={{ fontWeight: 700 }}>- Rp{costPotongan.toLocaleString('id-ID')}</span>
