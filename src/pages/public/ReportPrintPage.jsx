@@ -321,7 +321,7 @@ export default function ReportPrintPage() {
           </div>          {/* Section 2: Distribution of Remaining Courses across 4 Semesters */}
           <div className="section-page-break" style={{ marginBottom: '28px' }}>
             <h4 style={{ fontSize: '13px', fontWeight: 700, textTransform: 'uppercase', borderBottom: '1px solid #cbd5e1', paddingBottom: '4px', marginBottom: '10px', color: '#4f46e5' }}>
-              II. Distribusi Rencana Studi Sisa (Semester 1 - Semester 4)
+              II. Distribusi Rencana Studi Sisa Mata Kuliah
             </h4>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '12px' }}>
@@ -379,11 +379,11 @@ export default function ReportPrintPage() {
             <table style={{ width: '100%', fontSize: '11px', borderCollapse: 'collapse', marginBottom: '16px' }}>
               <thead>
                 <tr style={{ background: '#f1f5f9' }}>
-                  <th style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'left', width: '32%' }}>Komponen Biaya</th>
-                  <th style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right', width: '17%' }}>Semester 1</th>
-                  <th style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right', width: '17%' }}>Semester 2</th>
-                  <th style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right', width: '17%' }}>Semester 3</th>
-                  <th style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right', width: '17%' }}>Semester 4</th>
+                  <th style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'center', width: '32%' }}>Komponen Biaya</th>
+                  <th style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'center', width: '17%' }}>Semester 1</th>
+                  <th style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'center', width: '17%' }}>Semester 2</th>
+                  <th style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'center', width: '17%' }}>Semester 3</th>
+                  <th style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'center', width: '17%' }}>Semester 4</th>
                 </tr>
               </thead>
               <tbody>
