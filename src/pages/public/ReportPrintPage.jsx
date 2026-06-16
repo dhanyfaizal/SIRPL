@@ -133,9 +133,6 @@ export default function ReportPrintPage() {
           .no-print {
             display: none !important;
           }
-          body {
-            counter-reset: page;
-          }
           .print-footer {
             position: fixed;
             bottom: 0;
@@ -151,7 +148,6 @@ export default function ReportPrintPage() {
             font-family: 'Inter', system-ui, sans-serif;
           }
           .page-number::after {
-            counter-increment: page;
             content: "Halaman " counter(page);
           }
           .report-page-container {
@@ -480,13 +476,13 @@ export default function ReportPrintPage() {
               <p style={{ margin: 0, textDecoration: 'underline', fontWeight: 700 }}>Romanus Edy Prabowo, S.Si., M.Sc., Ph.D.</p>
             </div>
           </div>
-
-          {/* Footer Halaman Cetak */}
-          <div className="print-footer no-screen">
-            <span style={{ fontWeight: 600 }}>STIKOM Yos Sudarso Purwokerto - Rencana Studi RPL · {pengajuan.profile?.nama_lengkap} · Prodi Tujuan {pengajuan.prodi?.nama}</span>
-            <span className="page-number"></span>
-          </div>
         </div>
+      </div>
+
+      {/* Footer Halaman Cetak */}
+      <div className="print-footer no-screen">
+        <span style={{ fontWeight: 600 }}>STIKOM Yos Sudarso Purwokerto - Rencana Studi RPL · {pengajuan.profile?.nama_lengkap} · Prodi Tujuan {pengajuan.prodi?.nama}</span>
+        <span className="page-number"></span>
       </div>
     </div>
   )
