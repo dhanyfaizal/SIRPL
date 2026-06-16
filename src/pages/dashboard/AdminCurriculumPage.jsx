@@ -454,19 +454,23 @@ export default function AdminCurriculumPage() {
                     </div>
                     <button
                       onClick={() => handleToggleProdi(p.id, p.is_active)}
-                      className="btn btn-sm"
+                      className={`btn btn-sm ${p.is_active !== false ? 'btn-primary' : 'btn-secondary'}`}
                       style={{
-                        padding: '4px 10px',
+                        padding: '6px 12px',
                         fontSize: 11,
                         borderRadius: 6,
-                        minWidth: 72,
+                        minWidth: 90,
                         justifyContent: 'center',
-                        background: p.is_active !== false ? 'var(--emerald-600)' : 'var(--gray-400)',
-                        borderColor: p.is_active !== false ? 'var(--emerald-700)' : 'var(--gray-500)',
-                        color: '#fff'
+                        background: p.is_active !== false ? '#10b981' : '#94a3b8',
+                        borderColor: p.is_active !== false ? '#059669' : '#64748b',
+                        color: '#fff',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                        transition: 'all 0.15s ease'
                       }}
                     >
-                      {p.is_active !== false ? 'Aktif' : 'Nonaktif'}
+                      {p.is_active !== false ? '✓ Aktif' : '✗ Nonaktif'}
                     </button>
                   </div>
                 ))}
