@@ -498,6 +498,8 @@ export default function AdminDashboard() {
                     ? 'Daftar Pengajuan Sedang Diproses'
                     : activeTab === 'completed'
                     ? 'Daftar Pengajuan Selesai'
+                    : activeTab === 'archived'
+                    ? 'Daftar Pengajuan Diarsipkan'
                     : 'Daftar Pengajuan Dikembalikan ke Asessor'}
                 </h3>
                 <span className="badge-pill badge-indigo">{activeList.length} Pengajuan</span>
