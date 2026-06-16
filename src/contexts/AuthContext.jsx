@@ -29,6 +29,22 @@ export default function AuthProvider({ children }) {
       }
     }
 
+    // Cek apakah ada session cache asli (SWR cache)
+    if (!isMock) {
+      const realSession = localStorage.getItem('si_rpl_real_session')
+      if (realSession) {
+        try {
+          const sessionObj = JSON.parse(realSession)
+          setUser(sessionObj.user)
+          setProfile(sessionObj.profile)
+          setRole(sessionObj.profile.role)
+          setLoading(false)
+        } catch (e) {
+          console.error('Failed to parse real session cache:', e)
+        }
+      }
+    }
+
     if (isMock) {
       setLoading(false)
       return
@@ -52,6 +68,7 @@ export default function AuthProvider({ children }) {
           setUser(null)
           setProfile(null)
           setRole(null)
+          localStorage.removeItem('si_rpl_real_session')
         }
 
         setLoading(false)
@@ -90,6 +107,7 @@ export default function AuthProvider({ children }) {
     if (!error && data) {
       setProfile(data)
       setRole(data.role)
+      localStorage.setItem('si_rpl_real_session', JSON.stringify({ user: authUser, profile: data }))
     }
   }
 
@@ -144,6 +162,7 @@ export default function AuthProvider({ children }) {
   async function signOut() {
     setLoading(true)
     localStorage.removeItem('si_rpl_mock_session')
+    localStorage.removeItem('si_rpl_real_session')
     
     if (!isMock) {
       try {
