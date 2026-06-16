@@ -227,14 +227,14 @@ export default function ReportPrintPage() {
               onError={e => e.target.style.display = 'none'}
             />
             <div style={{ flexGrow: 1, textAlign: 'center', marginRight: '95px' }}>
-              <h2 style={{ fontSize: '18px', fontWeight: 800, margin: '0 0 4px 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              <h2 style={{ fontSize: '18px', fontWeight: 800, margin: '0 0 4px 0', textTransform: 'uppercase', letterSpacing: '0.5px', fontFamily: 'ui-serif, Georgia, Cambria, "Times New Roman", Times, serif' }}>
                 STIKOM Yos Sudarso Purwokerto
               </h2>
               <p style={{ fontSize: '11px', color: '#64748b', margin: '0 0 4px 0' }}>
-                Jl. SMP5 No. 1, Windusara, Karangklesem, Purwokerto Selatan, Banyumas · Telp: (0281) 6840952
+                Jl. SMP5 No. 1, Windusara, Karangklesem, Purwokerto Selatan, Banyumas
               </p>
               <p style={{ fontSize: '10px', color: '#94a3b8', margin: 0, fontStyle: 'italic' }}>
-                Email: info@stikomyos.ac.id · Website: www.stikomyos.ac.id
+                Telp: (0281) 6840952 · Email: info@stikomyos.ac.id · Website: www.stikomyos.ac.id
               </p>
             </div>
           </div>
