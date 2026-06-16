@@ -62,12 +62,12 @@ export default function ReportPrintPage() {
   const getSemesterCost = (semNum) => {
     const semCourses = rStudi.filter(c => (c.semester || 1) === semNum)
     const semMoocs = semCourses.filter(c => c.jalur === 'asinkron').length
-    
+
     const ukp = 5400000
     const rekognisi = semNum === 1 ? (penetapan.total_sks_diakui || 0) * 50000 : 0
     const moocs = semMoocs * 100000
     const potongan = penetapan.potongan_biaya || 0
-    
+
     const total = Math.max(0, ukp + rekognisi + moocs - potongan)
     return { ukp, rekognisi, moocs, potongan, total, semMoocs }
   }
@@ -84,7 +84,8 @@ export default function ReportPrintPage() {
 
   return (
     <div className="report-page-container">
-      <style dangerouslySetInnerHTML={{ __html: `
+      <style dangerouslySetInnerHTML={{
+        __html: `
         @media screen {
           .no-screen {
             display: none !important;
@@ -211,19 +212,19 @@ export default function ReportPrintPage() {
       <div className="report-scroll-area">
         <div className="report-sheet">
           {/* Official Letter Head */}
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '20px', 
-            borderBottom: '3px double #1e293b', 
-            paddingBottom: '16px', 
-            marginBottom: '24px' 
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '20px',
+            borderBottom: '3px double #1e293b',
+            paddingBottom: '16px',
+            marginBottom: '24px'
           }}>
-            <img 
-              src="/logo-sys.png" 
-              alt="STIKOM Yos Sudarso Logo" 
-              style={{ width: '75px', height: 'auto', flexShrink: 0 }} 
-              onError={e => e.target.style.display='none'}
+            <img
+              src="/logo-sys.png"
+              alt="STIKOM Yos Sudarso Logo"
+              style={{ width: '75px', height: 'auto', flexShrink: 0 }}
+              onError={e => e.target.style.display = 'none'}
             />
             <div style={{ flexGrow: 1, textAlign: 'center', marginRight: '95px' }}>
               <h2 style={{ fontSize: '18px', fontWeight: 800, margin: '0 0 4px 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
@@ -311,7 +312,7 @@ export default function ReportPrintPage() {
               {recognizedCourses.length > 0 && (
                 <tfoot>
                   <tr style={{ background: '#f8fafc', fontWeight: 700 }}>
-                    <td colSpan="3" style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right' }}>Total Kredit Diakui:</td>
+                    <td colSpan="3" style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right' }}>Total SKS Diakui:</td>
                     <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'center' }}>{penetapan.total_sks_diakui} SKS</td>
                   </tr>
                 </tfoot>
@@ -322,12 +323,12 @@ export default function ReportPrintPage() {
             <h4 style={{ fontSize: '13px', fontWeight: 700, textTransform: 'uppercase', borderBottom: '1px solid #cbd5e1', paddingBottom: '4px', marginBottom: '10px', color: '#4f46e5' }}>
               II. Distribusi Rencana Studi Sisa (Semester 1 - Semester 4)
             </h4>
-            
+
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '12px' }}>
               {[1, 2, 3, 4].map(sem => {
                 const semCourses = rStudi.filter(c => (c.semester || 1) === sem)
                 const semSks = semCourses.reduce((sum, c) => sum + c.sks, 0)
-                
+
                 return (
                   <div key={sem} style={{ border: '1px solid #cbd5e1', borderRadius: '4px', padding: '10px', background: '#f8fafc' }}>
                     <h5 style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', marginBottom: '6px', color: '#1e293b', borderBottom: '1px solid #e2e8f0', paddingBottom: '4px', display: 'flex', justifyContent: 'space-between' }}>
@@ -437,7 +438,7 @@ export default function ReportPrintPage() {
                   </tr>
                 )}
                 <tr style={{ background: '#f8fafc', fontWeight: 800 }}>
-                  <td style={{ border: '1px solid #cbd5e1', padding: '8px' }}>Subtotal Biaya Semester (Net)</td>
+                  <td style={{ border: '1px solid #cbd5e1', padding: '8px' }}>Subtotal Biaya Semester </td>
                   <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right' }}>Rp{sem1.total.toLocaleString('id-ID')}</td>
                   <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right' }}>Rp{sem2.total.toLocaleString('id-ID')}</td>
                   <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right' }}>Rp{sem3.total.toLocaleString('id-ID')}</td>
@@ -446,7 +447,7 @@ export default function ReportPrintPage() {
               </tbody>
               <tfoot>
                 <tr style={{ background: '#f1f5f9', fontWeight: 800, fontSize: '12px' }}>
-                  <td style={{ border: '1px solid #cbd5e1', padding: '10px' }}>TOTAL ESTIMASI BIAYA SELURUH SEMESTER (NET)</td>
+                  <td style={{ border: '1px solid #cbd5e1', padding: '10px' }}>TOTAL ESTIMASI BIAYA INVESTASI PENDIDIKAN</td>
                   <td colSpan="4" style={{ border: '1px solid #cbd5e1', padding: '10px', textAlign: 'right', color: '#0f766e', fontSize: '13px' }}>
                     Rp{grandTotalCost.toLocaleString('id-ID')}
                   </td>
