@@ -129,7 +129,7 @@ export default function AdminDashboard() {
             'Authorization': `Bearer ${apiKey}`
           },
           body: JSON.stringify({
-            model: 'deepseek/deepseek-v4-flash',
+            model: 'deepseek-v4-flash',
             temperature: 0,
             response_format: { type: 'json_object' },
             messages: [

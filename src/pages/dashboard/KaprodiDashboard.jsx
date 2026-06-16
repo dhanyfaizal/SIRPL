@@ -850,7 +850,7 @@ export default function KaprodiDashboard() {
         }
 
         const friendlyModelNames = {
-          'deepseek/deepseek-v4-flash': 'DeepSeek v4 Flash',
+          'deepseek-v4-flash': 'DeepSeek v4 Flash',
           'gemini/gemini-2.5-flash': 'Gemini 2.5 Flash',
           'gpt-5-nano': 'GPT-5 Nano',
           'gpt-5-mini': 'GPT-5 Mini',
