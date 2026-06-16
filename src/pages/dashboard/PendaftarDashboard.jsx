@@ -111,6 +111,8 @@ export default function PendaftarDashboard() {
 
   const [penetapan, setPenetapan] = useState(null)
   const [candidateSemTab, setCandidateSemTab] = useState(1)
+  const [showSanggahModal, setShowSanggahModal] = useState(false)
+  const [alasanSanggah, setAlasanSanggah] = useState('')
 
   const handleViewFile = (type, index = null) => {
     let fileUrl = ''
@@ -250,6 +252,27 @@ export default function PendaftarDashboard() {
       toast.error('Gagal memuat data')
     } finally {
       if (!silent) setLoading(false)
+    }
+  }
+
+  const handleSubmitSanggah = async (e) => {
+    e.preventDefault()
+    if (!alasanSanggah.trim()) {
+      toast.error('Alasan sanggah wajib diisi!')
+      return
+    }
+    setSubmitting(true)
+    try {
+      await dbPengajuan.updateStatus(pengajuan.id, 'assessed_asessor', alasanSanggah)
+      toast.success('Sanggahan berhasil dikirim! Rencana studi Anda akan ditinjau kembali oleh Admin.')
+      setShowSanggahModal(false)
+      setAlasanSanggah('')
+      loadData()
+    } catch (err) {
+      console.error(err)
+      toast.error('Gagal mengirim sanggahan')
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -965,10 +988,24 @@ export default function PendaftarDashboard() {
         </div>
       ) : (
         /* STATUS TRACKER & TIMELINE SCREEN */
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 24 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {pengajuan?.status === 'assessed_asessor' && pengajuan?.catatan_revisi && (
+            <div className="card" style={{ borderLeft: '4px solid var(--warning)', backgroundColor: '#fffdf5' }}>
+              <div className="card-body" style={{ padding: 16 }}>
+                <h4 style={{ color: '#d97706', display: 'flex', alignItems: 'center', gap: 8, margin: 0, fontSize: '14px', fontWeight: 700 }}>
+                  ⚠️ Sanggahan Anda Sedang Ditinjau Admin
+                </h4>
+                <p style={{ color: '#b45309', fontSize: '13px', marginTop: 8, marginBottom: 0 }}>
+                  Detail alasan sanggahan Anda: <strong>"{pengajuan.catatan_revisi}"</strong>
+                </p>
+              </div>
+            </div>
+          )}
           
-          {/* Left Column: Timeline Details & Document Preview */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 24 }}>
+            
+            {/* Left Column: Timeline Details & Document Preview */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
             
             {/* Rencana Studi & Rincian Biaya per Semester Card (Hanya jika status mapped_admin dan penetapan ada) */}
             {stepIndex === 5 && penetapan && (
@@ -1346,29 +1383,51 @@ export default function PendaftarDashboard() {
               </div>
             </div>
 
-            {/* Print Action (If Complete) */}
+            {/* Print & Sanggah Actions (If Complete) */}
             {stepIndex === 5 && (
-              <button
-                onClick={() => window.open(`/report/${pengajuan.id}/print`, '_blank')}
-                className="btn btn-primary"
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  fontWeight: 700,
-                  fontSize: 13.5,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 8,
-                  boxShadow: '0 4px 12px rgba(79, 70, 229, 0.2)'
-                }}
-              >
-                <FileText size={16} /> Cetak Rencana Studi (PDF)
-              </button>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%' }}>
+                <button
+                  onClick={() => window.open(`/report/${pengajuan.id}/print`, '_blank')}
+                  className="btn btn-primary"
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    fontWeight: 700,
+                    fontSize: 13.5,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 8,
+                    boxShadow: '0 4px 12px rgba(79, 70, 229, 0.2)'
+                  }}
+                >
+                  <FileText size={16} /> Cetak Rencana Studi (PDF)
+                </button>
+                <button
+                  onClick={() => setShowSanggahModal(true)}
+                  className="btn btn-danger"
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    fontWeight: 600,
+                    fontSize: 12.5,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6,
+                    background: '#fff',
+                    color: 'var(--danger)',
+                    border: '1px solid var(--danger)'
+                  }}
+                >
+                  ⚠️ Sanggah Rencana Studi
+                </button>
+              </div>
             )}
           </div>
         </div>
-      )}
+      </div>
+    )}
 
       {/* Modal Pratinjau Dokumen Calon (Revisi/Form Baru) */}
       {viewModal.isOpen && (
@@ -1402,6 +1461,62 @@ export default function PendaftarDashboard() {
                 Tutup
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Sanggah */}
+      {showSanggahModal && (
+        <div className="modal-overlay" onClick={() => setShowSanggahModal(false)}>
+          <div className="modal" style={{ width: '500px', maxWidth: '95%' }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--danger)' }}>⚠️ Ajukan Sanggah Rencana Studi</h3>
+              <button 
+                type="button" 
+                className="btn-close" 
+                onClick={() => setShowSanggahModal(false)}
+                style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: 'var(--gray-500)' }}
+              >
+                ✕
+              </button>
+            </div>
+            <form onSubmit={handleSubmitSanggah}>
+              <div className="modal-body" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <p style={{ fontSize: 12.5, color: 'var(--gray-600)', lineHeight: 1.5 }}>
+                  Silakan tuliskan alasan sanggahan atau keberatan Anda terkait rencana studi atau rincian biaya yang telah diterbitkan. Alasan ini akan langsung dikirimkan kepada Admin Akademik untuk peninjauan kembali.
+                </p>
+                <div className="input-group">
+                  <label className="input-label" style={{ fontWeight: 600 }}>Alasan Sanggah / Keberatan</label>
+                  <textarea
+                    value={alasanSanggah}
+                    onChange={(e) => setAlasanSanggah(e.target.value)}
+                    placeholder="Contoh: Saya berkeberatan dengan biaya MOOCs di Semester 2 karena mata kuliah X seharusnya bisa disetarakan dari transkrip asal saya..."
+                    className="input"
+                    rows={4}
+                    style={{ resize: 'none', padding: '8px 12px', fontSize: 12.5 }}
+                    required
+                  />
+                </div>
+              </div>
+              <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, borderTop: '1px solid var(--gray-100)', padding: '12px 20px' }}>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setShowSanggahModal(false)}
+                  disabled={submitting}
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-danger"
+                  disabled={submitting}
+                  style={{ background: 'var(--danger)', color: '#fff', border: 'none' }}
+                >
+                  {submitting ? 'Mengirim...' : 'Kirim Sanggahan'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

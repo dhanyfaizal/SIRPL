@@ -913,10 +913,20 @@ export default function AdminDashboard() {
 
           {/* Revision Banner if applicable */}
           {selectedItem.catatan_revisi && (
-            <div style={{ background: 'var(--indigo-50)', padding: 14, borderRadius: 8, border: '1px solid var(--indigo-100)', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-              <AlertCircle size={18} style={{ color: 'var(--indigo-600)', marginTop: 2, flexShrink: 0 }} />
+            <div style={{ 
+              background: selectedItem.status === 'assessed_asessor' ? '#fffdf5' : 'var(--indigo-50)', 
+              padding: 14, 
+              borderRadius: 8, 
+              border: selectedItem.status === 'assessed_asessor' ? '1px solid var(--warning)' : '1px solid var(--indigo-100)', 
+              display: 'flex', 
+              alignItems: 'flex-start', 
+              gap: 10 
+            }}>
+              <AlertCircle size={18} style={{ color: selectedItem.status === 'assessed_asessor' ? 'var(--warning)' : 'var(--indigo-600)', marginTop: 2, flexShrink: 0 }} />
               <div>
-                <h4 style={{ fontSize: 13, fontWeight: 700, color: 'var(--indigo-700)', marginBottom: 2 }}>Catatan Revisi / Alasan Pengembalian Aktif:</h4>
+                <h4 style={{ fontSize: 13, fontWeight: 700, color: selectedItem.status === 'assessed_asessor' ? '#d97706' : 'var(--indigo-700)', marginBottom: 2 }}>
+                  {selectedItem.status === 'assessed_asessor' ? '⚠️ Sanggahan Hasil Rencana Studi dari Calon Mahasiswa:' : 'Catatan Revisi / Alasan Pengembalian Aktif:'}
+                </h4>
                 <p style={{ fontSize: 12.5, color: 'var(--gray-600)', whiteSpace: 'pre-wrap' }}>{selectedItem.catatan_revisi}</p>
               </div>
             </div>
