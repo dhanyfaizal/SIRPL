@@ -12,6 +12,7 @@ import AuthCallback from '../pages/auth/AuthCallback'
 import DashboardRouter from '../pages/dashboard/DashboardRouter'
 import AdminUsersPage from '../pages/dashboard/AdminUsersPage'
 import AdminCurriculumPage from '../pages/dashboard/AdminCurriculumPage'
+import ProfilePage from '../pages/dashboard/ProfilePage'
 
 // Print page
 import ReportPrintPage from '../pages/public/ReportPrintPage'
@@ -120,7 +121,7 @@ export default function AppRouter() {
           <Route path="/curriculum" element={<ProtectedRoute allowedRoles={['admin']}><AdminCurriculumPage /></ProtectedRoute>} />
           
           {/* Profile & Settings */}
-          <Route path="/profile" element={<PlaceholderPage title="Profil Saya" />} />
+          <Route path="/profile" element={<ProfilePage />} />
           <Route path="/settings/ai" element={<ProtectedRoute allowedRoles={['admin']}><PlaceholderPage title="Pengaturan AI Key" /></ProtectedRoute>} />
         </Route>
 
