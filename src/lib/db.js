@@ -339,6 +339,29 @@ export const dbPengajuan = {
 
       return { data: { id }, error: null }
     }
+
+    try {
+      // Dapatkan data pengajuan terlebih dahulu untuk mengambil user_id
+      const { data: pengajuan } = await supabase
+        .from('pengajuan_rpl')
+        .select('user_id')
+        .eq('id', id)
+        .maybeSingle()
+
+      if (pengajuan?.user_id) {
+        const userId = pengajuan.user_id
+        // List semua berkas di folder user tersebut
+        const { data: files } = await supabase.storage.from('rpl-documents').list(userId)
+        if (files && files.length > 0) {
+          const filePaths = files.map(f => `${userId}/${f.name}`)
+          // Hapus semua berkas secara massal dari storage
+          await supabase.storage.from('rpl-documents').remove(filePaths)
+        }
+      }
+    } catch (err) {
+      console.error('Error deleting files from storage:', err)
+    }
+
     return supabase.from('pengajuan_rpl').delete().eq('id', id)
   }
 }

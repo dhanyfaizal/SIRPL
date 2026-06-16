@@ -374,30 +374,28 @@ export default function PendaftarDashboard() {
       let ijazahUrl = ijazahName
       let transkripUrl = transkripName
 
-      const ts = Date.now()
-
       // Upload files if real storage mode
       if (!isMock) {
         if (ijazahSmaFile) {
-          const path = `${user.id}/ijazah_sma_${ts}.pdf`
+          const path = `${user.id}/ijazah_sma.pdf`
           const { error } = await supabase.storage.from('rpl-documents').upload(path, ijazahSmaFile, { contentType: 'application/pdf', upsert: true })
           if (error) throw new Error('Gagal unggah ijazah SMA: ' + error.message)
           ijazahSmaUrl = path
         }
         if (transkripSmaFile) {
-          const path = `${user.id}/transkrip_sma_${ts}.pdf`
+          const path = `${user.id}/transkrip_sma.pdf`
           const { error } = await supabase.storage.from('rpl-documents').upload(path, transkripSmaFile, { contentType: 'application/pdf', upsert: true })
           if (error) throw new Error('Gagal unggah transkrip SMA: ' + error.message)
           transkripSmaUrl = path
         }
         if (ijazahFile) {
-          const path = `${user.id}/ijazah_pt_${ts}.pdf`
+          const path = `${user.id}/ijazah_pt.pdf`
           const { error } = await supabase.storage.from('rpl-documents').upload(path, ijazahFile, { contentType: 'application/pdf', upsert: true })
           if (error) throw new Error('Gagal unggah ijazah PT: ' + error.message)
           ijazahUrl = path
         }
         if (transkripFile) {
-          const path = `${user.id}/transkrip_pt_${ts}.pdf`
+          const path = `${user.id}/transkrip_pt.pdf`
           const { error } = await supabase.storage.from('rpl-documents').upload(path, transkripFile, { contentType: 'application/pdf', upsert: true })
           if (error) throw new Error('Gagal unggah transkrip PT: ' + error.message)
           transkripUrl = path
@@ -409,7 +407,7 @@ export default function PendaftarDashboard() {
         let fileUrl = cert.fileUrl
         if (cert.fileObj) {
           if (!isMock) {
-            const path = `${user.id}/cert_${idx}_${ts}.pdf`
+            const path = `${user.id}/cert_${idx}.pdf`
             const { error } = await supabase.storage.from('rpl-documents').upload(path, cert.fileObj, { contentType: 'application/pdf', upsert: true })
             if (error) throw new Error('Gagal unggah berkas sertifikat: ' + error.message)
             fileUrl = path
@@ -430,7 +428,7 @@ export default function PendaftarDashboard() {
         let fileUrl = expr.fileUrl
         if (expr.fileObj) {
           if (!isMock) {
-            const path = `${user.id}/expr_${idx}_${ts}.pdf`
+            const path = `${user.id}/expr_${idx}.pdf`
             const { error } = await supabase.storage.from('rpl-documents').upload(path, expr.fileObj, { contentType: 'application/pdf', upsert: true })
             if (error) throw new Error('Gagal unggah berkas bukti kerja: ' + error.message)
             fileUrl = path
@@ -446,6 +444,33 @@ export default function PendaftarDashboard() {
           file_url: fileUrl
         }
       }))
+
+      // Cleanup unused storage files in production mode
+      if (!isMock) {
+        try {
+          const usedPaths = [
+            ijazahSmaUrl,
+            transkripSmaUrl,
+            ijazahUrl,
+            transkripUrl,
+            ...finalCerts.map(c => c.file_url),
+            ...finalExprs.map(e => e.file_url)
+          ].filter(Boolean)
+
+          const { data: files } = await supabase.storage.from('rpl-documents').list(user.id)
+          if (files && files.length > 0) {
+            const unusedPaths = files
+              .map(f => `${user.id}/${f.name}`)
+              .filter(p => !usedPaths.includes(p))
+
+            if (unusedPaths.length > 0) {
+              await supabase.storage.from('rpl-documents').remove(unusedPaths)
+            }
+          }
+        } catch (cleanErr) {
+          console.error('Error cleaning up unused storage files:', cleanErr)
+        }
+      }
 
       const payload = {
         file_ijazah_sma_url: ijazahSmaUrl,
