@@ -129,9 +129,6 @@ export default function ReportPrintPage() {
         }
 
         @media print {
-          .no-screen {
-            display: none !important;
-          }
           .no-print {
             display: none !important;
           }
@@ -140,7 +137,7 @@ export default function ReportPrintPage() {
           }
           .print-footer {
             position: fixed;
-            bottom: -10mm;
+            bottom: 0;
             left: 0;
             right: 0;
             display: flex;
@@ -255,11 +252,11 @@ export default function ReportPrintPage() {
               <table style={{ width: '100%' }}>
                 <tbody>
                   <tr>
-                    <td style={{ width: 110, color: '#64748b', padding: '2px 0' }}>Nama Mahasiswa</td>
+                    <td style={{ width: 110, color: '#64748b', padding: '2px 0' }}>Nama</td>
                     <td style={{ padding: '2px 0' }}>: <strong>{pengajuan.profile?.nama_lengkap}</strong></td>
                   </tr>
                   <tr>
-                    <td style={{ color: '#64748b', padding: '2px 0' }}>Email Pendaftar</td>
+                    <td style={{ color: '#64748b', padding: '2px 0' }}>Email</td>
                     <td style={{ padding: '2px 0' }}>: {pengajuan.profile?.email}</td>
                   </tr>
                 </tbody>
@@ -269,7 +266,7 @@ export default function ReportPrintPage() {
               <table style={{ width: '100%' }}>
                 <tbody>
                   <tr>
-                    <td style={{ width: 110, color: '#64748b', padding: '2px 0' }}>Program Studi</td>
+                    <td style={{ width: 110, color: '#64748b', padding: '2px 0' }}>Prodi Tujuan</td>
                     <td style={{ padding: '2px 0' }}>: {pengajuan.prodi?.nama}</td>
                   </tr>
                   <tr>
