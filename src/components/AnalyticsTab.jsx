@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react'
-import { dbRekognisi, dbFeedback } from '../lib/db'
-import { Clock, GraduationCap, Building2, ClipboardCheck, Sparkles, AlertTriangle, Star, Smile, MessageSquare } from 'lucide-react'
+import { dbRekognisi } from '../lib/db'
+import { Clock, GraduationCap, Building2, ClipboardCheck, Sparkles, AlertTriangle } from 'lucide-react'
 
 export default function AnalyticsTab({ submissions = [] }) {
   const [recognitionList, setRecognitionList] = useState([])
-  const [feedbackList, setFeedbackList] = useState([])
   const [hoveredProdi, setHoveredProdi] = useState(null)
   const [hoveredStatus, setHoveredStatus] = useState(null)
 
@@ -12,10 +11,6 @@ export default function AnalyticsTab({ submissions = [] }) {
     dbRekognisi.getAll().then(({ data }) => {
       setRecognitionList(data || [])
     }).catch(err => console.error('Failed to load recognition details:', err))
-
-    dbFeedback.getAll().then(({ data }) => {
-      setFeedbackList(data || [])
-    }).catch(err => console.error('Failed to load feedback details:', err))
   }, [])
 
   // ── 1. Data Aggregation ──────────────────────────────────────────
@@ -180,27 +175,6 @@ export default function AnalyticsTab({ submissions = [] }) {
     .map(([name, count]) => ({ name, count }))
     .sort((a, b) => b.count - a.count)
     .slice(0, 5)
-
-  // ── Feedback / Satisfaction Metrics ────────────────────────────────
-  const totalFeedbackCount = feedbackList.length
-  let avgKemudahan = '0.0'
-  let avgKejelasan = '0.0'
-  let avgKecepatan = '0.0'
-  let csatScore = 0
-
-  if (totalFeedbackCount > 0) {
-    const sumKemudahan = feedbackList.reduce((sum, f) => sum + (f.rating_kemudahan || 0), 0)
-    const sumKejelasan = feedbackList.reduce((sum, f) => sum + (f.rating_kejelasan || 0), 0)
-    const sumKecepatan = feedbackList.reduce((sum, f) => sum + (f.rating_kecepatan || 0), 0)
-
-    avgKemudahan = (sumKemudahan / totalFeedbackCount).toFixed(1)
-    avgKejelasan = (sumKejelasan / totalFeedbackCount).toFixed(1)
-    avgKecepatan = (sumKecepatan / totalFeedbackCount).toFixed(1)
-
-    const totalStarsPossible = totalFeedbackCount * 15
-    const totalStarsEarned = sumKemudahan + sumKejelasan + sumKecepatan
-    csatScore = Math.round((totalStarsEarned / totalStarsPossible) * 100)
-  }
 
   // ── SVG Math & Settings ──────────────────────────────────────────
   const maxProdiCount = prodiData.length > 0 ? Math.max(...prodiData.map(d => d.count)) : 0
@@ -508,171 +482,6 @@ export default function AnalyticsTab({ submissions = [] }) {
           </div>
         </div>
 
-      </div>
-
-      {/* SECTION: FEEDBACK & KEPUASAN PELAYANAN */}
-      <div className="card" style={{ borderTop: '4px solid var(--amber-500)' }}>
-        <div className="card-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: 8 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Smile size={16} color="var(--amber-500)" />
-            <h3 style={{ fontSize: 14, fontWeight: 700, margin: 0 }}>Ulasan & Kepuasan Pelayanan Pendaftar</h3>
-          </div>
-          <span style={{ fontSize: 11, color: 'var(--gray-500)', fontWeight: 700, background: 'var(--gray-100)', padding: '2px 8px', borderRadius: 12 }}>
-            {totalFeedbackCount} Responden
-          </span>
-        </div>
-        
-        {totalFeedbackCount === 0 ? (
-          <div className="card-body" style={{ padding: 40, textAlign: 'center', color: 'var(--gray-400)', fontStyle: 'italic' }}>
-            Belum ada data ulasan atau penilaian kepuasan dari pendaftar.
-          </div>
-        ) : (
-          <div className="card-body" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 24, padding: 20 }}>
-            {/* Card 1: CSAT Index */}
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #fef3c7, #fffbeb)', padding: 20, borderRadius: 12, border: '1px solid #fde68a' }}>
-              <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--amber-700)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 }}>CSAT Index (Keseluruhan)</span>
-              
-              <div style={{ position: 'relative', width: 120, height: 120, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <svg width="120" height="120" viewBox="0 0 120 120" style={{ transform: 'rotate(-90deg)' }}>
-                  <circle cx="60" cy="60" r="45" fill="transparent" stroke="#fef3c7" strokeWidth="8" />
-                  <circle
-                    cx="60"
-                    cy="60"
-                    r="45"
-                    fill="transparent"
-                    stroke="var(--amber-500)"
-                    strokeWidth="8"
-                    strokeDasharray={`${2 * Math.PI * 45}`}
-                    strokeDashoffset={`${2 * Math.PI * 45 * (1 - csatScore / 100)}`}
-                    strokeLinecap="round"
-                    style={{ transition: 'stroke-dashoffset 0.8s ease-in-out' }}
-                  />
-                </svg>
-                <div style={{ position: 'absolute', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                  <span style={{ fontSize: 24, fontWeight: 800, color: 'var(--amber-800)' }}>{csatScore}%</span>
-                  <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--amber-600)', marginTop: -2 }}>Sangat Puas</span>
-                </div>
-              </div>
-              <p style={{ fontSize: 11, color: 'var(--amber-800)', textAlign: 'center', margin: '12px 0 0 0', lineHeight: 1.4 }}>
-                Persentase ulasan positif pendaftar terhadap kemudahan portal, kejelasan studi, dan kecepatan layanan.
-              </p>
-            </div>
-
-            {/* Card 2: Question Metrics with Stars */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14, justifyContent: 'center' }}>
-              <h4 style={{ fontSize: 12, fontWeight: 700, color: 'var(--gray-700)', margin: '0 0 4px 0' }}>Rerata Kepuasan per Aspek</h4>
-              
-              {/* Aspek 1: Kemudahan Portal */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5 }}>
-                  <span style={{ fontWeight: 600, color: 'var(--gray-600)' }}>1. Kemudahan Portal & Upload</span>
-                  <span style={{ fontWeight: 700, color: 'var(--gray-700)' }}>{avgKemudahan} / 5.0</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <div style={{ display: 'flex', gap: 1 }}>
-                    {[1, 2, 3, 4, 5].map(s => (
-                      <Star
-                        key={s}
-                        size={12}
-                        fill={s <= Math.round(parseFloat(avgKemudahan)) ? 'var(--amber-500)' : 'transparent'}
-                        stroke={s <= Math.round(parseFloat(avgKemudahan)) ? 'var(--amber-500)' : 'var(--gray-300)'}
-                      />
-                    ))}
-                  </div>
-                  <div style={{ flex: 1, height: 6, background: 'var(--gray-100)', borderRadius: 3, overflow: 'hidden' }}>
-                    <div style={{ width: `${(parseFloat(avgKemudahan) / 5) * 100}%`, background: 'var(--amber-500)', height: '100%', borderRadius: 3 }} />
-                  </div>
-                </div>
-              </div>
-
-              {/* Aspek 2: Kejelasan Rencana Studi */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5 }}>
-                  <span style={{ fontWeight: 600, color: 'var(--gray-600)' }}>2. Kejelasan Rencana & Biaya</span>
-                  <span style={{ fontWeight: 700, color: 'var(--gray-700)' }}>{avgKejelasan} / 5.0</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <div style={{ display: 'flex', gap: 1 }}>
-                    {[1, 2, 3, 4, 5].map(s => (
-                      <Star
-                        key={s}
-                        size={12}
-                        fill={s <= Math.round(parseFloat(avgKejelasan)) ? 'var(--amber-500)' : 'transparent'}
-                        stroke={s <= Math.round(parseFloat(avgKejelasan)) ? 'var(--amber-500)' : 'var(--gray-300)'}
-                      />
-                    ))}
-                  </div>
-                  <div style={{ flex: 1, height: 6, background: 'var(--gray-100)', borderRadius: 3, overflow: 'hidden' }}>
-                    <div style={{ width: `${(parseFloat(avgKejelasan) / 5) * 100}%`, background: 'var(--amber-500)', height: '100%', borderRadius: 3 }} />
-                  </div>
-                </div>
-              </div>
-
-              {/* Aspek 3: Kecepatan Layanan */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5 }}>
-                  <span style={{ fontWeight: 600, color: 'var(--gray-600)' }}>3. Kecepatan Validasi & Layanan</span>
-                  <span style={{ fontWeight: 700, color: 'var(--gray-700)' }}>{avgKecepatan} / 5.0</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <div style={{ display: 'flex', gap: 1 }}>
-                    {[1, 2, 3, 4, 5].map(s => (
-                      <Star
-                        key={s}
-                        size={12}
-                        fill={s <= Math.round(parseFloat(avgKecepatan)) ? 'var(--amber-500)' : 'transparent'}
-                        stroke={s <= Math.round(parseFloat(avgKecepatan)) ? 'var(--amber-500)' : 'var(--gray-300)'}
-                      />
-                    ))}
-                  </div>
-                  <div style={{ flex: 1, height: 6, background: 'var(--gray-100)', borderRadius: 3, overflow: 'hidden' }}>
-                    <div style={{ width: `${(parseFloat(avgKecepatan) / 5) * 100}%`, background: 'var(--amber-500)', height: '100%', borderRadius: 3 }} />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Card 3: Scrollable Comments list */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                <MessageSquare size={14} color="var(--indigo-600)" />
-                <h4 style={{ fontSize: 12, fontWeight: 700, color: 'var(--gray-700)', margin: 0 }}>Saran & Masukan Terbaru</h4>
-              </div>
-              
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 180, overflowY: 'auto', paddingRight: 4, scrollbarWidth: 'thin' }}>
-                {feedbackList.map((f, idx) => {
-                  const applicantName = f.profile?.nama_lengkap || 'Calon Pendaftar'
-                  const prodiName = f.prodi?.nama || '-'
-                  const comment = f.komentar || '(Hanya memberikan rating bintang)'
-                  const dateStr = f.created_at ? new Date(f.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : ''
-                  
-                  return (
-                    <div key={idx} style={{ background: '#f8fafc', border: '1px solid var(--gray-100)', borderRadius: 8, padding: 10, fontSize: 11 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
-                        <div>
-                          <strong style={{ color: 'var(--gray-800)', display: 'block' }}>{applicantName}</strong>
-                          <span style={{ fontSize: 9.5, color: 'var(--indigo-600)', fontWeight: 600 }}>{prodiName}</span>
-                        </div>
-                        <span style={{ fontSize: 9, color: 'var(--gray-400)' }}>{dateStr}</span>
-                      </div>
-                      
-                      <div style={{ fontSize: 10.5, fontStyle: f.komentar ? 'normal' : 'italic', color: f.komentar ? 'var(--gray-600)' : 'var(--gray-400)', marginTop: 4 }}>
-                        "{comment}"
-                      </div>
-                      
-                      <div style={{ display: 'flex', gap: 6, marginTop: 6, fontSize: 9, color: 'var(--amber-600)', background: '#fff', padding: '2px 6px', borderRadius: 4, width: 'max-content', border: '1px solid var(--gray-100)', fontWeight: 600 }}>
-                        <span>💻 Portal: {f.rating_kemudahan}⭐</span>
-                        <span>📚 Rencana: {f.rating_kejelasan}⭐</span>
-                        <span>⚡ Layanan: {f.rating_kecepatan}⭐</span>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-
-          </div>
-        )}
       </div>
 
       {/* SECTION 4: PROGRAM STUDI CHARTS */}

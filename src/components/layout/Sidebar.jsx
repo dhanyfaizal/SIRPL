@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard, FileText, PlusCircle, BookOpen,
-  LogOut, Shield, Award, Settings, GraduationCap, ClipboardCheck
+  LogOut, Shield, Award, Settings, GraduationCap, ClipboardCheck, Star
 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useSidebar } from './AppLayout'
@@ -79,6 +79,7 @@ export default function Sidebar() {
           <>
             <div className="sidebar-section-label">Monitoring PMB</div>
             <NavItem label="Progress Dokumen" icon={ClipboardCheck} to="/dashboard" />
+            <NavItem label="Ulasan & Kepuasan" icon={Star} to="/feedback" />
           </>
         )}
 
@@ -87,6 +88,7 @@ export default function Sidebar() {
           <>
             <div className="sidebar-section-label">Validasi</div>
             <NavItem label="Berkas Masuk" icon={ClipboardCheck} to="/dashboard" />
+            <NavItem label="Ulasan & Kepuasan" icon={Star} to="/feedback" />
           </>
         )}
 
@@ -114,6 +116,7 @@ export default function Sidebar() {
             <div className="sidebar-section-label">Pengaturan Sistem</div>
             <NavItem label="Manajemen Kurikulum" icon={BookOpen} to="/curriculum" />
             <NavItem label="Manajemen Pengguna" icon={Shield} to="/users" />
+            <NavItem label="Ulasan & Kepuasan" icon={Star} to="/feedback" />
           </>
         )}
 

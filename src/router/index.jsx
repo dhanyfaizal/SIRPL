@@ -13,6 +13,7 @@ import DashboardRouter from '../pages/dashboard/DashboardRouter'
 import AdminUsersPage from '../pages/dashboard/AdminUsersPage'
 import AdminCurriculumPage from '../pages/dashboard/AdminCurriculumPage'
 import ProfilePage from '../pages/dashboard/ProfilePage'
+import FeedbackPage from '../pages/dashboard/FeedbackPage'
 
 // Print page
 import ReportPrintPage from '../pages/public/ReportPrintPage'
@@ -122,6 +123,7 @@ export default function AppRouter() {
           
           {/* Profile & Settings */}
           <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/feedback" element={<ProtectedRoute allowedRoles={['admin', 'baak', 'pmb']}><FeedbackPage /></ProtectedRoute>} />
           <Route path="/settings/ai" element={<ProtectedRoute allowedRoles={['admin']}><PlaceholderPage title="Pengaturan AI Key" /></ProtectedRoute>} />
         </Route>
 
