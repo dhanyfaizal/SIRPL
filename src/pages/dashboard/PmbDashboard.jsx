@@ -645,6 +645,18 @@ export default function PmbDashboard() {
                 )}
               </div>
 
+              {selectedItem.status === 'mapped_admin' && (
+                <div style={{ borderTop: '1px solid var(--gray-100)', paddingTop: 16, marginTop: 16 }}>
+                  <button
+                    onClick={() => window.open(`/report/${selectedItem.id}/print`, '_blank')}
+                    className="btn btn-primary"
+                    style={{ width: '100%', justifyContent: 'center', gap: 6, fontWeight: 700, display: 'flex', alignItems: 'center' }}
+                  >
+                    <FileText size={15} /> Cetak Rencana Studi (PDF)
+                  </button>
+                </div>
+              )}
+
             </div>
           </div>
         </div>

@@ -1260,6 +1260,13 @@ export default function AdminDashboard() {
                           📂 Berkas di dalam Arsip
                         </div>
                         <button
+                          onClick={() => window.open(`/report/${selectedItem.id}/print`, '_blank')}
+                          className="btn btn-primary"
+                          style={{ width: '100%', justifyContent: 'center', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}
+                        >
+                          <FileText size={15} /> Cetak Rencana Studi (PDF)
+                        </button>
+                        <button
                           onClick={() => handleDelete(selectedItem.id)}
                           className="btn btn-danger"
                           style={{ width: '100%', justifyContent: 'center', background: 'var(--danger)', color: '#fff', fontWeight: 600 }}
@@ -1272,6 +1279,13 @@ export default function AdminDashboard() {
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, color: 'var(--success)', fontWeight: 700, padding: '6px 0', fontSize: 13 }}>
                           <CheckCircle size={16} /> Rencana Studi & Biaya Diterbitkan
                         </div>
+                        <button
+                          onClick={() => window.open(`/report/${selectedItem.id}/print`, '_blank')}
+                          className="btn btn-primary"
+                          style={{ width: '100%', justifyContent: 'center', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}
+                        >
+                          <FileText size={15} /> Cetak Rencana Studi (PDF)
+                        </button>
                         <button
                           onClick={() => handleArchive(selectedItem.id)}
                           className="btn btn-secondary"

@@ -690,8 +690,19 @@ export default function BaakDashboard() {
                     <XCircle size={15} /> Kembalikan ke Calon
                   </button>
                 ) : (
-                  <div style={{ background: '#f1f5f9', padding: 12, borderRadius: 8, border: '1px solid #cbd5e1', textAlign: 'center', fontSize: 12, color: '#475569', fontWeight: 500 }}>
-                    ℹ️ Pengajuan sudah diproses di tingkat Ka. Prodi / Asessor / Admin.
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%' }}>
+                    {selectedItem.status === 'mapped_admin' && (
+                      <button
+                        onClick={() => window.open(`/report/${selectedItem.id}/print`, '_blank')}
+                        className="btn btn-primary"
+                        style={{ width: '100%', justifyContent: 'center', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}
+                      >
+                        <FileText size={15} /> Cetak Rencana Studi (PDF)
+                      </button>
+                    )}
+                    <div style={{ background: '#f1f5f9', padding: 12, borderRadius: 8, border: '1px solid #cbd5e1', textAlign: 'center', fontSize: 12, color: '#475569', fontWeight: 500 }}>
+                      ℹ️ Pengajuan sudah diproses di tingkat Ka. Prodi / Asessor / Admin.
+                    </div>
                   </div>
                 )}
               </div>
