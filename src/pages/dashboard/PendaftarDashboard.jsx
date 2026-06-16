@@ -384,8 +384,8 @@ export default function PendaftarDashboard() {
   // Action Step 2: Save Draft / Submit
   const handleSaveSubmit = async (isFinalSubmit) => {
     if (isFinalSubmit) {
-      if (!ijazahSmaName || !transkripSmaName) {
-        toast.error('Kedua dokumen SMA wajib diunggah untuk dikirim ke BAAK!')
+      if (!ijazahSmaName || !transkripSmaName || !ijazahName || !transkripName) {
+        toast.error('Dokumen SMA (Ijazah & Transkrip) dan Perguruan Tinggi (Ijazah & Transkrip) wajib diunggah untuk dikirim ke BAAK!')
         return
       }
 
@@ -691,12 +691,12 @@ export default function PendaftarDashboard() {
                   <ArrowLeft size={13} /> Ubah Detail Pendaftaran (Langkah 1)
                 </button>
 
-                {/* Progress bar SMA */}
+                {/* Progress bar Berkas Wajib */}
                 <div className="card" style={{ borderLeft: '4px solid var(--indigo-600)' }}>
                   <div className="card-body" style={{ padding: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div>
-                      <strong style={{ fontSize: 13.5, display: 'block', color: 'var(--gray-800)' }}>Progress Berkas Wajib (SMA/Sederajat)</strong>
-                      <span style={{ fontSize: 11.5, color: 'var(--gray-500)' }}>Wajib unggah Ijazah & Transkrip SMA untuk Submit.</span>
+                      <strong style={{ fontSize: 13.5, display: 'block', color: 'var(--gray-800)' }}>Progress Berkas Wajib (SMA & Perguruan Tinggi)</strong>
+                      <span style={{ fontSize: 11.5, color: 'var(--gray-500)' }}>Wajib unggah berkas SMA & Perguruan Tinggi untuk Submit.</span>
                     </div>
                     <div style={{ textAlign: 'right' }}>
                       <span style={{ fontSize: 16, fontWeight: 800, color: 'var(--indigo-600)' }}>{docProg.percent}%</span>
@@ -756,16 +756,16 @@ export default function PendaftarDashboard() {
                       </div>
                     </div>
 
-                    {/* B. Berkas Pendidikan Tinggi (D1/D2/D3) (Opsional) */}
+                    {/* B. Berkas Pendidikan Tinggi (D1/D2/D3) (Wajib) */}
                     <div>
-                      <h4 style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--gray-700)', marginBottom: 12, borderBottom: '1px solid var(--gray-200)', paddingBottom: 6 }}>II. Pendidikan Formal Perguruan Tinggi D1/D2/D3 (Opsional)</h4>
+                      <h4 style={{ fontSize: 12.5, fontWeight: 800, color: 'var(--indigo-600)', marginBottom: 12, borderBottom: '1px solid var(--indigo-100)', paddingBottom: 6 }}>II. Pendidikan Formal Perguruan Tinggi D1/D2/D3 (Wajib)</h4>
                       <p style={{ fontSize: 11, color: 'var(--gray-500)', marginTop: -6, marginBottom: 10 }}>PENTING: Transkrip Pendidikan Tinggi ini yang akan diekstraksi menggunakan AI/OCR oleh Kaprodi.</p>
                       <div className="form-grid form-grid-2">
                         {/* Ijazah PT */}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                           <div style={{ border: '2px dashed var(--gray-200)', borderRadius: 8, padding: 16, textAlign: 'center', background: 'var(--surface-alt)', position: 'relative' }}>
                             <input type="file" accept=".pdf" onChange={(e) => handleFileChange(e, 'ijazah')} style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }} />
-                            <FileUp size={24} color="var(--gray-600)" style={{ margin: '0 auto 8px' }} />
+                            <FileUp size={24} color="var(--indigo-600)" style={{ margin: '0 auto 8px' }} />
                             <div style={{ fontWeight: 600, fontSize: 12 }}>Ijazah D1/D2/D3</div>
                             {ijazahName && (
                               <div style={{ marginTop: 8, fontSize: 11, background: '#d1fae5', color: '#065f46', padding: '2px 6px', borderRadius: 4, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
@@ -784,7 +784,7 @@ export default function PendaftarDashboard() {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                           <div style={{ border: '2px dashed var(--gray-200)', borderRadius: 8, padding: 16, textAlign: 'center', background: 'var(--surface-alt)', position: 'relative' }}>
                             <input type="file" accept=".pdf" onChange={(e) => handleFileChange(e, 'transkrip')} style={{ position: 'absolute', inset: 0, opacity: 0, cursor: 'pointer' }} />
-                            <FileUp size={24} color="var(--gray-600)" style={{ margin: '0 auto 8px' }} />
+                            <FileUp size={24} color="var(--indigo-600)" style={{ margin: '0 auto 8px' }} />
                             <div style={{ fontWeight: 600, fontSize: 12 }}>Transkrip D1/D2/D3 (OCR)</div>
                             {transkripName && (
                               <div style={{ marginTop: 8, fontSize: 11, background: '#d1fae5', color: '#065f46', padding: '2px 6px', borderRadius: 4, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
@@ -928,8 +928,8 @@ export default function PendaftarDashboard() {
                       <ul style={{ paddingLeft: 16, margin: 0 }}>
                         <li>Ijazah SMA/Sederajat (Wajib)</li>
                         <li>Transkrip SMA/Sederajat (Wajib)</li>
-                        <li>Ijazah Pendidikan Tinggi (Opsional)</li>
-                        <li>Transkrip Pendidikan Tinggi (Opsional)</li>
+                        <li>Ijazah Pendidikan Tinggi (Wajib)</li>
+                        <li>Transkrip Pendidikan Tinggi (Wajib)</li>
                       </ul>
                     </div>
                     <div>
@@ -1091,6 +1091,15 @@ export default function PendaftarDashboard() {
                       <FileText size={12} /> {pengajuan.file_transkrip_sma_url ? pengajuan.file_transkrip_sma_url.split('/').pop() : ''}
                     </span>
                   </div>
+
+                  {pengajuan.file_ijazah_url && (
+                    <div>
+                      <span style={{ color: 'var(--gray-500)' }}>Ijazah D1/D2/D3:</span><br />
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontWeight: 500 }}>
+                        <FileText size={12} /> {pengajuan.file_ijazah_url.split('/').pop()}
+                      </span>
+                    </div>
+                  )}
 
                   {pengajuan.file_transkrip_url && (
                     <div>

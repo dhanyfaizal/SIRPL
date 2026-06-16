@@ -486,11 +486,13 @@ export const dbProfiles = {
 
 // ── 7. Progress Dokumen Helper ─────────────────────────────────
 export function getDocumentProgress(item) {
-  if (!item) return { percent: 0, uploaded: 0, total: 2 }
+  if (!item) return { percent: 0, uploaded: 0, total: 4 }
   let uploaded = 0
-  let total = 2 // Ijazah & Transkrip SMA
+  let total = 4 // SMA (Ijazah & Transkrip) + PT (Ijazah & Transkrip)
   if (item.file_ijazah_sma_url) uploaded++
   if (item.file_transkrip_sma_url) uploaded++
+  if (item.file_ijazah_url) uploaded++
+  if (item.file_transkrip_url) uploaded++
 
   const percent = Math.round((uploaded / total) * 100)
   return {

@@ -77,6 +77,8 @@ export default function BaakDashboard() {
   // Verification Checklist State
   const [chkIjazah, setChkIjazah] = useState(false)
   const [chkTranskrip, setChkTranskrip] = useState(false)
+  const [chkIjazahPt, setChkIjazahPt] = useState(false)
+  const [chkTranskripPt, setChkTranskripPt] = useState(false)
   const [chkCertificates, setChkCertificates] = useState({})
   const [chkExperiences, setChkExperiences] = useState({})
   
@@ -107,6 +109,8 @@ export default function BaakDashboard() {
       // Reset checklists
       setChkIjazah(false)
       setChkTranskrip(false)
+      setChkIjazahPt(false)
+      setChkTranskripPt(false)
       setChkCertificates({})
       setChkExperiences({})
       setPreviewSignedUrl(null)
@@ -133,6 +137,8 @@ export default function BaakDashboard() {
       if (!isPending) {
         setChkIjazah(true)
         setChkTranskrip(true)
+        setChkIjazahPt(true)
+        setChkTranskripPt(true)
         
         const certMap = {}
         certs.forEach((_, idx) => { certMap[idx] = true })
@@ -144,6 +150,8 @@ export default function BaakDashboard() {
       } else {
         setChkIjazah(false)
         setChkTranskrip(false)
+        setChkIjazahPt(false)
+        setChkTranskripPt(false)
         setChkCertificates({})
         setChkExperiences({})
       }
@@ -177,7 +185,11 @@ export default function BaakDashboard() {
 
   const handleApprove = async () => {
     if (!chkIjazah || !chkTranskrip) {
-      toast.error('Kedua berkas (Ijazah & Transkrip) wajib dicentang')
+      toast.error('Berkas SMA (Ijazah & Transkrip) wajib dicentang!')
+      return
+    }
+    if (!chkIjazahPt || !chkTranskripPt) {
+      toast.error('Berkas Perguruan Tinggi (Ijazah & Transkrip) wajib dicentang!')
       return
     }
 
@@ -251,7 +263,7 @@ export default function BaakDashboard() {
   // Approval Button State Check
   const allCertsChecked = selectedItem ? (selectedItem.sertifikat_kompetensi || []).every((_, idx) => !!chkCertificates[idx]) : true
   const allExprsChecked = selectedItem ? (selectedItem.pengalaman_kerja || []).every((_, idx) => !!chkExperiences[idx]) : true
-  const approvalReady = chkIjazah && chkTranskrip && allCertsChecked && allExprsChecked
+  const approvalReady = chkIjazah && chkTranskrip && chkIjazahPt && chkTranskripPt && allCertsChecked && allExprsChecked
 
   return (
     <div>
@@ -347,7 +359,7 @@ export default function BaakDashboard() {
                               return (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, fontWeight: 700, color: 'var(--gray-500)' }}>
-                                    <span>SMA: {prog.percent}%</span>
+                                    <span>Berkas: {prog.percent}%</span>
                                   </div>
                                   <div style={{ height: 4, background: 'var(--gray-100)', borderRadius: 2, overflow: 'hidden', display: 'flex', width: 120 }}>
                                     <div style={{ width: `${prog.percent}%`, background: prog.percent === 100 ? 'var(--success)' : 'var(--amber-500)', height: '100%', borderRadius: 2 }} />
@@ -504,7 +516,7 @@ export default function BaakDashboard() {
               <h3 style={{ fontSize: 14, fontWeight: 700 }}>Checklist Kelayakan Berkas</h3>
             </div>
             <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <p style={{ fontSize: 12, color: 'var(--gray-50)' }}>Status Pemeriksaan Kelayakan Dokumen:</p>
+              <p style={{ fontSize: 12, color: 'var(--gray-500)' }}>Status Pemeriksaan Kelayakan Dokumen:</p>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <label style={{
@@ -523,7 +535,7 @@ export default function BaakDashboard() {
                   />
                   <div>
                     <div style={{ fontWeight: 700, marginBottom: 2 }}>✅ Ijazah SMA Terverifikasi</div>
-                    <div style={{ fontSize: 11.5, color: 'var(--gray-50)' }}>Dokumen ijazah SMA terbaca jelas, nama sesuai, dan tanda tangan/stempel sah.</div>
+                    <div style={{ fontSize: 11.5, color: 'var(--gray-500)' }}>Dokumen ijazah SMA terbaca jelas, nama sesuai, dan tanda tangan/stempel sah.</div>
                   </div>
                 </label>
  
@@ -543,7 +555,47 @@ export default function BaakDashboard() {
                   />
                   <div>
                     <div style={{ fontWeight: 700, marginBottom: 2 }}>✅ Transkrip SMA Terverifikasi</div>
-                    <div style={{ fontSize: 11.5, color: 'var(--gray-50)' }}>Transkrip SMA menampilkan mata kuliah, SKS, dan nilai dengan jelas.</div>
+                    <div style={{ fontSize: 11.5, color: 'var(--gray-500)' }}>Transkrip SMA menampilkan mata kuliah, SKS, dan nilai dengan jelas.</div>
+                  </div>
+                </label>
+
+                <label style={{
+                  display: 'flex', alignItems: 'center', gap: 12, fontSize: 13, cursor: canApprove ? 'pointer' : 'default',
+                  padding: '12px 14px', borderRadius: 8,
+                  border: chkIjazahPt ? '2px solid var(--success)' : '2px solid var(--gray-200)',
+                  background: chkIjazahPt ? '#f0fdf4' : 'var(--surface)',
+                  transition: 'all .15s ease'
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={chkIjazahPt}
+                    disabled={!canApprove}
+                    onChange={() => setChkIjazahPt(!chkIjazahPt)}
+                    style={{ width: 18, height: 18, accentColor: 'var(--success)' }}
+                  />
+                  <div>
+                    <div style={{ fontWeight: 700, marginBottom: 2 }}>✅ Ijazah Perguruan Tinggi Terverifikasi</div>
+                    <div style={{ fontSize: 11.5, color: 'var(--gray-500)' }}>Dokumen ijazah perguruan tinggi terbaca jelas, nama sesuai, dan tanda tangan/stempel sah.</div>
+                  </div>
+                </label>
+
+                <label style={{
+                  display: 'flex', alignItems: 'center', gap: 12, fontSize: 13, cursor: canApprove ? 'pointer' : 'default',
+                  padding: '12px 14px', borderRadius: 8,
+                  border: chkTranskripPt ? '2px solid var(--success)' : '2px solid var(--gray-200)',
+                  background: chkTranskripPt ? '#f0fdf4' : 'var(--surface)',
+                  transition: 'all .15s ease'
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={chkTranskripPt}
+                    disabled={!canApprove}
+                    onChange={() => setChkTranskripPt(!chkTranskripPt)}
+                    style={{ width: 18, height: 18, accentColor: 'var(--success)' }}
+                  />
+                  <div>
+                    <div style={{ fontWeight: 700, marginBottom: 2 }}>✅ Transkrip Perguruan Tinggi Terverifikasi</div>
+                    <div style={{ fontSize: 11.5, color: 'var(--gray-500)' }}>Transkrip perguruan tinggi menampilkan mata kuliah, SKS, dan nilai dengan jelas.</div>
                   </div>
                 </label>
 
@@ -567,7 +619,7 @@ export default function BaakDashboard() {
                       />
                       <div>
                         <div style={{ fontWeight: 700, marginBottom: 2 }}>🏆 Sertifikat: {c.nama}</div>
-                        <div style={{ fontSize: 11.5, color: 'var(--gray-50)' }}>Penerbit: {c.penerbit} ({c.tahun}). Keabsahan dokumen kompetensi valid.</div>
+                        <div style={{ fontSize: 11.5, color: 'var(--gray-500)' }}>Penerbit: {c.penerbit} ({c.tahun}). Keabsahan dokumen kompetensi valid.</div>
                       </div>
                     </label>
                   )
@@ -593,7 +645,7 @@ export default function BaakDashboard() {
                       />
                       <div>
                         <div style={{ fontWeight: 700, marginBottom: 2 }}>💼 Pengalaman: {ex.posisi}</div>
-                        <div style={{ fontSize: 11.5, color: 'var(--gray-50)' }}>Perusahaan: {ex.perusahaan} ({ex.durasi}). Bukti/surat portofolio valid.</div>
+                        <div style={{ fontSize: 11.5, color: 'var(--gray-500)' }}>Perusahaan: {ex.perusahaan} ({ex.durasi}). Bukti/surat portofolio valid.</div>
                       </div>
                     </label>
                   )

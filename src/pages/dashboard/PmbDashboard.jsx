@@ -386,7 +386,7 @@ export default function PmbDashboard() {
                             <td>
                               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10.5, fontWeight: 700 }}>
-                                  <span>Kelengkapan SMA</span>
+                                  <span>Progres Berkas</span>
                                   <span>{docProg.percent}%</span>
                                 </div>
                                 <div style={{ height: 6, background: 'var(--gray-100)', borderRadius: 3, overflow: 'hidden', display: 'flex' }}>
@@ -551,21 +551,21 @@ export default function PmbDashboard() {
                   </div>
                 </div>
 
-                {/* Opsional Check 1 */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 10, border: '1px solid var(--gray-200)', borderRadius: 6, background: selectedItem.file_ijazah_url ? '#f0fdf4' : 'var(--surface)' }}>
-                  <span style={{ fontSize: 16 }}>{selectedItem.file_ijazah_url ? '✓' : '○'}</span>
+                {/* Wajib Check 3 */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 10, border: '1px solid var(--gray-200)', borderRadius: 6, background: selectedItem.file_ijazah_url ? '#f0fdf4' : '#fffbeb' }}>
+                  <span style={{ fontSize: 16 }}>{selectedItem.file_ijazah_url ? '✓' : '⏳'}</span>
                   <div>
-                    <strong style={{ display: 'block', fontSize: 12.5 }}>Ijazah D1/D2/D3 (Opsional)</strong>
-                    <span style={{ fontSize: 11, color: 'var(--gray-400)' }}>{selectedItem.file_ijazah_url ? 'Diunggah' : 'Tidak Ada'}</span>
+                    <strong style={{ display: 'block', fontSize: 12.5 }}>Ijazah D1/D2/D3 (Wajib)</strong>
+                    <span style={{ fontSize: 11, color: 'var(--gray-400)' }}>{selectedItem.file_ijazah_url ? 'Sudah Diunggah' : 'Belum Ada'}</span>
                   </div>
                 </div>
 
-                {/* Opsional Check 2 */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 10, border: '1px solid var(--gray-200)', borderRadius: 6, background: selectedItem.file_transkrip_url ? '#f0fdf4' : 'var(--surface)' }}>
-                  <span style={{ fontSize: 16 }}>{selectedItem.file_transkrip_url ? '✓' : '○'}</span>
+                {/* Wajib Check 4 */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 10, border: '1px solid var(--gray-200)', borderRadius: 6, background: selectedItem.file_transkrip_url ? '#f0fdf4' : '#fffbeb' }}>
+                  <span style={{ fontSize: 16 }}>{selectedItem.file_transkrip_url ? '✓' : '⏳'}</span>
                   <div>
-                    <strong style={{ display: 'block', fontSize: 12.5 }}>Transkrip D1/D2/D3 (Opsional)</strong>
-                    <span style={{ fontSize: 11, color: 'var(--gray-400)' }}>{selectedItem.file_transkrip_url ? 'Diunggah' : 'Tidak Ada'}</span>
+                    <strong style={{ display: 'block', fontSize: 12.5 }}>Transkrip D1/D2/D3 (Wajib)</strong>
+                    <span style={{ fontSize: 11, color: 'var(--gray-400)' }}>{selectedItem.file_transkrip_url ? 'Sudah Diunggah' : 'Belum Ada'}</span>
                   </div>
                 </div>
               </div>

@@ -1315,7 +1315,7 @@ export default function KaprodiDashboard() {
                               return (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, fontWeight: 700, color: 'var(--gray-500)' }}>
-                                    <span>SMA: {prog.percent}%</span>
+                                    <span>Berkas: {prog.percent}%</span>
                                   </div>
                                   <div style={{ height: 4, background: 'var(--gray-100)', borderRadius: 2, overflow: 'hidden', display: 'flex', width: 100 }}>
                                     <div style={{ width: `${prog.percent}%`, background: prog.percent === 100 ? 'var(--success)' : 'var(--amber-500)', height: '100%', borderRadius: 2 }} />
