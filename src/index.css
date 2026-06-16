@@ -371,3 +371,12 @@ html { transition: background .25s, color .25s; }
 [data-theme="dark"] .spinner { border-color: #334155; border-top-color: #818cf8; }
 [data-theme="dark"] ::-webkit-scrollbar-thumb { background: #334155; }
 [data-theme="dark"] ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.spin-anim {
+  animation: spin 1s linear infinite;
+}
+

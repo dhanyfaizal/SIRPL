@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { dbMK, dbProdi } from '../../lib/db'
-import { BookOpen, Upload, Trash2, Plus, Download, Filter, FileSpreadsheet } from 'lucide-react'
+import { BookOpen, Upload, Trash2, Plus, Download, Filter, FileSpreadsheet, RotateCw } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const TEMPLATE_EXAMPLE = `MKU101,Pancasila,2,Institusi
@@ -39,8 +39,22 @@ export default function AdminCurriculumPage() {
     onConfirm: null
   })
 
-  const loadData = async () => {
-    setLoading(true)
+  const [refreshing, setRefreshing] = useState(false)
+
+  const handleRefresh = async () => {
+    setRefreshing(true)
+    try {
+      await loadData(true)
+      toast.success('Data berhasil diperbarui!')
+    } catch (e) {
+      toast.error('Gagal memperbarui data')
+    } finally {
+      setRefreshing(false)
+    }
+  }
+
+  const loadData = async (silent = false) => {
+    if (!silent) setLoading(true)
     try {
       const [prodiRes, mkRes] = await Promise.all([
         dbProdi.getAll(),
@@ -52,7 +66,7 @@ export default function AdminCurriculumPage() {
       console.error(e)
       toast.error('Gagal memuat data kurikulum')
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }
 
@@ -240,9 +254,20 @@ export default function AdminCurriculumPage() {
 
   return (
     <div>
-      <div className="page-header">
-        <h1 className="page-title">Manajemen Kurikulum</h1>
-        <p className="page-subtitle">Kelola mata kuliah kurikulum per Program Studi — input tunggal atau impor masal dari CSV</p>
+      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16 }}>
+        <div>
+          <h1 className="page-title">Manajemen Kurikulum</h1>
+          <p className="page-subtitle">Kelola mata kuliah kurikulum per Program Studi — input tunggal atau impor masal dari CSV</p>
+        </div>
+        <button 
+          onClick={handleRefresh} 
+          disabled={refreshing}
+          className="btn btn-secondary"
+          style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', fontSize: 13 }}
+        >
+          <RotateCw size={14} className={refreshing ? 'spin-anim' : ''} /> 
+          {refreshing ? 'Memuat...' : 'Refresh Data'}
+        </button>
       </div>
 
       {/* Top Action Bar */}
