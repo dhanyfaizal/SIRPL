@@ -433,7 +433,7 @@ export default function AdminDashboard() {
   }
 
   // Dynamic cost calculations based on user requirements
-  const biayaUkp = 5400000 // UKP 1 semester only
+  const biayaUkp = 4 * 5400000 // UKP 4 semesters (Rp5.400.000 per semester)
   const biayaRekognisi = totalSksDiakui * 50000
   const totalMoocs = mappedCourses.filter(c => c.jalur === 'asinkron').length
   const biayaMoocs = totalMoocs * 100000
@@ -1178,11 +1178,11 @@ export default function AdminDashboard() {
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                        <span style={{ color: 'var(--gray-500)' }}>Biaya UKP (1 Semester):</span>
+                        <span style={{ color: 'var(--gray-500)' }}>Biaya UKP (4 Semester):</span>
                         <strong>Rp{biayaUkp.toLocaleString('id-ID')}</strong>
                       </div>
                       <span style={{ fontSize: 11, color: 'var(--gray-400)', marginTop: -2 }}>
-                        Rp900.000,00 per bulan (Rp5.400.000,00/smt)
+                        Rp5.400.000,00 per semester (Total Rp21.600.000,00)
                       </span>
                     </div>
 

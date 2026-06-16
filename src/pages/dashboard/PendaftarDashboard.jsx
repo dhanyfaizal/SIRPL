@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { dbPengajuan, dbProdi, getDocumentProgress } from '../../lib/db'
+import { dbPengajuan, dbProdi, dbPenetapan, getDocumentProgress } from '../../lib/db'
 import { supabase, isMock } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import { FileUp, Clipboard, Award, Shield, CheckCircle, FileText, Trash2, Plus, Eye, ArrowLeft, ArrowRight, HelpCircle, RotateCw } from 'lucide-react'
@@ -108,6 +108,9 @@ export default function PendaftarDashboard() {
     previewType: '',
     title: ''
   })
+
+  const [penetapan, setPenetapan] = useState(null)
+  const [candidateSemTab, setCandidateSemTab] = useState(1)
 
   const handleViewFile = (type, index = null) => {
     let fileUrl = ''
@@ -230,6 +233,13 @@ export default function PendaftarDashboard() {
             fileUrl: ex.file_url,
             fileName: ex.file_url ? ex.file_url.split('/').pop() : ''
           })))
+        }
+
+        if (activePengajuan.status === 'mapped_admin') {
+          const { data: penetapanData } = await dbPenetapan.getByPengajuanId(activePengajuan.id)
+          setPenetapan(penetapanData || null)
+        } else {
+          setPenetapan(null)
         }
       } else {
         setPengajuan(null)
@@ -959,6 +969,190 @@ export default function PendaftarDashboard() {
           
           {/* Left Column: Timeline Details & Document Preview */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            
+            {/* Rencana Studi & Rincian Biaya per Semester Card (Hanya jika status mapped_admin dan penetapan ada) */}
+            {stepIndex === 5 && penetapan && (
+              <div className="card">
+                <div className="card-header" style={{ borderBottom: '1px solid var(--gray-100)', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+                  <h3 style={{ fontSize: 15, fontWeight: 800, color: 'var(--gray-900)', margin: 0 }}>Rencana Studi & Rincian Biaya per Semester</h3>
+                  <span className="badge-pill badge-primary" style={{ fontSize: 11.5 }}>Estimasi Total: Rp{parseFloat(penetapan.biaya_total || 0).toLocaleString('id-ID')}</span>
+                </div>
+                <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  
+                  {/* Semester Tabs */}
+                  <div style={{ display: 'flex', borderBottom: '2px solid var(--gray-100)', marginBottom: 8, gap: 4, overflowX: 'auto' }}>
+                    {[1, 2, 3, 4].map(sem => {
+                      const semCourses = (penetapan.rencana_studi || []).filter(c => (c.semester || 1) === sem)
+                      const semSks = semCourses.reduce((sum, c) => sum + c.sks, 0)
+                      return (
+                        <button
+                          key={sem}
+                          type="button"
+                          onClick={() => setCandidateSemTab(sem)}
+                          style={{
+                            padding: '10px 16px',
+                            border: 'none',
+                            background: 'none',
+                            borderBottom: candidateSemTab === sem ? '2px solid var(--indigo-600)' : '2px solid transparent',
+                            color: candidateSemTab === sem ? 'var(--indigo-600)' : 'var(--gray-500)',
+                            fontWeight: candidateSemTab === sem ? 700 : 500,
+                            cursor: 'pointer',
+                            fontSize: 13,
+                            transition: 'all 0.2s',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            whiteSpace: 'nowrap'
+                          }}
+                        >
+                          Semester {sem}
+                          <span style={{ 
+                            fontSize: 10, 
+                            background: candidateSemTab === sem ? 'var(--indigo-100)' : 'var(--gray-100)', 
+                            color: candidateSemTab === sem ? 'var(--indigo-700)' : 'var(--gray-600)',
+                            padding: '2px 6px',
+                            borderRadius: 10,
+                            fontWeight: 600
+                          }}>
+                            {semSks} SKS
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
+
+                  {/* Grid: Courses List & Cost Details */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr', gap: 20, flexWrap: 'wrap' }}>
+                    
+                    {/* Semester Courses List */}
+                    <div>
+                      <h4 style={{ fontSize: 13, fontWeight: 700, color: 'var(--gray-800)', marginBottom: 12 }}>
+                        Daftar Mata Kuliah Semester {candidateSemTab}
+                      </h4>
+                      
+                      {(() => {
+                        const semCourses = (penetapan.rencana_studi || []).filter(c => (c.semester || 1) === candidateSemTab)
+                        if (semCourses.length === 0) {
+                          return (
+                            <div style={{ padding: '24px 12px', textAlign: 'center', color: 'var(--gray-400)', background: 'var(--surface-alt)', borderRadius: 8, border: '1px dashed var(--gray-200)', fontSize: 12.5 }}>
+                              Tidak ada mata kuliah sisa untuk ditempuh di semester ini.
+                            </div>
+                          )
+                        }
+                        return (
+                          <div style={{ border: '1px solid var(--gray-200)', borderRadius: 8, overflow: 'hidden' }}>
+                            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5 }}>
+                              <thead>
+                                <tr style={{ background: 'var(--gray-50)', borderBottom: '1px solid var(--gray-200)' }}>
+                                  <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, color: 'var(--gray-600)' }}>Kode</th>
+                                  <th style={{ padding: '10px 12px', textAlign: 'left', fontWeight: 600, color: 'var(--gray-600)' }}>Nama Mata Kuliah</th>
+                                  <th style={{ padding: '10px 12px', textAlign: 'center', fontWeight: 600, color: 'var(--gray-600)', width: 60 }}>SKS</th>
+                                  <th style={{ padding: '10px 12px', textAlign: 'center', fontWeight: 600, color: 'var(--gray-600)', width: 110 }}>Jalur</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {semCourses.map((c, i) => (
+                                  <tr key={i} style={{ borderBottom: i < semCourses.length - 1 ? '1px solid var(--gray-100)' : 'none' }}>
+                                    <td style={{ padding: '10px 12px', fontWeight: 500, color: 'var(--gray-800)' }}>{c.kode}</td>
+                                    <td style={{ padding: '10px 12px', color: 'var(--gray-800)' }}>{c.nama}</td>
+                                    <td style={{ padding: '10px 12px', textAlign: 'center', fontWeight: 600, color: 'var(--gray-700)' }}>{c.sks}</td>
+                                    <td style={{ padding: '10px 12px', textAlign: 'center' }}>
+                                      <span className={`badge-pill ${c.jalur === 'asinkron' ? 'badge-info' : 'badge-slate'}`} style={{ fontSize: 10.5, padding: '2px 6px' }}>
+                                        {c.jalur === 'asinkron' ? '🌐 MOOCs' : '🏫 Tatap Muka'}
+                                      </span>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )
+                      })()}
+                    </div>
+
+                    {/* Cost Breakdown Column */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      <h4 style={{ fontSize: 13, fontWeight: 700, color: 'var(--gray-800)', marginBottom: 2 }}>
+                        Rincian Biaya Semester {candidateSemTab}
+                      </h4>
+
+                      {(() => {
+                        const semCourses = (penetapan.rencana_studi || []).filter(c => (c.semester || 1) === candidateSemTab)
+                        const semMoocs = semCourses.filter(c => c.jalur === 'asinkron').length
+                        const costUkp = 5400000
+                        const costRekognisi = candidateSemTab === 1 ? (penetapan.total_sks_diakui || 0) * 50000 : 0
+                        const costMoocs = semMoocs * 100000
+                        const costPotongan = candidateSemTab === 1 ? (penetapan.potongan_biaya || 0) : 0
+                        const semTotalBeforeDiskon = costUkp + costRekognisi + costMoocs
+                        const semTotal = Math.max(0, semTotalBeforeDiskon - costPotongan)
+
+                        return (
+                          <div style={{ background: 'var(--indigo-50)', padding: 16, borderRadius: 8, border: '1px solid var(--indigo-100)', display: 'flex', flexDirection: 'column', gap: 10, fontSize: 12.5 }}>
+                            
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                              <div>
+                                <span style={{ fontWeight: 600, color: 'var(--gray-700)' }}>Uang Kuliah Paket (UKP)</span>
+                                <span style={{ display: 'block', fontSize: 10.5, color: 'var(--gray-500)', marginTop: 2 }}>Biaya Flat per Semester</span>
+                              </div>
+                              <span style={{ fontWeight: 700, color: 'var(--gray-800)' }}>Rp{costUkp.toLocaleString('id-ID')}</span>
+                            </div>
+
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderTop: '1px solid var(--indigo-100)', paddingTop: 8 }}>
+                              <div>
+                                <span style={{ fontWeight: 600, color: 'var(--gray-700)' }}>Biaya Rekognisi SKS</span>
+                                <span style={{ display: 'block', fontSize: 10.5, color: 'var(--gray-500)', marginTop: 2 }}>
+                                  {candidateSemTab === 1 ? `Rp50.000 x ${penetapan.total_sks_diakui || 0} SKS diakui` : 'Hanya dibebankan di Semester 1'}
+                                </span>
+                              </div>
+                              <span style={{ fontWeight: 700, color: 'var(--gray-800)' }}>Rp{costRekognisi.toLocaleString('id-ID')}</span>
+                            </div>
+
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderTop: '1px solid var(--indigo-100)', paddingTop: 8 }}>
+                              <div>
+                                <span style={{ fontWeight: 600, color: 'var(--gray-700)' }}>Biaya Kelas MOOCs</span>
+                                <span style={{ display: 'block', fontSize: 10.5, color: 'var(--gray-500)', marginTop: 2 }}>
+                                  Rp100.000 x {semMoocs} mata kuliah asinkron
+                                </span>
+                              </div>
+                              <span style={{ fontWeight: 700, color: 'var(--gray-800)' }}>Rp{costMoocs.toLocaleString('id-ID')}</span>
+                            </div>
+
+                            {candidateSemTab === 1 && costPotongan > 0 && (
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderTop: '1px solid var(--indigo-100)', paddingTop: 8, color: 'var(--danger)' }}>
+                                <div>
+                                  <span style={{ fontWeight: 700 }}>Potongan / Diskon Khusus</span>
+                                  <span style={{ display: 'block', fontSize: 10.5, color: 'var(--gray-500)', marginTop: 2 }}>
+                                    Catatan: {penetapan.catatan_potongan || '-'}
+                                  </span>
+                                </div>
+                                  <span style={{ fontWeight: 700 }}>- Rp{costPotongan.toLocaleString('id-ID')}</span>
+                              </div>
+                            )}
+
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '2px solid var(--indigo-200)', paddingTop: 10, marginTop: 4 }}>
+                              <span style={{ fontWeight: 800, color: 'var(--indigo-900)' }}>Subtotal Semester {candidateSemTab}:</span>
+                              <span style={{ fontWeight: 800, color: 'var(--indigo-700)', fontSize: 14 }}>Rp{semTotal.toLocaleString('id-ID')}</span>
+                            </div>
+
+                          </div>
+                        )
+                      })()}
+                    </div>
+
+                  </div>
+
+                  {/* Disclaimer/Catatan Kaki Biaya PKKMB & Wisuda */}
+                  <div style={{ display: 'flex', gap: 8, padding: 12, background: 'var(--gray-50)', borderRadius: 8, border: '1px solid var(--gray-200)', fontSize: 11.5, color: 'var(--gray-500)', alignItems: 'center', marginTop: 8 }}>
+                    <HelpCircle size={14} style={{ color: 'var(--gray-400)', flexShrink: 0 }} />
+                    <span>
+                      <strong>Catatan:</strong> Biaya di atas belum termasuk biaya <strong>PKKMB</strong> dan <strong>Wisuda</strong>. Silakan menghubungi bagian Keuangan untuk informasi lebih lanjut.
+                    </span>
+                  </div>
+
+                </div>
+              </div>
+            )}
+
             {/* Overall status header */}
             <div className="card">
               <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

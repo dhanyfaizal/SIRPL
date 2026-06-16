@@ -58,11 +58,26 @@ export default function ReportPrintPage() {
   const moocsCourses = rStudi.filter(c => c.jalur === 'asinkron')
   const syncCourses = rStudi.filter(c => c.jalur === 'sinkron')
 
-  // Dynamic cost calculations based on user requirements for printable report
-  const biayaUkp = 5400000 // UKP 1 semester only
-  const biayaRekognisi = (penetapan.total_sks_diakui || 0) * 50000
-  const totalMoocs = rStudi.filter(c => c.jalur === 'asinkron').length
-  const biayaMoocs = totalMoocs * 100000
+  // Helper function to calculate cost per study semester
+  const getSemesterCost = (semNum) => {
+    const semCourses = rStudi.filter(c => (c.semester || 1) === semNum)
+    const semMoocs = semCourses.filter(c => c.jalur === 'asinkron').length
+    
+    const ukp = 5400000
+    const rekognisi = semNum === 1 ? (penetapan.total_sks_diakui || 0) * 50000 : 0
+    const moocs = semMoocs * 100000
+    const potongan = semNum === 1 ? (penetapan.potongan_biaya || 0) : 0
+    
+    const total = Math.max(0, ukp + rekognisi + moocs - potongan)
+    return { ukp, rekognisi, moocs, potongan, total, semMoocs }
+  }
+
+  const sem1 = getSemesterCost(1)
+  const sem2 = getSemesterCost(2)
+  const sem3 = getSemesterCost(3)
+  const sem4 = getSemesterCost(4)
+
+  const grandTotalCost = sem1.total + sem2.total + sem3.total + sem4.total
 
   // recognized courses
   const recognizedCourses = (rekognisi?.data_mapping_mk || []).filter(c => c.Status === 'diakui')
@@ -278,133 +293,149 @@ export default function ReportPrintPage() {
                 </tfoot>
               )}
             </table>
-          </div>
-
-          {/* Section 2: Remaining Courses Path Mapping */}
+          </div>          {/* Section 2: Distribution of Remaining Courses across 4 Semesters */}
           <div className="section-page-break" style={{ marginBottom: '28px' }}>
             <h4 style={{ fontSize: '13px', fontWeight: 700, textTransform: 'uppercase', borderBottom: '1px solid #cbd5e1', paddingBottom: '4px', marginBottom: '10px', color: '#4f46e5' }}>
-              II. Rencana Jalur Kelas Studi Sisa
+              II. Distribusi Rencana Studi Sisa (Semester 1 - Semester 4)
             </h4>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-              {/* MOOCs Column */}
-              <div>
-                <h5 style={{ fontSize: '11.5px', fontWeight: 700, textTransform: 'uppercase', marginBottom: '6px', color: '#0369a1' }}>
-                  🌐 Jalur Asinkron (MOOCs)
-                </h5>
-                <table style={{ width: '100%', fontSize: '11.5px', borderCollapse: 'collapse' }}>
-                  <thead>
-                    <tr style={{ background: '#f0f9ff' }}>
-                      <th style={{ border: '1px solid #cbd5e1', padding: '6px', textAlign: 'left' }}>Nama Mata Kuliah</th>
-                      <th style={{ border: '1px solid #cbd5e1', padding: '6px', textAlign: 'center', width: '60px' }}>SKS</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {moocsCourses.length === 0 ? (
-                      <tr>
-                        <td colSpan="2" style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'center', color: '#94a3b8' }}>Tidak ada.</td>
-                      </tr>
-                    ) : (
-                      moocsCourses.map((c, i) => (
-                        <tr key={i}>
-                          <td style={{ border: '1px solid #cbd5e1', padding: '6px' }}>{c.nama} <span style={{ fontSize: '9.5px', color: '#64748b' }}>({c.kode})</span></td>
-                          <td style={{ border: '1px solid #cbd5e1', padding: '6px', textAlign: 'center' }}>{c.sks}</td>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '12px' }}>
+              {[1, 2, 3, 4].map(sem => {
+                const semCourses = rStudi.filter(c => (c.semester || 1) === sem)
+                const semSks = semCourses.reduce((sum, c) => sum + c.sks, 0)
+                
+                return (
+                  <div key={sem} style={{ border: '1px solid #cbd5e1', borderRadius: '4px', padding: '10px', background: '#f8fafc' }}>
+                    <h5 style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', marginBottom: '6px', color: '#1e293b', borderBottom: '1px solid #e2e8f0', paddingBottom: '4px', display: 'flex', justifyContent: 'space-between' }}>
+                      <span>SEMESTER {sem}</span>
+                      <span style={{ color: '#4f46e5' }}>{semSks} SKS</span>
+                    </h5>
+                    <table style={{ width: '100%', fontSize: '10.5px', borderCollapse: 'collapse' }}>
+                      <thead>
+                        <tr style={{ background: '#f1f5f9' }}>
+                          <th style={{ border: '1px solid #cbd5e1', padding: '4px', textAlign: 'left' }}>Mata Kuliah</th>
+                          <th style={{ border: '1px solid #cbd5e1', padding: '4px', textAlign: 'center', width: '35px' }}>SKS</th>
+                          <th style={{ border: '1px solid #cbd5e1', padding: '4px', textAlign: 'center', width: '70px' }}>Jalur</th>
                         </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Synchronous/Tatap Muka Column */}
-              <div>
-                <h5 style={{ fontSize: '11.5px', fontWeight: 700, textTransform: 'uppercase', marginBottom: '6px', color: '#86198f' }}>
-                  🏫 Jalur Sinkron (Tatap Muka)
-                </h5>
-                <table style={{ width: '100%', fontSize: '11.5px', borderCollapse: 'collapse' }}>
-                  <thead>
-                    <tr style={{ background: '#fdf4ff' }}>
-                      <th style={{ border: '1px solid #cbd5e1', padding: '6px', textAlign: 'left' }}>Nama Mata Kuliah</th>
-                      <th style={{ border: '1px solid #cbd5e1', padding: '6px', textAlign: 'center', width: '60px' }}>SKS</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {syncCourses.length === 0 ? (
-                      <tr>
-                        <td colSpan="2" style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'center', color: '#94a3b8' }}>Tidak ada.</td>
-                      </tr>
-                    ) : (
-                      syncCourses.map((c, i) => (
-                        <tr key={i}>
-                          <td style={{ border: '1px solid #cbd5e1', padding: '6px' }}>{c.nama} <span style={{ fontSize: '9.5px', color: '#64748b' }}>({c.kode})</span></td>
-                          <td style={{ border: '1px solid #cbd5e1', padding: '6px', textAlign: 'center' }}>{c.sks}</td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                      </thead>
+                      <tbody>
+                        {semCourses.length === 0 ? (
+                          <tr>
+                            <td colSpan="3" style={{ border: '1px solid #cbd5e1', padding: '6px', textAlign: 'center', color: '#94a3b8', fontStyle: 'italic' }}>Tidak ada mata kuliah sisa.</td>
+                          </tr>
+                        ) : (
+                          semCourses.map((c, i) => (
+                            <tr key={i} style={{ background: '#ffffff' }}>
+                              <td style={{ border: '1px solid #cbd5e1', padding: '4px' }}>{c.nama} <span style={{ fontSize: '8.5px', color: '#64748b' }}>({c.kode})</span></td>
+                              <td style={{ border: '1px solid #cbd5e1', padding: '4px', textAlign: 'center' }}>{c.sks}</td>
+                              <td style={{ border: '1px solid #cbd5e1', padding: '4px', textAlign: 'center', fontSize: '9px', fontWeight: 500 }}>
+                                {c.jalur === 'asinkron' ? '🌐 MOOCs' : '🏫 Sinkron'}
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                )
+              })}
             </div>
+
             <div style={{ fontSize: '11.5px', marginTop: '10px', textAlign: 'right', fontWeight: 700 }}>
               Total SKS Sisa yang Harus Ditempuh: {penetapan.total_sks_sisa} SKS
             </div>
           </div>
 
           {/* Section 3: Financial Summary */}
-          <div className="section-page-break" style={{ marginBottom: '40px' }}>
+          <div className="section-page-break" style={{ marginBottom: '28px' }}>
             <h4 style={{ fontSize: '13px', fontWeight: 700, textTransform: 'uppercase', borderBottom: '1px solid #cbd5e1', paddingBottom: '4px', marginBottom: '10px', color: '#4f46e5' }}>
-              III. Rincian Biaya Perkuliahan Semester
+              III. Rincian Pembiayaan Studi per Semester
             </h4>
-            <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '6px', padding: '16px', fontSize: '12.5px' }}>
-              <table style={{ width: '100%' }}>
-                <tbody>
-                  <tr>
-                    <td style={{ padding: '4px 0', color: '#64748b' }}>
-                      Biaya Uang Kuliah Paket (UKP) (1 Semester)<br />
-                      <span style={{ fontSize: '10.5px', color: '#94a3b8', fontStyle: 'italic' }}>Rp900.000,00 per bulan (Rp5.400.000,00 per semester)</span>
+            <table style={{ width: '100%', fontSize: '11px', borderCollapse: 'collapse', marginBottom: '16px' }}>
+              <thead>
+                <tr style={{ background: '#f1f5f9' }}>
+                  <th style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'left', width: '32%' }}>Komponen Biaya</th>
+                  <th style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right', width: '17%' }}>Semester 1</th>
+                  <th style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right', width: '17%' }}>Semester 2</th>
+                  <th style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right', width: '17%' }}>Semester 3</th>
+                  <th style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right', width: '17%' }}>Semester 4</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style={{ border: '1px solid #cbd5e1', padding: '8px', fontWeight: 600, color: '#334155' }}>
+                    1. Uang Kuliah Paket (UKP)
+                    <div style={{ fontSize: '9px', color: '#64748b', fontWeight: 400, marginTop: '2px' }}>Rp5.400.000 / Semester (Flat)</div>
+                  </td>
+                  <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right' }}>Rp{sem1.ukp.toLocaleString('id-ID')}</td>
+                  <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right' }}>Rp{sem2.ukp.toLocaleString('id-ID')}</td>
+                  <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right' }}>Rp{sem3.ukp.toLocaleString('id-ID')}</td>
+                  <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right' }}>Rp{sem4.ukp.toLocaleString('id-ID')}</td>
+                </tr>
+                <tr>
+                  <td style={{ border: '1px solid #cbd5e1', padding: '8px', fontWeight: 600, color: '#334155' }}>
+                    2. Biaya Rekognisi SKS
+                    <div style={{ fontSize: '9px', color: '#64748b', fontWeight: 400, marginTop: '2px' }}>Rp50.000 / SKS ({penetapan.total_sks_diakui || 0} SKS diakui)</div>
+                  </td>
+                  <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right' }}>Rp{sem1.rekognisi.toLocaleString('id-ID')}</td>
+                  <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right', color: '#94a3b8' }}>Rp0</td>
+                  <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right', color: '#94a3b8' }}>Rp0</td>
+                  <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right', color: '#94a3b8' }}>Rp0</td>
+                </tr>
+                <tr>
+                  <td style={{ border: '1px solid #cbd5e1', padding: '8px', fontWeight: 600, color: '#334155' }}>
+                    3. Biaya Kelas MOOCs (Asinkron)
+                    <div style={{ fontSize: '9px', color: '#64748b', fontWeight: 400, marginTop: '2px' }}>Rp100.000 / Mata Kuliah Asinkron</div>
+                  </td>
+                  <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right' }}>
+                    Rp{sem1.moocs.toLocaleString('id-ID')} <span style={{ fontSize: '8.5px', color: '#64748b' }}>({sem1.semMoocs} MK)</span>
+                  </td>
+                  <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right' }}>
+                    Rp{sem2.moocs.toLocaleString('id-ID')} <span style={{ fontSize: '8.5px', color: '#64748b' }}>({sem2.semMoocs} MK)</span>
+                  </td>
+                  <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right' }}>
+                    Rp{sem3.moocs.toLocaleString('id-ID')} <span style={{ fontSize: '8.5px', color: '#64748b' }}>({sem3.semMoocs} MK)</span>
+                  </td>
+                  <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right' }}>
+                    Rp{sem4.moocs.toLocaleString('id-ID')} <span style={{ fontSize: '8.5px', color: '#64748b' }}>({sem4.semMoocs} MK)</span>
+                  </td>
+                </tr>
+                {penetapan.potongan_biaya > 0 && (
+                  <tr style={{ color: '#ef4444' }}>
+                    <td style={{ border: '1px solid #cbd5e1', padding: '8px', fontWeight: 600 }}>
+                      4. Potongan Biaya Khusus (Diskon)
+                      <div style={{ fontSize: '9px', color: '#e11d48', fontWeight: 400, marginTop: '2px' }}>Catatan: {penetapan.catatan_potongan || '-'}</div>
                     </td>
-                    <td style={{ padding: '4px 0', textAlign: 'right', width: '160px' }}>
-                      Rp{biayaUkp.toLocaleString('id-ID')},00
-                    </td>
+                    <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right', fontWeight: 700 }}>- Rp{sem1.potongan.toLocaleString('id-ID')}</td>
+                    <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right', color: '#94a3b8' }}>-</td>
+                    <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right', color: '#94a3b8' }}>-</td>
+                    <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right', color: '#94a3b8' }}>-</td>
                   </tr>
-                  <tr>
-                    <td style={{ padding: '4px 0', color: '#64748b' }}>
-                      Biaya Pengakuan Kredit SKS RPL ({penetapan.total_sks_diakui || 0} SKS)<br />
-                      <span style={{ fontSize: '10.5px', color: '#94a3b8', fontStyle: 'italic' }}>Rp50.000,00 per SKS diakui</span>
-                    </td>
-                    <td style={{ padding: '4px 0', textAlign: 'right' }}>
-                      Rp{biayaRekognisi.toLocaleString('id-ID')},00
-                    </td>
-                  </tr>
-                  <tr>
-                    <td style={{ padding: '4px 0', color: '#64748b' }}>
-                      Biaya Kelas MOOCs Sisa ({totalMoocs} Mata Kuliah)<br />
-                      <span style={{ fontSize: '10.5px', color: '#94a3b8', fontStyle: 'italic' }}>Rp100.000,00 per mata kuliah sisa asinkron (MOOCs)</span>
-                    </td>
-                    <td style={{ padding: '4px 0', textAlign: 'right', borderBottom: '1px solid #e2e8f0' }}>
-                      Rp{biayaMoocs.toLocaleString('id-ID')},00
-                    </td>
-                  </tr>
-                  {penetapan.potongan_biaya > 0 && (
-                    <>
-                      <tr style={{ color: '#ef4444' }}>
-                        <td style={{ padding: '6px 0 2px' }}>
-                          <strong>Potongan Biaya Khusus (Diskon Individu)</strong><br />
-                          <span style={{ fontSize: '11px', color: '#94a3b8', fontStyle: 'italic' }}>Catatan: {penetapan.catatan_potongan || '-'}</span>
-                        </td>
-                        <td style={{ padding: '6px 0 2px', textAlign: 'right', fontWeight: 600, borderBottom: '1px solid #e2e8f0' }}>
-                          - Rp{parseFloat(penetapan.potongan_biaya).toLocaleString('id-ID')},00
-                        </td>
-                      </tr>
-                    </>
-                  )}
-                  <tr style={{ fontSize: '14px', fontWeight: 800 }}>
-                    <td style={{ padding: '10px 0 0' }}>Total Biaya yang Harus Dibayar (Net):</td>
-                    <td style={{ padding: '10px 0 0', textAlign: 'right', color: '#065f46' }}>
-                      Rp{parseFloat(penetapan.biaya_total).toLocaleString('id-ID')},00
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+                )}
+                <tr style={{ background: '#f8fafc', fontWeight: 800 }}>
+                  <td style={{ border: '1px solid #cbd5e1', padding: '8px' }}>Subtotal Biaya Semester (Net)</td>
+                  <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right' }}>Rp{sem1.total.toLocaleString('id-ID')}</td>
+                  <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right' }}>Rp{sem2.total.toLocaleString('id-ID')}</td>
+                  <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right' }}>Rp{sem3.total.toLocaleString('id-ID')}</td>
+                  <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right' }}>Rp{sem4.total.toLocaleString('id-ID')}</td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr style={{ background: '#f1f5f9', fontWeight: 800, fontSize: '12px' }}>
+                  <td style={{ border: '1px solid #cbd5e1', padding: '10px' }}>TOTAL ESTIMASI BIAYA SELURUH SEMESTER (NET)</td>
+                  <td colSpan="4" style={{ border: '1px solid #cbd5e1', padding: '10px', textAlign: 'right', color: '#0f766e', fontSize: '13px' }}>
+                    Rp{grandTotalCost.toLocaleString('id-ID')}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+
+            {/* Note for PKKMB and graduation fees */}
+            <div style={{ fontSize: '10.5px', color: '#475569', background: '#f8fafc', border: '1px solid #cbd5e1', padding: '8px 12px', borderRadius: '4px', display: 'flex', gap: '6px', alignItems: 'center' }}>
+              <span style={{ fontSize: '13px' }}>ℹ️</span>
+              <span>
+                <strong>Informasi Tambahan:</strong> Biaya di atas <strong>belum termasuk</strong> biaya <strong>PKKMB</strong> dan <strong>Wisuda</strong>. Harap menghubungi bagian Keuangan Sekolah Tinggi untuk informasi lebih lanjut mengenai ketentuan pembayarannya.
+              </span>
             </div>
           </div>
 
