@@ -347,7 +347,7 @@ export default function KaprodiDashboard() {
   const [ocrRunning, setOcrRunning] = useState(false)
   const [ocrProgress, setOcrProgress] = useState('')
   const [recognitionMethod, setRecognitionMethod] = useState('') // 'ai' or 'manual' or 'javascript'
-  const [selectedAiModel, setSelectedAiModel] = useState('gpt-5-mini')
+  const [selectedAiModel, setSelectedAiModel] = useState('deepseek/deepseek-v4-flash')
 
   // Recognition Table Rows State
   // Row structure: { id, kategoriAsal, mkAsal, sksAsal, nilaiAsal, mkTujuanId, status }
@@ -566,7 +566,7 @@ export default function KaprodiDashboard() {
         'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify({
-        model: selectedModel || 'gemini/gemini-2.5-flash',
+        model: selectedModel || 'deepseek/deepseek-v4-flash',
         temperature: 0,
         messages: [
           {
@@ -850,6 +850,7 @@ export default function KaprodiDashboard() {
         }
 
         const friendlyModelNames = {
+          'deepseek/deepseek-v4-flash': 'DeepSeek v4 Flash',
           'gemini/gemini-2.5-flash': 'Gemini 2.5 Flash',
           'gpt-5-nano': 'GPT-5 Nano',
           'gpt-5-mini': 'GPT-5 Mini',

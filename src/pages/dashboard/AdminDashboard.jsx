@@ -102,7 +102,7 @@ export default function AdminDashboard() {
         
         toast.success('Menggunakan pemrosesan pintar lokal (AI Key belum diset)', { id: toastId })
       } else {
-        // Real API call to Sumopod Gemini Endpoint
+        // Real API call to Sumopod API
         const systemPrompt = 'Anda adalah asisten akademik RPL STIKOM Yos Sudarso. Bantu memetakan jalur pembelajaran mata kuliah sisa.'
         const userPrompt = `Diberikan daftar mata kuliah sisa yang harus ditempuh oleh calon mahasiswa:
         ${JSON.stringify(mappedCourses.map(c => ({ id: c.mkId, kode: c.kode, nama: c.nama, sks: c.sks, jenis: c.jenis })))}
@@ -129,7 +129,7 @@ export default function AdminDashboard() {
             'Authorization': `Bearer ${apiKey}`
           },
           body: JSON.stringify({
-            model: 'gemini/gemini-2.5-flash',
+            model: 'deepseek/deepseek-v4-flash',
             temperature: 0,
             response_format: { type: 'json_object' },
             messages: [
