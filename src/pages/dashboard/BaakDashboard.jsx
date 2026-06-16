@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
-import { dbPengajuan, getDocumentProgress } from '../../lib/db'
+import { dbPengajuan, dbPenetapan, getDocumentProgress } from '../../lib/db'
 import { supabase, isMock } from '../../lib/supabase'
 import { ClipboardCheck, FileText, CheckCircle, XCircle, Award, RotateCw } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { generateMockDocSrcDoc } from '../../lib/mockDoc'
+import { exportToCSV } from '../../utils/exporter'
+import AnalyticsTab from '../../components/AnalyticsTab'
 
 // Helper: Preview component for BAAK with signed URL support
 function BaakDocPreview({ selectedItem, fileUrl, previewType, previewSignedUrl, setPreviewSignedUrl }) {
@@ -104,7 +106,21 @@ export default function BaakDashboard() {
     if (!silent) setLoading(true)
     try {
       const { data } = await dbPengajuan.getAll()
-      setSubmissions(data || [])
+      const allSubmissions = data || []
+      
+      const enriched = await Promise.all(
+        allSubmissions.map(async (item) => {
+          const { data: penData } = await dbPenetapan.getByPengajuanId(item.id)
+          return {
+            ...item,
+            total_sks_diakui: penData ? penData.total_sks_diakui : 0,
+            total_sks_sisa: penData ? penData.total_sks_sisa : 0,
+            biaya_total: penData ? penData.biaya_total : 0,
+            potongan_biaya: penData ? penData.potongan_biaya : 0
+          }
+        })
+      )
+      setSubmissions(enriched)
       setSelectedItem(null)
       // Reset checklists
       setChkIjazah(false)
@@ -287,7 +303,7 @@ export default function BaakDashboard() {
         /* List submissions with tabs */
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {/* Tab Control */}
-          <div style={{ display: 'flex', gap: 8, borderBottom: '1px solid var(--gray-200)', paddingBottom: 8 }}>
+          <div style={{ display: 'flex', gap: 8, borderBottom: '1px solid var(--gray-200)', paddingBottom: 8, flexWrap: 'wrap' }}>
             <button
               onClick={() => setActiveTab('pending')}
               className={`btn btn-sm ${activeTab === 'pending' ? 'btn-primary' : 'btn-secondary'}`}
@@ -309,15 +325,34 @@ export default function BaakDashboard() {
             >
               Direvisi Calon ({returnedList.length})
             </button>
+            <button
+              onClick={() => setActiveTab('analytics')}
+              className={`btn btn-sm ${activeTab === 'analytics' ? 'btn-primary' : 'btn-secondary'}`}
+              style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}
+            >
+              📊 Analitik & Grafik
+            </button>
           </div>
 
-          <div className="card">
-            <div className="card-header">
-              <h3 style={{ fontSize: 14, fontWeight: 700 }}>
-                {activeTab === 'pending' ? 'Daftar Pengajuan Masuk' : activeTab === 'completed' ? 'Daftar Pengajuan Selesai' : 'Daftar Pengajuan Dikembalikan'}
-              </h3>
-              <span className="badge-pill badge-indigo">{activeList.length} Pengajuan</span>
-            </div>
+          {activeTab === 'analytics' ? (
+            <AnalyticsTab submissions={submissions} />
+          ) : (
+            <div className="card">
+              <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <h3 style={{ fontSize: 14, fontWeight: 700 }}>
+                    {activeTab === 'pending' ? 'Daftar Pengajuan Masuk' : activeTab === 'completed' ? 'Daftar Pengajuan Selesai' : 'Daftar Pengajuan Dikembalikan'}
+                  </h3>
+                  <span className="badge-pill badge-indigo">{activeList.length} Pengajuan</span>
+                </div>
+                <button
+                  onClick={() => exportToCSV(activeList, `laporan-rpl-baak-${activeTab}.csv`)}
+                  className="btn btn-secondary btn-sm"
+                  style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+                >
+                  📥 Ekspor Data (.CSV)
+                </button>
+              </div>
             <div className="card-body" style={{ padding: 0 }}>
               {activeList.length === 0 ? (
                 <div className="empty-state">
@@ -385,7 +420,8 @@ export default function BaakDashboard() {
               )}
             </div>
           </div>
-        </div>
+        )}
+      </div>
       ) : (
         /* Detailed inspection screen */
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 24 }}>

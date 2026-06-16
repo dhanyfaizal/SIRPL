@@ -267,6 +267,7 @@ export const dbPengajuan = {
   },
 
   updateStatus: async (id, status, catatanRevisi = null) => {
+    let result;
     if (isMock) {
       const list = getLocalData('si_rpl_pengajuan')
       const idx = list.findIndex(x => x.id === id)
@@ -278,20 +279,39 @@ export const dbPengajuan = {
         }
         list[idx].updated_at = new Date().toISOString()
         saveLocalData('si_rpl_pengajuan', list)
-        return { data: list[idx], error: null }
+        result = { data: list[idx], error: null }
+      } else {
+        return { data: null, error: new Error('Pengajuan tidak ditemukan') }
       }
-      return { data: null, error: new Error('Pengajuan tidak ditemukan') }
+    } else {
+      const updatePayload = { status, updated_at: new Date().toISOString() }
+      if (status === 'submitted') {
+        updatePayload.submitted_at = new Date().toISOString()
+      }
+      if (catatanRevisi !== undefined) {
+        updatePayload.catatan_revisi = catatanRevisi
+      }
+      const { data: resData, error } = await supabase.from('pengajuan_rpl').update(updatePayload).eq('id', id).select().single()
+      if (error) throw new Error(error.message)
+      result = { data: resData, error: null }
     }
-    const updatePayload = { status, updated_at: new Date().toISOString() }
-    if (status === 'submitted') {
-      updatePayload.submitted_at = new Date().toISOString()
+
+    // Trigger notification asynchronously
+    try {
+      const { data: item } = await dbPengajuan.getById(id)
+      if (item) {
+        const { sendNotification } = await import('./notifications')
+        sendNotification(status, {
+          profile: item.profile,
+          prodi: item.prodi,
+          catatanRevisi: catatanRevisi
+        }).catch(err => console.error('Failed to send WA notification:', err))
+      }
+    } catch (notificationErr) {
+      console.error('Error triggering notification:', notificationErr)
     }
-    if (catatanRevisi !== undefined) {
-      updatePayload.catatan_revisi = catatanRevisi
-    }
-    const { data: resData, error } = await supabase.from('pengajuan_rpl').update(updatePayload).eq('id', id).select().single()
-    if (error) throw new Error(error.message)
-    return { data: resData, error: null }
+
+    return result
   },
 
   update: async (id, data) => {

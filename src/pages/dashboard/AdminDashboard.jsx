@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { dbPengajuan, dbMK, dbRekognisi, dbPenetapan, getDocumentProgress } from '../../lib/db'
 import { BookOpen, FileText, CheckCircle, Percent, DollarSign, Calendar, Edit2, RotateCcw, AlertCircle, Eye, Settings, ArrowLeft, RotateCw, Sparkles } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { exportToCSV } from '../../utils/exporter'
+import AnalyticsTab from '../../components/AnalyticsTab'
 
 // Helper to format duration to human readable format
 function formatWaitingTime(submittedAtStr, finishedAtStr = null) {
@@ -298,7 +300,8 @@ export default function AdminDashboard() {
             ...item,
             total_sks_diakui: penData ? penData.total_sks_diakui : 0,
             total_sks_sisa: penData ? penData.total_sks_sisa : 0,
-            biaya_total: penData ? penData.biaya_total : 0
+            biaya_total: penData ? penData.biaya_total : 0,
+            potongan_biaya: penData ? penData.potongan_biaya : 0
           }
         })
       )
@@ -689,7 +692,7 @@ export default function AdminDashboard() {
         /* List submissions with tabs and settings card */
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {/* Tab Control */}
-          <div style={{ display: 'flex', gap: 8, borderBottom: '1px solid var(--gray-200)', paddingBottom: 8 }}>
+          <div style={{ display: 'flex', gap: 8, borderBottom: '1px solid var(--gray-200)', paddingBottom: 8, flexWrap: 'wrap' }}>
             <button
               onClick={() => setActiveTab('need_action')}
               className={`btn btn-sm ${activeTab === 'need_action' ? 'btn-primary' : 'btn-secondary'}`}
@@ -725,25 +728,44 @@ export default function AdminDashboard() {
             >
               Direvisi ke Asessor ({returnedList.length})
             </button>
+            <button
+              onClick={() => setActiveTab('analytics')}
+              className={`btn btn-sm ${activeTab === 'analytics' ? 'btn-primary' : 'btn-secondary'}`}
+              style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}
+            >
+              📊 Analitik & Grafik
+            </button>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 24, alignItems: 'start' }}>
-            {/* Left Column: Submissions Table */}
-            <div className="card">
-              <div className="card-header">
-                <h3 style={{ fontSize: 14, fontWeight: 700 }}>
-                  {activeTab === 'need_action'
-                    ? 'Menunggu Finalisasi Jalur & Biaya'
-                    : activeTab === 'in_progress'
-                    ? 'Daftar Pengajuan Sedang Diproses'
-                    : activeTab === 'completed'
-                    ? 'Daftar Pengajuan Selesai'
-                    : activeTab === 'archived'
-                    ? 'Daftar Pengajuan Diarsipkan'
-                    : 'Daftar Pengajuan Dikembalikan ke Asessor'}
-                </h3>
-                <span className="badge-pill badge-indigo">{activeList.length} Pengajuan</span>
-              </div>
+          {activeTab === 'analytics' ? (
+            <AnalyticsTab submissions={submissions} />
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 24, alignItems: 'start' }}>
+              {/* Left Column: Submissions Table */}
+              <div className="card">
+                <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <h3 style={{ fontSize: 14, fontWeight: 700 }}>
+                      {activeTab === 'need_action'
+                        ? 'Menunggu Finalisasi Jalur & Biaya'
+                        : activeTab === 'in_progress'
+                        ? 'Daftar Pengajuan Sedang Diproses'
+                        : activeTab === 'completed'
+                        ? 'Daftar Pengajuan Selesai'
+                        : activeTab === 'archived'
+                        ? 'Daftar Pengajuan Diarsipkan'
+                        : 'Daftar Pengajuan Dikembalikan ke Asessor'}
+                    </h3>
+                    <span className="badge-pill badge-indigo">{activeList.length} Pengajuan</span>
+                  </div>
+                  <button
+                    onClick={() => exportToCSV(activeList, `laporan-rpl-admin-${activeTab}.csv`)}
+                    className="btn btn-secondary btn-sm"
+                    style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+                  >
+                    📥 Ekspor Data (.CSV)
+                  </button>
+                </div>
               <div className="card-body" style={{ padding: 0 }}>
                 {activeList.length === 0 ? (
                   <div className="empty-state">
@@ -894,7 +916,8 @@ export default function AdminDashboard() {
               </div>
             </div>
           </div>
-        </div>
+        )}
+      </div>
       ) : (
         /* Details & Finalization Area */
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>

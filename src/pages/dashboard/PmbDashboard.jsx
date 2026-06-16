@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
-import { dbPengajuan, dbProdi, getDocumentProgress } from '../../lib/db'
+import { dbPengajuan, dbProdi, dbPenetapan, getDocumentProgress } from '../../lib/db'
 import { supabase, isMock } from '../../lib/supabase'
 import { Clipboard, Eye, Search, Filter, ShieldAlert, Award, FileText, CheckCircle, Clock, Users, RotateCw } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { generateMockDocSrcDoc } from '../../lib/mockDoc'
+import { exportToCSV } from '../../utils/exporter'
+import AnalyticsTab from '../../components/AnalyticsTab'
 
 // Helper: Preview component for PMB
 function PmbDocPreview({ selectedItem, fileUrl, previewType, previewSignedUrl, setPreviewSignedUrl }) {
@@ -123,6 +125,7 @@ export default function PmbDashboard() {
   const [prodis, setProdis] = useState([])
   const [loading, setLoading] = useState(true)
   const [selectedItem, setSelectedItem] = useState(null)
+  const [activeTab, setActiveTab] = useState('list') // 'list' | 'analytics'
   
   // Search and Filter States
   const [searchTerm, setSearchTerm] = useState('')
@@ -157,9 +160,20 @@ export default function PmbDashboard() {
         dbProdi.getAll()
       ])
       
-      // Filter out archived submissions for active monitoring
-      const activeSubmissions = (submissionsRes.data || []).filter(s => !s.is_archived)
-      setSubmissions(activeSubmissions)
+      const rawSubmissions = (submissionsRes.data || []).filter(s => !s.is_archived)
+      const enriched = await Promise.all(
+        rawSubmissions.map(async (item) => {
+          const { data: penData } = await dbPenetapan.getByPengajuanId(item.id)
+          return {
+            ...item,
+            total_sks_diakui: penData ? penData.total_sks_diakui : 0,
+            total_sks_sisa: penData ? penData.total_sks_sisa : 0,
+            biaya_total: penData ? penData.biaya_total : 0,
+            potongan_biaya: penData ? penData.potongan_biaya : 0
+          }
+        })
+      )
+      setSubmissions(enriched)
       setProdis(prodisRes.data || [])
     } catch (e) {
       console.error(e)
@@ -326,8 +340,30 @@ export default function PmbDashboard() {
       {!selectedItem ? (
         /* Table monitoring list */
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {/* Filters and search */}
-          <div className="card">
+          {/* Tab Control */}
+          <div style={{ display: 'flex', gap: 8, borderBottom: '1px solid var(--gray-200)', paddingBottom: 8, marginBottom: 8 }}>
+            <button
+              onClick={() => setActiveTab('list')}
+              className={`btn btn-sm ${activeTab === 'list' ? 'btn-primary' : 'btn-secondary'}`}
+              style={{ fontWeight: 600 }}
+            >
+              📋 Daftar Calon Mahasiswa
+            </button>
+            <button
+              onClick={() => setActiveTab('analytics')}
+              className={`btn btn-sm ${activeTab === 'analytics' ? 'btn-primary' : 'btn-secondary'}`}
+              style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}
+            >
+              📊 Analitik & Grafik
+            </button>
+          </div>
+
+          {activeTab === 'analytics' ? (
+            <AnalyticsTab submissions={submissions} />
+          ) : (
+            <>
+              {/* Filters and search */}
+              <div className="card">
             <div className="card-header" style={{ display: 'flex', flexWrap: 'wrap', gap: 16, alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--surface-alt)', border: '1px solid var(--gray-200)', padding: '6px 12px', borderRadius: 8, width: '100%', maxWidth: 300 }}>
                 <Search size={15} color="var(--gray-400)" />
@@ -369,6 +405,14 @@ export default function PmbDashboard() {
                   <option value="mapped_admin">Selesai / Final</option>
                   <option value="returned_baak">Revisi BAAK</option>
                 </select>
+
+                <button
+                  onClick={() => exportToCSV(filteredList, 'laporan-rpl-pmb.csv')}
+                  className="btn btn-secondary btn-sm"
+                  style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+                >
+                  📥 Ekspor Data (.CSV)
+                </button>
               </div>
             </div>
 
@@ -439,7 +483,9 @@ export default function PmbDashboard() {
               )}
             </div>
           </div>
-        </div>
+        </>
+        )}
+      </div>
       ) : (
         /* Detail document preview and monitoring screen */
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 24 }}>
