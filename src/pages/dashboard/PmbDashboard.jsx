@@ -87,6 +87,16 @@ function formatWaitingTime(submittedAtStr, finishedAtStr = null) {
   return '1 Menit'
 }
 
+// Helper to clean and format WhatsApp number link
+function getWhatsAppUrl(num) {
+  if (!num) return ''
+  let cleaned = num.replace(/\D/g, '')
+  if (cleaned.startsWith('0')) {
+    cleaned = '62' + cleaned.substring(1)
+  }
+  return `https://wa.me/${cleaned}`
+}
+
 export default function PmbDashboard() {
   const [submissions, setSubmissions] = useState([])
   const [prodis, setProdis] = useState([])
@@ -407,6 +417,23 @@ export default function PmbDashboard() {
                       <tr>
                         <td style={{ padding: '4px 0', color: 'var(--gray-500)' }}>Alamat Email</td>
                         <td style={{ padding: '4px 0' }}>: {selectedItem.profile?.email}</td>
+                      </tr>
+                      <tr>
+                        <td style={{ padding: '4px 0', color: 'var(--gray-500)' }}>Nomor WhatsApp</td>
+                        <td style={{ padding: '4px 0' }}>
+                          : {selectedItem.profile?.no_whatsapp ? (
+                            <a 
+                              href={getWhatsAppUrl(selectedItem.profile.no_whatsapp)}
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              style={{ color: '#10b981', fontWeight: 700, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                            >
+                              💬 {selectedItem.profile.no_whatsapp}
+                            </a>
+                          ) : (
+                            <span style={{ color: 'var(--gray-400)', fontStyle: 'italic' }}>Belum diisi</span>
+                          )}
+                        </td>
                       </tr>
                       <tr>
                         <td style={{ padding: '4px 0', color: 'var(--gray-500)' }}>Program Studi Tujuan</td>

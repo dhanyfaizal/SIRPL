@@ -178,6 +178,19 @@ export default function AuthProvider({ children }) {
     setLoading(false)
   }
 
+  async function updateProfile(updates) {
+    const { data, error } = await dbProfiles.updateUser(user.id, updates)
+    if (!error && data) {
+      setProfile(data)
+      if (isMock) {
+        localStorage.setItem('si_rpl_mock_session', JSON.stringify({ user, profile: data }))
+      } else {
+        localStorage.setItem('si_rpl_real_session', JSON.stringify({ user, profile: data }))
+      }
+    }
+    return { data, error }
+  }
+
   // Mengubah role secara runtime (Context Switcher untuk pengujian)
   async function switchMockRole(newRole) {
     if (!user) return
@@ -211,6 +224,7 @@ export default function AuthProvider({ children }) {
       signInWithGoogle,
       signOut,
       switchMockRole,
+      updateProfile,
       isMock
     }}>
       {children}

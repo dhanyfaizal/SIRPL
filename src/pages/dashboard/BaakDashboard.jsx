@@ -56,6 +56,16 @@ function BaakDocPreview({ selectedItem, fileUrl, previewType, previewSignedUrl, 
   )
 }
 
+// Helper to clean and format WhatsApp number link
+function getWhatsAppUrl(num) {
+  if (!num) return ''
+  let cleaned = num.replace(/\D/g, '')
+  if (cleaned.startsWith('0')) {
+    cleaned = '62' + cleaned.substring(1)
+  }
+  return `https://wa.me/${cleaned}`
+}
+
 export default function BaakDashboard() {
   const [submissions, setSubmissions] = useState([])
   const [selectedItem, setSelectedItem] = useState(null)
@@ -356,15 +366,32 @@ export default function BaakDashboard() {
                   <table style={{ width: '100%', fontSize: 12.5 }}>
                     <tbody>
                       <tr>
-                        <td style={{ width: 140, padding: '4px 0', color: 'var(--gray-50)' }}>Nama Lengkap</td>
+                        <td style={{ width: 140, padding: '4px 0', color: 'var(--gray-500)' }}>Nama Lengkap</td>
                         <td style={{ padding: '4px 0' }}>: <strong>{selectedItem.profile?.nama_lengkap}</strong></td>
                       </tr>
                       <tr>
-                        <td style={{ padding: '4px 0', color: 'var(--gray-50)' }}>Alamat Email</td>
+                        <td style={{ padding: '4px 0', color: 'var(--gray-500)' }}>Alamat Email</td>
                         <td style={{ padding: '4px 0' }}>: {selectedItem.profile?.email}</td>
                       </tr>
                       <tr>
-                        <td style={{ padding: '4px 0', color: 'var(--gray-50)' }}>Pilihan Program Studi</td>
+                        <td style={{ padding: '4px 0', color: 'var(--gray-500)' }}>Nomor WhatsApp</td>
+                        <td style={{ padding: '4px 0' }}>
+                          : {selectedItem.profile?.no_whatsapp ? (
+                            <a 
+                              href={getWhatsAppUrl(selectedItem.profile.no_whatsapp)}
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              style={{ color: '#10b981', fontWeight: 700, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                            >
+                              💬 {selectedItem.profile.no_whatsapp}
+                            </a>
+                          ) : (
+                            <span style={{ color: 'var(--gray-400)', fontStyle: 'italic' }}>Belum diisi</span>
+                          )}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style={{ padding: '4px 0', color: 'var(--gray-500)' }}>Pilihan Program Studi</td>
                         <td style={{ padding: '4px 0' }}>: {selectedItem.prodi?.nama}</td>
                       </tr>
                     </tbody>

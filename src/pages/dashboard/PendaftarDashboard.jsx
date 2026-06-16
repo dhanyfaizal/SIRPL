@@ -64,7 +64,7 @@ function DocPreview({ fileUrl, previewType, profileName, prodiName }) {
 }
 
 export default function PendaftarDashboard() {
-  const { user, profile } = useAuth()
+  const { user, profile, updateProfile } = useAuth()
   const [prodis, setProdis] = useState([])
   const [pengajuan, setPengajuan] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -72,6 +72,15 @@ export default function PendaftarDashboard() {
 
   // Form State - Step 1
   const [selectedProdi, setSelectedProdi] = useState('')
+  const [namaLengkap, setNamaLengkap] = useState('')
+  const [noWhatsapp, setNoWhatsapp] = useState('')
+
+  useEffect(() => {
+    if (profile) {
+      setNamaLengkap(profile.nama_lengkap || '')
+      setNoWhatsapp(profile.no_whatsapp || '')
+    }
+  }, [profile])
 
   // Form State - Step 2 (SMA - Wajib)
   const [ijazahSmaName, setIjazahSmaName] = useState('')
@@ -309,9 +318,32 @@ export default function PendaftarDashboard() {
       toast.error('Silakan pilih Program Studi Tujuan')
       return
     }
+    if (!namaLengkap.trim()) {
+      toast.error('Nama Lengkap tidak boleh kosong')
+      return
+    }
+    if (!noWhatsapp.trim()) {
+      toast.error('Nomor WhatsApp tidak boleh kosong')
+      return
+    }
+
+    const cleanedWa = noWhatsapp.replace(/\D/g, '')
+    if (cleanedWa.length < 9) {
+      toast.error('Nomor WhatsApp tidak valid (minimal 9 digit angka)')
+      return
+    }
 
     setSubmitting(true)
     try {
+      // Perbarui profile di database (nama lengkap dan nomor WhatsApp)
+      const { error: profileError } = await updateProfile({
+        nama_lengkap: namaLengkap.trim(),
+        no_whatsapp: noWhatsapp.trim()
+      })
+      if (profileError) {
+        throw new Error('Gagal memperbarui profil: ' + profileError.message)
+      }
+
       if (pengajuan) {
         await dbPengajuan.update(pengajuan.id, {
           prodi_pilihan_id: selectedProdi,
@@ -329,7 +361,7 @@ export default function PendaftarDashboard() {
       loadData()
     } catch (err) {
       console.error(err)
-      toast.error('Gagal menyimpan detail pendaftaran')
+      toast.error(err.message || 'Gagal menyimpan detail pendaftaran')
     } finally {
       setSubmitting(false)
     }
@@ -563,11 +595,25 @@ export default function PendaftarDashboard() {
                     <label className="input-label">Nama Lengkap</label>
                     <input 
                       type="text" 
-                      value={profile?.nama_lengkap || ''} 
+                      value={namaLengkap} 
+                      onChange={(e) => setNamaLengkap(e.target.value)}
                       className="input" 
-                      style={{ background: 'var(--gray-50)', color: 'var(--gray-500)', cursor: 'not-allowed' }}
-                      disabled 
+                      placeholder="Masukkan Nama Lengkap Anda"
+                      required
                     />
+                  </div>
+
+                  <div className="input-group">
+                    <label className="input-label">Nomor WhatsApp</label>
+                    <input 
+                      type="text" 
+                      value={noWhatsapp} 
+                      onChange={(e) => setNoWhatsapp(e.target.value)}
+                      className="input" 
+                      placeholder="Contoh: 08123456789 atau 628123456789"
+                      required
+                    />
+                    <span className="input-hint">Digunakan untuk menghubungi Anda jika terdapat berkas yang perlu direvisi/diingatkan oleh PMB.</span>
                   </div>
 
                   <div className="input-group">
