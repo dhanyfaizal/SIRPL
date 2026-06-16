@@ -252,11 +252,11 @@ export default function ReportPrintPage() {
               <table style={{ width: '100%' }}>
                 <tbody>
                   <tr>
-                    <td style={{ width: 110, color: '#64748b', padding: '2px 0' }}>Nama</td>
+                    <td style={{ width: 50, color: '#64748b', padding: '2px 0' }}>Nama</td>
                     <td style={{ padding: '2px 0' }}>: <strong>{pengajuan.profile?.nama_lengkap}</strong></td>
                   </tr>
                   <tr>
-                    <td style={{ color: '#64748b', padding: '2px 0' }}>Email</td>
+                    <td style={{ width: 50, color: '#64748b', padding: '2px 0' }}>Email</td>
                     <td style={{ padding: '2px 0' }}>: {pengajuan.profile?.email}</td>
                   </tr>
                 </tbody>
@@ -266,11 +266,11 @@ export default function ReportPrintPage() {
               <table style={{ width: '100%' }}>
                 <tbody>
                   <tr>
-                    <td style={{ width: 110, color: '#64748b', padding: '2px 0' }}>Prodi Tujuan</td>
+                    <td style={{ width: 125, color: '#64748b', padding: '2px 0' }}>Prodi Tujuan</td>
                     <td style={{ padding: '2px 0' }}>: {pengajuan.prodi?.nama}</td>
                   </tr>
                   <tr>
-                    <td style={{ color: '#64748b', padding: '2px 0' }}>Tanggal Penetapan</td>
+                    <td style={{ width: 125, color: '#64748b', padding: '2px 0' }}>Tanggal Penetapan</td>
                     <td style={{ padding: '2px 0' }}>: {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</td>
                   </tr>
                 </tbody>
