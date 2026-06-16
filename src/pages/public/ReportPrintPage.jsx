@@ -148,7 +148,8 @@ export default function ReportPrintPage() {
             font-family: 'Inter', system-ui, sans-serif;
           }
           .page-number::after {
-            content: "Halaman " counter(page);
+            counter-increment: printpage;
+            content: "Halaman " counter(printpage);
           }
           .report-page-container {
             background: none !important;
