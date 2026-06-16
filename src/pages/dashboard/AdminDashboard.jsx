@@ -690,7 +690,27 @@ export default function AdminDashboard() {
                                    );
                                  })()}
                                </td>
-                               <td><span style={{ fontWeight: 600 }}>{item.total_sks_diakui || 0} SKS</span></td>
+                               <td>
+                                 {(() => {
+                                   const diakui = item.total_sks_diakui || 0
+                                   const sisa = item.total_sks_sisa || 0
+                                   const total = diakui + sisa
+                                   const pct = total > 0 ? (diakui / total) * 100 : 0
+                                   const limit = parseFloat(maxLimit) || 70
+                                   const isExceeded = pct > limit
+                                   return (
+                                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                       <span style={{ fontWeight: 600 }}>{diakui} SKS</span>
+                                       <span style={{ fontSize: 11, color: isExceeded ? 'var(--danger)' : 'var(--gray-500)', fontWeight: isExceeded ? 700 : 500 }}>
+                                         ({pct.toFixed(0)}%)
+                                       </span>
+                                       {isExceeded && (
+                                         <AlertCircle size={14} color="var(--danger)" title={`Melebihi batas maksimal rekognisi (${limit}%)!`} style={{ flexShrink: 0 }} />
+                                       )}
+                                     </div>
+                                   )
+                                 })()}
+                               </td>
                                <td><span className={`badge-pill ${statusInfo.className}`}>{statusInfo.label}</span></td>
                                <td style={{ fontSize: 12 }}>
                                  {formatWaitingTime(item.submitted_at, item.status === 'mapped_admin' ? item.updated_at : null)}
@@ -974,9 +994,26 @@ export default function AdminDashboard() {
                 <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                   {/* Cost Summary Info */}
                   <div style={{ background: 'var(--gray-50)', padding: 14, borderRadius: 8, border: '1px solid var(--gray-200)', fontSize: 12.5, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--gray-100)', paddingBottom: 6 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--gray-100)', paddingBottom: 6, alignItems: 'center' }}>
                       <span style={{ color: 'var(--gray-500)' }}>SKS Diakui / Sisa SKS:</span>
-                      <strong style={{ color: 'var(--indigo-700)' }}>{totalSksDiakui} SKS / {totalSksSisa} SKS</strong>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <strong style={{ color: 'var(--indigo-700)' }}>
+                          {totalSksDiakui} SKS / {totalSksSisa} SKS
+                          {(() => {
+                            const total = totalSksDiakui + totalSksSisa
+                            const pct = total > 0 ? (totalSksDiakui / total) * 100 : 0
+                            return ` (${pct.toFixed(0)}%)`
+                          })()}
+                        </strong>
+                        {(() => {
+                          const total = totalSksDiakui + totalSksSisa
+                          const pct = total > 0 ? (totalSksDiakui / total) * 100 : 0
+                          const limit = parseFloat(maxLimit) || 70
+                          return pct > limit ? (
+                            <AlertCircle size={14} color="var(--danger)" title={`Melebihi batas maksimal rekognisi (${limit}%)!`} style={{ flexShrink: 0 }} />
+                          ) : null
+                        })()}
+                      </div>
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>

@@ -1230,16 +1230,16 @@ export default function KaprodiDashboard() {
     <div>
       <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16 }}>
         <div>
-          <h1 className="page-title">Pencocokan Rekognisi AI (Ka. Prodi)</h1>
+          <h1 className="page-title">Pencocokan Rekognisi Mata Kuliah (Ka. Prodi)</h1>
           <p className="page-subtitle">Petakan dokumen transkrip, sertifikat, & pengalaman calon ke kurikulum program studi</p>
         </div>
-        <button 
-          onClick={handleRefresh} 
+        <button
+          onClick={handleRefresh}
           disabled={refreshing}
           className="btn btn-secondary"
           style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', fontSize: 13 }}
         >
-          <RefreshCw size={14} className={refreshing ? 'spin-anim' : ''} /> 
+          <RefreshCw size={14} className={refreshing ? 'spin-anim' : ''} />
           {refreshing ? 'Memuat...' : 'Refresh Data'}
         </button>
       </div>
