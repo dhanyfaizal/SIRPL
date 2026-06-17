@@ -461,18 +461,24 @@ export default function ReportPrintPage() {
                         Rp{sem4.moocs.toLocaleString('id-ID')} <span style={{ fontSize: '8.5px', color: '#64748b' }}>({sem4.semMoocs} MK)</span>
                       </td>
                     </tr>
-                    {penetapan.potongan_biaya > 0 && (
-                      <tr style={{ color: '#ef4444' }}>
-                        <td style={{ border: '1px solid #cbd5e1', padding: '8px', fontWeight: 600 }}>
-                          4. Potongan Biaya Khusus (Diskon UKP)
-                          <div style={{ fontSize: '9px', color: '#e11d48', fontWeight: 400, marginTop: '2px' }}>Catatan: {penetapan.catatan_potongan || '-'} (per semester)</div>
-                        </td>
-                        <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right', fontWeight: 700 }}>- Rp{sem1.potongan.toLocaleString('id-ID')}</td>
-                        <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right', fontWeight: 700 }}>- Rp{sem2.potongan.toLocaleString('id-ID')}</td>
-                        <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right', fontWeight: 700 }}>- Rp{sem3.potongan.toLocaleString('id-ID')}</td>
-                        <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right', fontWeight: 700 }}>- Rp{sem4.potongan.toLocaleString('id-ID')}</td>
-                      </tr>
-                    )}
+                    <tr style={{ color: (penetapan.potongan_biaya || 0) > 0 ? '#ef4444' : 'inherit' }}>
+                      <td style={{ border: '1px solid #cbd5e1', padding: '8px', fontWeight: 600 }}>
+                        4. Potongan Biaya Khusus (Diskon UKP)
+                        <div style={{ fontSize: '9px', color: (penetapan.potongan_biaya || 0) > 0 ? '#e11d48' : '#64748b', fontWeight: 400, marginTop: '2px' }}>Catatan: {penetapan.catatan_potongan || '-'} (per semester)</div>
+                      </td>
+                      <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right', fontWeight: 700 }}>
+                        {sem1.potongan > 0 ? `- Rp${sem1.potongan.toLocaleString('id-ID')}` : 'Rp0'}
+                      </td>
+                      <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right', fontWeight: 700 }}>
+                        {sem2.potongan > 0 ? `- Rp${sem2.potongan.toLocaleString('id-ID')}` : 'Rp0'}
+                      </td>
+                      <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right', fontWeight: 700 }}>
+                        {sem3.potongan > 0 ? `- Rp${sem3.potongan.toLocaleString('id-ID')}` : 'Rp0'}
+                      </td>
+                      <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right', fontWeight: 700 }}>
+                        {sem4.potongan > 0 ? `- Rp${sem4.potongan.toLocaleString('id-ID')}` : 'Rp0'}
+                      </td>
+                    </tr>
                     <tr style={{ background: '#f8fafc', fontWeight: 800 }}>
                       <td style={{ border: '1px solid #cbd5e1', padding: '8px' }}>Subtotal Biaya Semester </td>
                       <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right' }}>Rp{sem1.total.toLocaleString('id-ID')}</td>

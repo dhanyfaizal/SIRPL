@@ -1243,12 +1243,10 @@ export default function AdminDashboard() {
                       <span style={{ color: 'var(--gray-700)' }}>Total Sebelum Diskon:</span>
                       <strong>Rp{biayaTotalSebelumPotongan.toLocaleString('id-ID')}</strong>
                     </div>
-                    {potonganBiaya > 0 && (
-                      <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--danger)', fontWeight: 600, fontSize: 12.5, marginTop: 2 }}>
-                        <span>Total Diskon (4 Semester):</span>
-                        <span>- Rp{(4 * potonganBiaya).toLocaleString('id-ID')}</span>
-                      </div>
-                    )}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', color: potonganBiaya > 0 ? 'var(--danger)' : 'var(--gray-500)', fontWeight: potonganBiaya > 0 ? 600 : 500, fontSize: 12.5, marginTop: 2 }}>
+                      <span>Total Diskon (4 Semester):</span>
+                      <span>{potonganBiaya > 0 ? `- Rp${(4 * potonganBiaya).toLocaleString('id-ID')}` : 'Rp0'}</span>
+                    </div>
                   </div>
 
                   {/* Discount input Form */}
