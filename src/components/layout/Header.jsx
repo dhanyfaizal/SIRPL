@@ -2,11 +2,12 @@ import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   PanelLeftOpen, PanelLeftClose, Sun, Moon,
-  ChevronDown, LogOut, User, KeyRound, ShieldAlert,
+  ChevronDown, LogOut, User, KeyRound, ShieldAlert, Bell
 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useTheme } from '../../contexts/ThemeContext'
 import { useSidebar } from './AppLayout'
+import { dbNotifikasi } from '../../lib/db'
 import toast from 'react-hot-toast'
 
 export default function Header() {
@@ -18,10 +19,80 @@ export default function Header() {
   const [dropOpen, setDropOpen] = useState(false)
   const dropRef = useRef(null)
 
+  const [notifications, setNotifications] = useState([])
+  const [notifOpen, setNotifOpen] = useState(false)
+  const notifRef = useRef(null)
+
+  const unreadCount = notifications.filter(n => !n.is_read).length
+
+  const fetchNotifications = async () => {
+    if (!profile?.id) return
+    try {
+      const { data, error } = await dbNotifikasi.getByUserId(profile.id)
+      if (!error && data) {
+        setNotifications(data)
+      }
+    } catch (e) {
+      console.error('Error fetching notifications:', e)
+    }
+  }
+
+  useEffect(() => {
+    fetchNotifications()
+    const interval = setInterval(fetchNotifications, 15000)
+    return () => clearInterval(interval)
+  }, [profile?.id])
+
+  const handleMarkAllRead = async () => {
+    if (!profile?.id) return
+    try {
+      const { error } = await dbNotifikasi.markAllAsRead(profile.id)
+      if (error) throw error
+      setNotifications(notifications.map(n => ({ ...n, is_read: true })))
+      toast.success('Semua notifikasi ditandai dibaca')
+    } catch (e) {
+      console.error(e)
+      toast.error('Gagal menandai notifikasi')
+    }
+  }
+
+  const handleNotifClick = async (notif) => {
+    setNotifOpen(false)
+    if (!notif.is_read) {
+      try {
+        await dbNotifikasi.markAsRead(notif.id)
+        setNotifications(notifications.map(n => n.id === notif.id ? { ...n, is_read: true } : n))
+      } catch (e) {
+        console.error(e)
+      }
+    }
+    if (notif.link) {
+      navigate(notif.link)
+    }
+  }
+
+  const formatTimeAgo = (dateString) => {
+    const date = new Date(dateString)
+    const now = new Date()
+    const seconds = Math.floor((now - date) / 1000)
+
+    if (seconds < 60) return 'Baru saja'
+    const minutes = Math.floor(seconds / 60)
+    if (minutes < 60) return `${minutes}m yang lalu`
+    const hours = Math.floor(minutes / 60)
+    if (hours < 24) return `${hours}j yang lalu`
+    const days = Math.floor(hours / 24)
+    if (days === 1) return 'Kemarin'
+    return date.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })
+  }
+
   useEffect(() => {
     function handler(e) {
       if (dropRef.current && !dropRef.current.contains(e.target)) {
         setDropOpen(false)
+      }
+      if (notifRef.current && !notifRef.current.contains(e.target)) {
+        setNotifOpen(false)
       }
     }
     document.addEventListener('mousedown', handler)
@@ -74,6 +145,131 @@ export default function Header() {
         <button className="btn btn-ghost btn-icon" onClick={toggleTheme} title={theme === 'dark' ? 'Mode Terang' : 'Mode Gelap'}>
           {theme === 'dark' ? <Sun size={16} color="#fbbf24" /> : <Moon size={16} />}
         </button>
+
+        {/* Notification Bell */}
+        <div ref={notifRef} style={{ position: 'relative' }}>
+          <button 
+            className="btn btn-ghost btn-icon" 
+            onClick={() => setNotifOpen(v => !v)}
+            title="Notifikasi"
+            style={{ position: 'relative' }}
+          >
+            <Bell size={16} />
+            {unreadCount > 0 && (
+              <span style={{
+                position: 'absolute',
+                top: 2,
+                right: 2,
+                background: 'var(--danger, #ef4444)',
+                color: 'white',
+                fontSize: '8px',
+                fontWeight: 'bold',
+                borderRadius: '50%',
+                width: '14px',
+                height: '14px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                border: '1.5px solid var(--surface)'
+              }}>
+                {unreadCount}
+              </span>
+            )}
+          </button>
+
+          {notifOpen && (
+            <div className="dropdown-menu notif-dropdown" style={{ 
+              width: 320, 
+              maxHeight: 380, 
+              overflowY: 'auto', 
+              right: 0,
+              padding: 0,
+              display: 'flex',
+              flexDirection: 'column'
+            }}>
+              <div style={{ 
+                padding: '12px 14px', 
+                borderBottom: '1px solid var(--gray-100)', 
+                display: 'flex', 
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                position: 'sticky',
+                top: 0,
+                background: 'var(--surface)',
+                zIndex: 10
+              }}>
+                <span style={{ fontWeight: 600, fontSize: 13, color: 'var(--gray-900)' }}>
+                  Notifikasi
+                </span>
+                {unreadCount > 0 && (
+                  <button 
+                    onClick={handleMarkAllRead}
+                    style={{ 
+                      background: 'none', 
+                      border: 'none', 
+                      color: 'var(--indigo-600, #4f46e5)', 
+                      fontSize: 11, 
+                      cursor: 'pointer',
+                      fontWeight: 600,
+                      padding: 0
+                    }}
+                  >
+                    Tandai semua dibaca
+                  </button>
+                )}
+              </div>
+
+              <div style={{ flex: 1, overflowY: 'auto' }}>
+                {notifications.length === 0 ? (
+                  <div style={{ padding: '24px 16px', textAlign: 'center', color: 'var(--gray-400)', fontSize: 12 }}>
+                    Tidak ada notifikasi baru
+                  </div>
+                ) : (
+                  notifications.map(notif => (
+                    <div 
+                      key={notif.id}
+                      onClick={() => handleNotifClick(notif)}
+                      style={{ 
+                        padding: '12px 14px', 
+                        borderBottom: '1px solid var(--gray-50)', 
+                        background: notif.is_read ? 'transparent' : 'var(--indigo-50-glow, rgba(79, 70, 229, 0.03))',
+                        cursor: 'pointer',
+                        transition: 'background 0.2s',
+                        fontSize: 12.5,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 4
+                      }}
+                      className="notif-item"
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
+                        <span style={{ fontWeight: notif.is_read ? 500 : 700, color: 'var(--gray-800)' }}>
+                          {notif.title}
+                        </span>
+                        {!notif.is_read && (
+                          <span style={{ 
+                            width: 6, 
+                            height: 6, 
+                            borderRadius: '50%', 
+                            background: 'var(--indigo-600, #4f46e5)',
+                            flexShrink: 0,
+                            marginTop: 5
+                          }} />
+                        )}
+                      </div>
+                      <p style={{ color: 'var(--gray-500)', margin: 0, lineHeight: 1.4, fontSize: 11.5 }}>
+                        {notif.message}
+                      </p>
+                      <span style={{ fontSize: 10, color: 'var(--gray-400)', marginTop: 2 }}>
+                        {formatTimeAgo(notif.created_at)}
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+        </div>
  
         {/* User dropdown */}
         <div ref={dropRef} style={{ position: 'relative' }}>

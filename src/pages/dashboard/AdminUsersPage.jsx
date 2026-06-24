@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { dbProfiles } from '../../lib/db'
 import { useAuth } from '../../contexts/AuthContext'
-import { Shield, Search, Check, X, UserCheck, ShieldAlert, RotateCw } from 'lucide-react'
+import { Shield, Search, Check, X, UserCheck, ShieldAlert, RotateCw, Edit3 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const ROLES_LIST = [
@@ -22,8 +22,10 @@ export default function AdminUsersPage() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [activeTab, setActiveTab] = useState('staff') // 'staff' or 'calon'
-
   const [refreshing, setRefreshing] = useState(false)
+
+  const [editingUserId, setEditingUserId] = useState(null)
+  const [editName, setEditName] = useState('')
 
   const handleRefresh = async () => {
     setRefreshing(true)
@@ -86,6 +88,24 @@ export default function AdminUsersPage() {
     } catch (e) {
       console.error(e)
       toast.error('Gagal memperbarui status verifikasi')
+    }
+  }
+
+  const handleSaveName = async (userId) => {
+    if (!editName.trim()) {
+      toast.error('Nama tidak boleh kosong!')
+      return
+    }
+
+    try {
+      const { error } = await dbProfiles.updateUser(userId, { nama_lengkap: editName.trim() })
+      if (error) throw error
+      toast.success('Nama pengguna berhasil diperbarui')
+      setUsers(users.map(u => u.id === userId ? { ...u, nama_lengkap: editName.trim() } : u))
+      setEditingUserId(null)
+    } catch (e) {
+      console.error(e)
+      toast.error('Gagal memperbarui nama pengguna')
     }
   }
 
@@ -238,8 +258,59 @@ export default function AdminUsersPage() {
                       <tr key={u.id} style={{ opacity: u.is_verified ? 1 : 0.85, background: !u.is_verified ? 'rgba(245, 158, 11, 0.02)' : 'transparent' }}>
                         {/* Name */}
                         <td>
-                          <strong>{u.nama_lengkap}</strong>
-                          {isSelf && <span style={{ marginLeft: 6, fontSize: 10, background: 'var(--gray-200)', color: 'var(--gray-600)', padding: '2px 6px', borderRadius: 4 }}>Anda</span>}
+                          {editingUserId === u.id ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <input 
+                                type="text" 
+                                value={editName}
+                                onChange={e => setEditName(e.target.value)}
+                                className="form-control"
+                                style={{ 
+                                  padding: '4px 8px', 
+                                  fontSize: 13, 
+                                  width: '100%', 
+                                  maxWidth: 200,
+                                  border: '1px solid var(--gray-300)',
+                                  borderRadius: 6,
+                                  background: 'var(--surface)',
+                                  color: 'var(--gray-800)',
+                                  outline: 'none'
+                                }}
+                                autoFocus
+                                onKeyDown={e => {
+                                  if (e.key === 'Enter') handleSaveName(u.id)
+                                  if (e.key === 'Escape') setEditingUserId(null)
+                                }}
+                              />
+                              <button 
+                                onClick={() => handleSaveName(u.id)}
+                                className="btn btn-primary btn-sm"
+                                style={{ padding: '4px 8px', fontSize: 11 }}
+                              >
+                                Simpan
+                              </button>
+                              <button 
+                                onClick={() => setEditingUserId(null)}
+                                className="btn btn-secondary btn-sm"
+                                style={{ padding: '4px 8px', fontSize: 11 }}
+                              >
+                                Batal
+                              </button>
+                            </div>
+                          ) : (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <strong>{u.nama_lengkap}</strong>
+                              <button
+                                onClick={() => { setEditingUserId(u.id); setEditName(u.nama_lengkap || '') }}
+                                className="btn btn-ghost btn-icon btn-sm"
+                                title="Ubah nama"
+                                style={{ padding: 4, height: 'auto', width: 'auto', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                              >
+                                <Edit3 size={12} color="var(--gray-400)" />
+                              </button>
+                              {isSelf && <span style={{ marginLeft: 6, fontSize: 10, background: 'var(--gray-200)', color: 'var(--gray-600)', padding: '2px 6px', borderRadius: 4 }}>Anda</span>}
+                            </div>
+                          )}
                         </td>
                         
                         {/* Email */}

@@ -380,3 +380,39 @@ html { transition: background .25s, color .25s; }
   animation: spin 1s linear infinite;
 }
 
+/* In-App Notifications Styling */
+.notif-dropdown {
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  border-radius: 12px;
+  border: 1px solid var(--gray-200);
+  background: var(--surface);
+}
+
+.notif-item {
+  transition: all 0.2s ease-in-out;
+}
+
+.notif-item:hover {
+  background-color: var(--gray-100) !important;
+}
+
+:root {
+  --indigo-50-glow: rgba(79, 70, 229, 0.04);
+}
+
+[data-theme="dark"] {
+  --indigo-50-glow: rgba(129, 140, 248, 0.08);
+}
+
+[data-theme="dark"] .notif-dropdown {
+  border-color: #334155;
+  background: #1e293b;
+}
+
+[data-theme="dark"] .notif-item {
+  border-bottom-color: #334155 !important;
+}
+
+[data-theme="dark"] .notif-item:hover {
+  background-color: #0f172a !important;
+}

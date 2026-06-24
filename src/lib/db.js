@@ -61,6 +61,9 @@ function initMockStorage() {
   if (!localStorage.getItem('si_rpl_profiles')) {
     localStorage.setItem('si_rpl_profiles', JSON.stringify([]))
   }
+  if (!localStorage.getItem('si_rpl_notifikasi')) {
+    localStorage.setItem('si_rpl_notifikasi', JSON.stringify([]))
+  }
 }
 
 if (isMock) {
@@ -306,6 +309,11 @@ export const dbPengajuan = {
           prodi: item.prodi,
           catatanRevisi: catatanRevisi
         }).catch(err => console.error('Failed to send WA notification:', err))
+
+        // Trigger in-app notification
+        triggerInAppNotification(status, item, catatanRevisi).catch(err => 
+          console.error('Failed to trigger in-app notification:', err)
+        )
       }
     } catch (notificationErr) {
       console.error('Error triggering notification:', notificationErr)
@@ -596,7 +604,231 @@ export const dbFeedback = {
   }
 }
 
-// ── 8. Progress Dokumen Helper ─────────────────────────────────
+// ── 8. Tabel Notifikasi (In-App) ───────────────────────────────
+export const dbNotifikasi = {
+  getByUserId: async (userId) => {
+    if (isMock) {
+      const all = getLocalData('si_rpl_notifikasi')
+      const userNotifs = all.filter(n => n.user_id === userId).sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+      return { data: userNotifs, error: null }
+    }
+    return supabase.from('notifikasi').select('*').eq('user_id', userId).order('created_at', { ascending: false })
+  },
+
+  create: async (userId, title, message, type, link = '') => {
+    const payload = {
+      user_id: userId,
+      title,
+      message,
+      type,
+      link,
+      is_read: false,
+      created_at: new Date().toISOString()
+    }
+    if (isMock) {
+      const all = getLocalData('si_rpl_notifikasi')
+      const newItem = { ...payload, id: 'notif-' + Math.random().toString(36).slice(2, 10) }
+      all.push(newItem)
+      saveLocalData('si_rpl_notifikasi', all)
+      return { data: newItem, error: null }
+    }
+    return supabase.from('notifikasi').insert(payload).select().single()
+  },
+
+  createForRole: async (targetRole, title, message, type, link = '') => {
+    const { data: users } = await dbProfiles.getAll()
+    const matchingUsers = (users || []).filter(u => {
+      if (targetRole === 'kaprodi') {
+        return u.role.startsWith('kaprodi_')
+      }
+      return u.role === targetRole
+    })
+
+    if (isMock) {
+      const all = getLocalData('si_rpl_notifikasi')
+      const newItems = matchingUsers.map(u => ({
+        id: 'notif-' + Math.random().toString(36).slice(2, 10),
+        user_id: u.id,
+        title,
+        message,
+        type,
+        link,
+        is_read: false,
+        created_at: new Date().toISOString()
+      }))
+      all.push(...newItems)
+      saveLocalData('si_rpl_notifikasi', all)
+      return { data: newItems, error: null }
+    }
+
+    const payloads = matchingUsers.map(u => ({
+      user_id: u.id,
+      title,
+      message,
+      type,
+      link,
+      is_read: false
+    }))
+    if (payloads.length === 0) return { data: [], error: null }
+    return supabase.from('notifikasi').insert(payloads).select()
+  },
+
+  markAsRead: async (id) => {
+    if (isMock) {
+      const all = getLocalData('si_rpl_notifikasi')
+      const idx = all.findIndex(n => n.id === id)
+      if (idx !== -1) {
+        all[idx].is_read = true
+        saveLocalData('si_rpl_notifikasi', all)
+        return { data: all[idx], error: null }
+      }
+      return { data: null, error: new Error('Notifikasi tidak ditemukan') }
+    }
+    return supabase.from('notifikasi').update({ is_read: true }).eq('id', id).select().single()
+  },
+
+  markAllAsRead: async (userId) => {
+    if (isMock) {
+      const all = getLocalData('si_rpl_notifikasi')
+      const updated = all.map(n => n.user_id === userId ? { ...n, is_read: true } : n)
+      saveLocalData('si_rpl_notifikasi', updated)
+      return { data: null, error: null }
+    }
+    return supabase.from('notifikasi').update({ is_read: true }).eq('user_id', userId)
+  },
+
+  delete: async (id) => {
+    if (isMock) {
+      const all = getLocalData('si_rpl_notifikasi')
+      const filtered = all.filter(n => n.id !== id)
+      saveLocalData('si_rpl_notifikasi', filtered)
+      return { data: { id }, error: null }
+    }
+    return supabase.from('notifikasi').delete().eq('id', id)
+  }
+}
+
+// ── 9. Trigger In-App Notification ──────────────────────────────
+export async function triggerInAppNotification(status, item, catatanRevisi) {
+  try {
+    const namaPendaftar = item.profile?.nama_lengkap || 'Calon Mahasiswa'
+    const namaProdi = item.prodi?.nama || '-'
+    const prodiKode = item.prodi?.kode || ''
+
+    const getKaprodiRole = (code) => {
+      const c = String(code).toLowerCase()
+      if (c === 'if' || c === 'ti') return 'kaprodi_ti'
+      if (c === 'si') return 'kaprodi_si'
+      if (c === 'dkv') return 'kaprodi_dkv'
+      if (c === 'ka') return 'kaprodi_ka'
+      return 'kaprodi'
+    }
+
+    switch (status) {
+      case 'submitted':
+        await Promise.all([
+          dbNotifikasi.createForRole('baak', 'Pengajuan RPL Baru', `Ada pengajuan RPL baru masuk atas nama ${namaPendaftar} untuk Program Studi ${namaProdi}.`, 'submitted', '/dashboard'),
+          dbNotifikasi.createForRole('pmb', 'Pengajuan RPL Baru', `Ada pengajuan RPL baru masuk atas nama ${namaPendaftar} untuk Program Studi ${namaProdi}.`, 'submitted', '/dashboard'),
+          dbNotifikasi.createForRole('admin', 'Pengajuan RPL Baru', `Ada pengajuan RPL baru masuk atas nama ${namaPendaftar} untuk Program Studi ${namaProdi}.`, 'submitted', '/dashboard')
+        ])
+        break
+
+      case 'returned_baak':
+        await dbNotifikasi.create(
+          item.user_id,
+          'Berkas Dikembalikan BAAK',
+          `Berkas pengajuan Anda dikembalikan oleh BAAK untuk direvisi dengan catatan: "${catatanRevisi || 'Silakan lengkapi berkas Anda kembali'}"`,
+          'returned_baak',
+          '/dashboard'
+        )
+        break
+
+      case 'validated_baak':
+        const targetKaprodi = getKaprodiRole(prodiKode)
+        await Promise.all([
+          dbNotifikasi.createForRole(targetKaprodi, 'Validasi Dokumen Selesai', `Berkas pengajuan ${namaPendaftar} telah divalidasi oleh BAAK. Silakan lakukan persetujuan Kaprodi.`, 'validated_baak', '/dashboard'),
+          dbNotifikasi.createForRole('admin', 'Validasi Dokumen Selesai', `Berkas pengajuan ${namaPendaftar} (Prodi: ${namaProdi}) telah divalidasi oleh BAAK.`, 'validated_baak', '/dashboard')
+        ])
+        break
+
+      case 'returned_kaprodi':
+        await Promise.all([
+          dbNotifikasi.createForRole('baak', 'Berkas Dikembalikan Kaprodi', `Berkas pengajuan ${namaPendaftar} dikembalikan oleh Kaprodi dengan catatan: "${catatanRevisi || ''}"`, 'returned_kaprodi', '/dashboard'),
+          dbNotifikasi.createForRole('pmb', 'Berkas Dikembalikan Kaprodi', `Berkas pengajuan ${namaPendaftar} dikembalikan oleh Kaprodi dengan catatan: "${catatanRevisi || ''}"`, 'returned_kaprodi', '/dashboard'),
+          dbNotifikasi.create(
+            item.user_id,
+            'Berkas Dikembalikan Kaprodi',
+            `Berkas pengajuan Anda dikembalikan oleh Kaprodi untuk ditinjau kembali dengan catatan: "${catatanRevisi || ''}"`,
+            'returned_kaprodi',
+            '/dashboard'
+          )
+        ])
+        break
+
+      case 'recognized_kaprodi':
+        await Promise.all([
+          dbNotifikasi.createForRole('asessor', 'Berkas Siap Asesmen', `Berkas pengajuan ${namaPendaftar} (Prodi: ${namaProdi}) telah disetujui Kaprodi dan siap dilakukan asesmen akademik.`, 'recognized_kaprodi', '/dashboard'),
+          dbNotifikasi.createForRole('admin', 'Berkas Disetujui Kaprodi', `Berkas pengajuan ${namaPendaftar} (Prodi: ${namaProdi}) telah disetujui Kaprodi.`, 'recognized_kaprodi', '/dashboard')
+        ])
+        break
+
+      case 'returned_asessor':
+        const kaprodiRole = getKaprodiRole(prodiKode)
+        await Promise.all([
+          dbNotifikasi.createForRole(kaprodiRole, 'Asesmen Dikembalikan Asessor', `Asesmen akademik untuk ${namaPendaftar} dikembalikan oleh Asessor dengan catatan: "${catatanRevisi || ''}"`, 'returned_asessor', '/dashboard'),
+          dbNotifikasi.createForRole('admin', 'Asesmen Dikembalikan Asessor', `Asesmen akademik untuk ${namaPendaftar} dikembalikan oleh Asessor dengan catatan: "${catatanRevisi || ''}"`, 'returned_asessor', '/dashboard')
+        ])
+        break
+
+      case 'assessed_asessor':
+        if (catatanRevisi) {
+          await dbNotifikasi.createForRole(
+            'admin',
+            'Sanggahan Rencana Studi',
+            `${namaPendaftar} mengajukan sanggahan rencana studi dengan alasan: "${catatanRevisi}"`,
+            'sanggah',
+            '/dashboard'
+          )
+        } else {
+          await dbNotifikasi.createForRole(
+            'admin',
+            'Asesmen Akademik Selesai',
+            `Asessor telah menyelesaikan asesmen akademik untuk ${namaPendaftar}. Menunggu finalisasi & penetapan biaya oleh Admin.`,
+            'assessed_asessor',
+            '/dashboard'
+          )
+        }
+        break
+
+      case 'mapped_admin':
+        await dbNotifikasi.create(
+          item.user_id,
+          'Rencana Studi & Biaya Diterbitkan',
+          `Selamat! Rencana Studi & Biaya Semesteran RPL Anda resmi diterbitkan. Silakan cek portal untuk konfirmasi atau sanggah.`,
+          'mapped_admin',
+          '/dashboard'
+        )
+        break
+
+      case 'returned_admin':
+        await dbNotifikasi.createForRole(
+          'asessor',
+          'Pemetaan Dikembalikan Admin',
+          `Pemetaan rencana studi untuk ${namaPendaftar} dikembalikan oleh Admin Akademik dengan catatan: "${catatanRevisi || ''}"`,
+          'returned_admin',
+          '/dashboard'
+        )
+        break
+
+      default:
+        break
+    }
+  } catch (err) {
+    console.error('Gagal memicu in-app notification:', err)
+  }
+}
+
+// ── 10. Progress Dokumen Helper ────────────────────────────────
 export function getDocumentProgress(item) {
   if (!item) return { percent: 0, uploaded: 0, total: 4 }
   let uploaded = 0
