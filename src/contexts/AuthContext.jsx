@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react'
+import { createContext, useContext, useEffect, useState, useRef } from 'react'
 import { supabase, isMock } from '../lib/supabase'
 import { dbProfiles } from '../lib/db'
 import toast from 'react-hot-toast'
@@ -11,6 +11,10 @@ export default function AuthProvider({ children }) {
   const [profile, setProfile] = useState(null)
   const [role, setRole] = useState(null)
   const [loading, setLoading] = useState(true)
+
+  // Simpan referensi user terbaru untuk menghindari stale closure di useEffect
+  const currentUserRef = useRef(null)
+  currentUserRef.current = user
 
   // Inisialisasi Auth
   useEffect(() => {
@@ -85,14 +89,19 @@ export default function AuthProvider({ children }) {
               localStorage.removeItem('si_rpl_real_session')
             } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
               if (session?.user) {
-                setLoading(true)
+                const isNewLogin = !currentUserRef.current
+                if (isNewLogin) {
+                  setLoading(true)
+                }
                 setUser(session.user)
                 try {
                   await syncProfile(session.user)
                 } catch (err) {
                   console.error('Error syncing profile during auth state change:', err)
                 } finally {
-                  setLoading(false)
+                  if (isNewLogin) {
+                    setLoading(false)
+                  }
                 }
               }
             }
