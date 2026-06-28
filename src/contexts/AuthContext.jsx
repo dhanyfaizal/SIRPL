@@ -85,8 +85,15 @@ export default function AuthProvider({ children }) {
               localStorage.removeItem('si_rpl_real_session')
             } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
               if (session?.user) {
+                setLoading(true)
                 setUser(session.user)
-                await syncProfile(session.user)
+                try {
+                  await syncProfile(session.user)
+                } catch (err) {
+                  console.error('Error syncing profile during auth state change:', err)
+                } finally {
+                  setLoading(false)
+                }
               }
             }
           }
@@ -165,6 +172,15 @@ export default function AuthProvider({ children }) {
     
     localStorage.setItem('si_rpl_mock_session', JSON.stringify({ user: mockUser, profile: mockProfile }))
     setLoading(false)
+  }
+
+  // ── Email Sign In (Supabase) ───────────────────────────────────
+  async function signInWithEmail(email, password) {
+    if (isMock) {
+      toast.error('Aplikasi sedang berjalan dalam MODE MOCK. Gunakan Simulasi Login Peran.')
+      return { error: new Error('Mock mode active') }
+    }
+    return supabase.auth.signInWithPassword({ email, password })
   }
 
   // ── Google Sign In (Supabase) ─────────────────────────────────
@@ -246,6 +262,7 @@ export default function AuthProvider({ children }) {
       loading,
       signInMock,
       signInWithGoogle,
+      signInWithEmail,
       signOut,
       switchMockRole,
       updateProfile,
