@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { dbPengajuan, dbMK, dbRekognisi, getDocumentProgress } from '../../lib/db'
+import SearchableSelect from '../../components/SearchableSelect'
 import { Award, Brain, RefreshCw, FileText, CheckCircle, Save, Plus, Trash2, Briefcase } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../contexts/AuthContext'
@@ -2005,27 +2006,16 @@ export default function KaprodiDashboard() {
 
                               {/* Target MK Kurikulum */}
                               <td>
-                                <select
+                                <SearchableSelect
+                                  options={curriculumMK.map(mk => ({
+                                    value: mk.id,
+                                    label: `${mk.kode_mk} - ${mk.nama_mk} (${mk.sks} SKS, ${mk.jenis.toUpperCase()})`
+                                  }))}
                                   value={row.mkTujuanId}
+                                  onChange={(val) => updateRow(row.id, 'mkTujuanId', val)}
+                                  placeholder="-- Pilih MK Kurikulum --"
                                   disabled={!canEvaluate}
-                                  onChange={(e) => updateRow(row.id, 'mkTujuanId', e.target.value)}
-                                  style={{
-                                    width: '100%',
-                                    padding: '6px 10px',
-                                    borderRadius: '6px',
-                                    border: '1px solid var(--gray-200)',
-                                    background: 'var(--surface)',
-                                    fontSize: '13px',
-                                    outline: 'none'
-                                  }}
-                                >
-                                  <option value="">-- Pilih MK Kurikulum --</option>
-                                  {curriculumMK.map(mk => (
-                                    <option key={mk.id} value={mk.id}>
-                                      {mk.kode_mk} - {mk.nama_mk} ({mk.sks} SKS, {mk.jenis.toUpperCase()})
-                                    </option>
-                                  ))}
-                                </select>
+                                />
                               </td>
 
                               {/* Aksi Hapus */}

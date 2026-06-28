@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { dbPengajuan, dbMK, dbRekognisi, dbPenetapan, getDocumentProgress } from '../../lib/db'
+import SearchableSelect from '../../components/SearchableSelect'
 import { GraduationCap, FileText, CheckCircle, Calculator, Info, Plus, Trash2, Award, Briefcase, RotateCw } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { generateMockDocSrcDoc } from '../../lib/mockDoc'
@@ -732,25 +733,17 @@ export default function AsessorDashboard() {
                               </td>
                               <td>
                                 {row.isCertified && (selectedItem.status === 'recognized_kaprodi' || selectedItem.status === 'returned_admin') ? (
-                                  <select
-                                    value={row.mkTujuanId}
-                                    onChange={(e) => updateRowField(row.id, 'mkTujuanId', e.target.value)}
-                                    onClick={(e) => e.stopPropagation()}
-                                    style={{
-                                      width: '100%',
-                                      padding: '6px 10px',
-                                      borderRadius: '6px',
-                                      border: '1px solid var(--gray-200)',
-                                      background: 'var(--surface)',
-                                      fontSize: '12.5px',
-                                      outline: 'none'
-                                    }}
-                                  >
-                                    <option value="">-- Pilih MK Kurikulum --</option>
-                                    {curriculumMK.map(mk => (
-                                      <option key={mk.id} value={mk.id}>{mk.kode_mk} - {mk.nama_mk} ({mk.sks} SKS)</option>
-                                    ))}
-                                  </select>
+                                  <div onClick={(e) => e.stopPropagation()}>
+                                    <SearchableSelect
+                                      options={curriculumMK.map(mk => ({
+                                        value: mk.id,
+                                        label: `${mk.kode_mk} - ${mk.nama_mk} (${mk.sks} SKS)`
+                                      }))}
+                                      value={row.mkTujuanId}
+                                      onChange={(val) => updateRowField(row.id, 'mkTujuanId', val)}
+                                      placeholder="-- Pilih MK Kurikulum --"
+                                    />
+                                  </div>
                                 ) : (
                                   <span style={{ fontSize: 12.5, fontWeight: 500 }}>
                                     {curriculumMK.find(mk => mk.id === row.mkTujuanId)?.nama_mk || 'Belum Dipetakan'}
