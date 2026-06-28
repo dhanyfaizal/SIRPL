@@ -123,7 +123,7 @@ export default function AppRouter() {
           
           {/* Profile & Settings */}
           <Route path="/profile" element={<ProfilePage />} />
-          <Route path="/feedback" element={<ProtectedRoute allowedRoles={['admin', 'baak', 'pmb']}><FeedbackPage /></ProtectedRoute>} />
+          <Route path="/feedback" element={<ProtectedRoute allowedRoles={['admin', 'baak', 'pmb', 'eksekutif']}><FeedbackPage /></ProtectedRoute>} />
           <Route path="/settings/ai" element={<ProtectedRoute allowedRoles={['admin']}><PlaceholderPage title="Pengaturan AI Key" /></ProtectedRoute>} />
         </Route>
 

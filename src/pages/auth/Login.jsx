@@ -92,6 +92,7 @@ export default function Login() {
     else if (roleVal === 'kaprodi_ka') setMockName('Ka. Prodi KA')
     else if (roleVal === 'asessor') setMockName('Asessor RPL')
     else if (roleVal === 'admin') setMockName('Admin SIRPL')
+    else if (roleVal === 'eksekutif') setMockName('Rektor STIKOM')
   }
 
   async function handleMockLogin() {
@@ -210,6 +211,7 @@ export default function Login() {
                   <option value="kaprodi_ka">Ka. Prodi KA</option>
                   <option value="asessor">Asessor RPL</option>
                   <option value="admin">Admin SIRPL</option>
+                  <option value="eksekutif">Pimpinan (Rektor/Dekan)</option>
                 </select>
               </div>
 

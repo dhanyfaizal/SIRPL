@@ -5,6 +5,7 @@ import KaprodiDashboard from './KaprodiDashboard'
 import AsessorDashboard from './AsessorDashboard'
 import AdminDashboard from './AdminDashboard'
 import PmbDashboard from './PmbDashboard'
+import ExecutiveDashboard from './ExecutiveDashboard'
 
 export default function DashboardRouter() {
   const { role, loading } = useAuth()
@@ -24,6 +25,7 @@ export default function DashboardRouter() {
   if (role?.startsWith('kaprodi_')) return <KaprodiDashboard />
   if (role === 'asessor') return <AsessorDashboard />
   if (role === 'admin') return <AdminDashboard />
+  if (role === 'eksekutif') return <ExecutiveDashboard />
 
   return (
     <div className="card">

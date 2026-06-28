@@ -147,6 +147,7 @@ img { display: block; max-width: 100%; }
 .badge-amber  { background: #fef3c7; color: #92400e; }
 .badge-red    { background: #fee2e2; color: #991b1b; }
 .badge-slate  { background: var(--gray-100); color: var(--gray-600); }
+.badge-purple { background: #f3e8ff; color: #6b21a8; }
 
 /* ── Input ──────────────────────────────────────────────────── */
 .input {
@@ -358,6 +359,7 @@ html { transition: background .25s, color .25s; }
 [data-theme="dark"] .badge-amber   { background: #78350f; color: #fde68a; }
 [data-theme="dark"] .badge-red     { background: #7f1d1d; color: #fca5a5; }
 [data-theme="dark"] .badge-slate   { background: #0f172a; color: #94a3b8; }
+[data-theme="dark"] .badge-purple  { background: #3b0764; color: #d8b4fe; }
 [data-theme="dark"] .modal         { background: #1e293b; }
 [data-theme="dark"] .modal-header  { border-color: #334155; }
 [data-theme="dark"] .modal-title   { color: #f1f5f9; }

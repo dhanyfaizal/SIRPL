@@ -43,38 +43,158 @@ const getOcrExtractedCourses = (prodiName) => {
   ]
 }
 
-// Helper: Similarity score between source and curriculum course name
+// Helper: Similarity score between source and curriculum course name (Smart NLP Semantic Auto-Matching)
 const findBestMatch = (sourceName, curriculumList) => {
   if (!curriculumList || curriculumList.length === 0) return { bestMatch: null, confidence: 0 }
+
+  // 1. Kamus Sinonim & Terjemahan (Bahasa Inggris <-> Indonesia, Singkatan <-> Kepanjangan)
+  const synonyms = {
+    'pbo': ['pemrograman berorientasi objek', 'pbo', 'oop', 'object oriented programming', 'object-oriented programming'],
+    'oop': ['pemrograman berorientasi objek', 'pbo', 'oop', 'object oriented programming', 'object-oriented programming'],
+    'basdat': ['basis data', 'database', 'basdat', 'sistem basis data'],
+    'database': ['basis data', 'database', 'basdat', 'sistem basis data'],
+    'db': ['basis data', 'database', 'basdat', 'db'],
+    'alpro': ['algoritma pemrograman', 'algoritma dan pemrograman', 'dasar pemrograman', 'dasar dasar pemrograman'],
+    'jarkom': ['jaringan komputer', 'computer network', 'jarkom'],
+    'rpl': ['rekayasa perangkat lunak', 'software engineering', 'rpl'],
+    'web': ['pemrograman web', 'web programming', 'web development'],
+    'ti': ['teknologi informasi', 'information technology', 'it'],
+    'it': ['teknologi informasi', 'information technology', 'ti'],
+    'si': ['sistem informasi', 'information systems', 'pengantar sistem informasi'],
+    'so': ['sistem operasi', 'operating system', 'operating systems'],
+    'imk': ['interaksi manusia komputer', 'human computer interaction', 'hci'],
+    'hci': ['interaksi manusia komputer', 'human computer interaction', 'imk'],
+    'pkn': ['kewarganegaraan', 'pendidikan kewarganegaraan', 'pkn'],
+    'pancasila': ['pancasila', 'pendidikan pancasila'],
+    'kewirausahaan': ['kewirausahaan', 'entrepreneurship'],
+    'etika': ['etika profesi', 'professional ethics', 'etika profesi it']
+  }
+
+  // 2. Stopwords (Kata hubung yang diabaikan dalam pembobotan utama)
+  const stopwords = ['dan', 'atau', 'dalam', 'pada', 'untuk', 'dengan', '&', 'dan/atau']
+  
+  // 3. Modifiers/Noise words yang diberi bobot lebih rendah agar tidak membiaskan pencocokan utama
+  const modifiers = ['dasar', 'dasar-dasar', 'pengantar', 'teori', 'praktikum', 'praktik', 'lanjut', 'lanjutan', 'i', 'ii', 'iii', '1', '2', '3']
+
+  const clean = (str) => {
+    return str.toLowerCase()
+      .replace(/[-_]/g, ' ')
+      .replace(/[^a-z0-9\s]/g, '')
+      .trim()
+  }
+
+  const getTokens = (str) => {
+    return clean(str).split(/\s+/).filter(Boolean)
+  }
+
+  // Levenshtein Distance untuk toleransi typo (fuzzy matching)
+  const levenshtein = (a, b) => {
+    const tmp = []
+    let i, j, alen = a.length, blen = b.length
+    if (alen === 0) return blen
+    if (blen === 0) return alen
+    for (i = 0; i <= alen; i++) tmp[i] = [i]
+    for (j = 0; j <= blen; j++) tmp[0][j] = j
+    for (i = 1; i <= alen; i++) {
+      for (j = 1; j <= blen; j++) {
+        tmp[i][j] = Math.min(
+          tmp[i - 1][j] + 1,
+          tmp[i][j - 1] + 1,
+          tmp[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1)
+        )
+      }
+    }
+    return tmp[alen][blen]
+  }
+
+  const isFuzzyMatch = (w1, w2) => {
+    if (w1 === w2) return true
+    if (w1.length < 4 || w2.length < 4) return false
+    const distance = levenshtein(w1, w2)
+    const maxTolerated = w1.length > 6 ? 2 : 1
+    return distance <= maxTolerated
+  }
+
+  const sourceClean = clean(sourceName)
+  const tokensSource = getTokens(sourceName)
 
   let bestMatch = null
   let maxScore = 0
 
-  const clean = (str) => str.toLowerCase().replace(/[^a-z0-9]/g, ' ')
-  const wordsSource = clean(sourceName).split(/\s+/).filter(Boolean)
-
   for (const mk of curriculumList) {
-    const wordsTarget = clean(mk.nama_mk).split(/\s+/).filter(Boolean)
+    const targetClean = clean(mk.nama_mk)
+    const tokensTarget = getTokens(mk.nama_mk)
 
-    // Hitung kemiripan kata kunci
-    let matches = 0
-    for (const w of wordsSource) {
-      if (wordsTarget.includes(w)) {
-        matches += 2
-      } else {
-        const partial = wordsTarget.find(tw => tw.includes(w) || w.includes(tw))
-        if (partial) matches += 1
+    // A. Cek kecocokan sinonim penuh secara frasa
+    let synonymMatch = false
+    for (const [key, list] of Object.entries(synonyms)) {
+      const sourceHasSynonym = list.some(syn => sourceClean.includes(syn))
+      const targetHasSynonym = list.some(syn => targetClean.includes(syn))
+      if (sourceHasSynonym && targetHasSynonym) {
+        synonymMatch = true
+        break
       }
     }
 
-    const score = matches / (wordsSource.length + wordsTarget.length)
-    if (score > maxScore) {
-      maxScore = score
+    // B. Hitung kesamaan token Jaccard Terbobot
+    let matchScore = 0
+    let matchCount = 0
+
+    const cleanTokensSource = tokensSource.filter(t => !stopwords.includes(t))
+    const cleanTokensTarget = tokensTarget.filter(t => !stopwords.includes(t))
+
+    for (const sToken of cleanTokensSource) {
+      let tokenMatched = false
+      
+      // Cek kecocokan langsung
+      for (const tToken of cleanTokensTarget) {
+        if (isFuzzyMatch(sToken, tToken)) {
+          const isModifier = modifiers.includes(sToken) || modifiers.includes(tToken)
+          matchScore += isModifier ? 1.0 : 2.5
+          tokenMatched = true
+          matchCount++
+          break
+        }
+      }
+
+      // Cek kecocokan via kamus sinonim jika tidak ada kecocokan langsung
+      if (!tokenMatched) {
+        for (const [key, list] of Object.entries(synonyms)) {
+          if (list.includes(sToken)) {
+            const hasMatch = cleanTokensTarget.some(t => list.some(syn => isFuzzyMatch(t, syn)))
+            if (hasMatch) {
+              matchScore += 2.0
+              matchCount++
+              break
+            }
+          }
+        }
+      }
+    }
+
+    // Hitung skor Jaccard normalisasi
+    const totalPossible = (cleanTokensSource.length + cleanTokensTarget.length) * 1.5
+    let finalScore = matchScore / (totalPossible || 1)
+
+    // Bonus skor jika ada sinonim kelompok yang cocok penuh
+    if (synonymMatch) {
+      finalScore += 0.35
+    }
+
+    finalScore = Math.min(1.0, finalScore)
+
+    if (finalScore > maxScore) {
+      maxScore = finalScore
       bestMatch = mk
     }
   }
 
   const confidence = Math.min(100, Math.round(maxScore * 100))
+  // Batas toleransi kelayakan minimal
+  if (confidence < 25) {
+    return { bestMatch: null, confidence: 0 }
+  }
+
   return { bestMatch, confidence }
 }
 

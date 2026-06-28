@@ -16,6 +16,7 @@ const ROLE_META = {
   baak: { label: 'BAAK Officer', color: 'badge-slate' },
   pmb: { label: 'PMB Officer', color: 'badge-emerald' },
   calon_rpl: { label: 'Pendaftar RPL', color: 'badge-amber' },
+  eksekutif: { label: 'Pimpinan (Rektor/Dekan)', color: 'badge-purple' },
 }
 
 function NavItem({ label, icon: Icon, to }) {
@@ -116,6 +117,15 @@ export default function Sidebar() {
             <div className="sidebar-section-label">Pengaturan Sistem</div>
             <NavItem label="Manajemen Kurikulum" icon={BookOpen} to="/curriculum" />
             <NavItem label="Manajemen Pengguna" icon={Shield} to="/users" />
+            <NavItem label="Ulasan & Kepuasan" icon={Star} to="/feedback" />
+          </>
+        )}
+
+        {/* Menu Eksekutif */}
+        {role === 'eksekutif' && (
+          <>
+            <div className="sidebar-section-label">Laporan Pimpinan</div>
+            <NavItem label="Ringkasan Eksekutif" icon={ClipboardCheck} to="/dashboard" />
             <NavItem label="Ulasan & Kepuasan" icon={Star} to="/feedback" />
           </>
         )}
