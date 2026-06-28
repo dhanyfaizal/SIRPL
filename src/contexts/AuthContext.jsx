@@ -38,7 +38,6 @@ export default function AuthProvider({ children }) {
           setUser(sessionObj.user)
           setProfile(sessionObj.profile)
           setRole(sessionObj.profile.role)
-          setLoading(false)
         } catch (e) {
           console.error('Failed to parse real session cache:', e)
         }
@@ -50,34 +49,59 @@ export default function AuthProvider({ children }) {
       return
     }
 
-    // 2. Jika bukan mock, gunakan Supabase Auth asli
+    // 2. Jika bukan mock, gunakan inisialisasi getSession() asinkron
     let active = true
+    let subscription = null
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+    async function initializeAuth() {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
         if (!active) return
 
         if (session?.user) {
           setUser(session.user)
-          try {
-            await syncProfile(session.user)
-          } catch (err) {
-            console.error('Error syncing profile during auth state change:', err)
-          }
+          await syncProfile(session.user)
         } else {
           setUser(null)
           setProfile(null)
           setRole(null)
           localStorage.removeItem('si_rpl_real_session')
         }
-
-        setLoading(false)
+      } catch (err) {
+        console.error('Error during auth initialization:', err)
+      } finally {
+        if (active) setLoading(false)
       }
-    )
+
+      if (active) {
+        const { data } = supabase.auth.onAuthStateChange(
+          async (event, session) => {
+            if (!active) return
+            
+            if (event === 'SIGNED_OUT') {
+              setUser(null)
+              setProfile(null)
+              setRole(null)
+              localStorage.removeItem('si_rpl_real_session')
+            } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+              if (session?.user) {
+                setUser(session.user)
+                await syncProfile(session.user)
+              }
+            }
+          }
+        )
+        subscription = data.subscription
+      }
+    }
+
+    initializeAuth()
 
     return () => {
       active = false
-      subscription.unsubscribe()
+      if (subscription) {
+        subscription.unsubscribe()
+      }
     }
   }, [])
 
