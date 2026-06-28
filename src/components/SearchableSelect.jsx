@@ -74,8 +74,8 @@ export default function SearchableSelect({ options, value, onChange, placeholder
         <div style={{
           position: 'absolute',
           top: '100%',
-          left: 0,
           right: 0,
+          minWidth: '320px',
           marginTop: '4px',
           background: 'var(--surface)',
           border: '1px solid var(--gray-200)',
@@ -86,7 +86,8 @@ export default function SearchableSelect({ options, value, onChange, placeholder
           display: 'flex',
           flexDirection: 'column',
           gap: '6px',
-          maxHeight: '260px'
+          maxHeight: '260px',
+          boxSizing: 'border-box'
         }}>
           {/* Search Input */}
           <input
@@ -137,9 +138,8 @@ export default function SearchableSelect({ options, value, onChange, placeholder
                     color: opt.value === value ? 'var(--indigo-600)' : 'var(--gray-700)',
                     background: opt.value === value ? 'var(--indigo-50)' : 'transparent',
                     transition: 'all 0.15s ease',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap'
+                    wordBreak: 'break-word',
+                    lineHeight: '1.4'
                   }}
                   onMouseEnter={e => {
                     if (opt.value !== value) e.currentTarget.style.background = 'var(--gray-50)'
