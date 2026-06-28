@@ -367,9 +367,20 @@ export default function ExecutiveDashboard() {
                               )}
                             </td>
                             <td>
-                              <button onClick={() => setSelectedItem(item)} className="btn btn-secondary btn-sm" style={{ gap: 4 }}>
-                                <Eye size={12} /> Detail
-                              </button>
+                              <div style={{ display: 'flex', gap: 6 }}>
+                                <button onClick={() => setSelectedItem(item)} className="btn btn-secondary btn-sm" style={{ gap: 4, padding: '4px 8px' }}>
+                                  <Eye size={12} /> Detail
+                                </button>
+                                {item.status === 'mapped_admin' && (
+                                  <button
+                                    onClick={() => window.open(`/report/${item.id}/print`, '_blank')}
+                                    className="btn btn-secondary btn-sm"
+                                    style={{ gap: 4, padding: '4px 8px', borderColor: '#10b981', color: '#059669' }}
+                                  >
+                                    🖨️ Cetak
+                                  </button>
+                                )}
+                              </div>
                             </td>
                           </tr>
                         )
@@ -504,7 +515,18 @@ export default function ExecutiveDashboard() {
               </div>
             </div>
             
-            <div className="card-footer" style={{ display: 'flex', justifyContent: 'flex-end', padding: '12px 24px', background: '#f8fafc', borderTop: '1px solid var(--gray-100)', borderRadius: '0 0 var(--radius-md) var(--radius-md)' }}>
+            <div className="card-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 24px', background: '#f8fafc', borderTop: '1px solid var(--gray-100)', borderRadius: '0 0 var(--radius-md) var(--radius-md)' }}>
+              <div>
+                {selectedItem.status === 'mapped_admin' && (
+                  <button
+                    onClick={() => window.open(`/report/${selectedItem.id}/print`, '_blank')}
+                    className="btn btn-primary btn-sm"
+                    style={{ gap: 6, display: 'flex', alignItems: 'center', background: '#10b981', borderColor: '#059669' }}
+                  >
+                    🖨️ Cetak Berkas Hasil RPL
+                  </button>
+                )}
+              </div>
               <button onClick={() => setSelectedItem(null)} className="btn btn-secondary">Tutup Ringkasan</button>
             </div>
           </div>
