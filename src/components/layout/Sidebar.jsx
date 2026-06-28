@@ -7,7 +7,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { useSidebar } from './AppLayout'
 
 const ROLE_META = {
-  admin: { label: 'Admin Akademik', color: 'badge-red' },
+  admin: { label: 'Admin SIRPL', color: 'badge-red' },
   asessor: { label: 'Asessor RPL', color: 'badge-indigo' },
   kaprodi_si: { label: 'Ka. Prodi SI', color: 'badge-indigo' },
   kaprodi_ti: { label: 'Ka. Prodi TI', color: 'badge-indigo' },

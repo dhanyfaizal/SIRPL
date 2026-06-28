@@ -4,7 +4,7 @@ import { User, Mail, Phone, Shield, Calendar, CheckCircle, Save } from 'lucide-r
 import toast from 'react-hot-toast'
 
 const ROLE_LABELS = {
-  admin: 'Admin Akademik',
+  admin: 'Admin SIRPL',
   asessor: 'Asessor RPL',
   kaprodi_si: 'Ka. Prodi Sistem Informasi',
   kaprodi_ti: 'Ka. Prodi Teknik Informatika',

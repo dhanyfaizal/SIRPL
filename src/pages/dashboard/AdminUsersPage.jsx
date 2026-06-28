@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { dbProfiles } from '../../lib/db'
 import { useAuth } from '../../contexts/AuthContext'
-import { Shield, Search, Check, X, UserCheck, ShieldAlert, RotateCw, Edit3 } from 'lucide-react'
+import { Shield, Search, Check, X, UserCheck, ShieldAlert, RotateCw, Edit3, GraduationCap, Users, Award, Settings } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const ROLES_LIST = [
@@ -13,7 +13,7 @@ const ROLES_LIST = [
   { value: 'kaprodi_dkv', label: 'Ka. Prodi DKV' },
   { value: 'kaprodi_ka', label: 'Ka. Prodi KA' },
   { value: 'asessor', label: 'Asessor' },
-  { value: 'admin', label: 'Admin' }
+  { value: 'admin', label: 'Admin SIRPL' }
 ]
 
 export default function AdminUsersPage() {
@@ -21,7 +21,7 @@ export default function AdminUsersPage() {
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
-  const [activeTab, setActiveTab] = useState('staff') // 'staff' or 'calon'
+  const [activeTab, setActiveTab] = useState('calon') // Default to 'calon'
   const [refreshing, setRefreshing] = useState(false)
 
   const [editingUserId, setEditingUserId] = useState(null)
@@ -109,16 +109,37 @@ export default function AdminUsersPage() {
     }
   }
 
-  const staffCount = users.filter(u => u.role !== 'calon_rpl').length
   const calonCount = users.filter(u => u.role === 'calon_rpl').length
+  const pmbCount = users.filter(u => u.role === 'pmb').length
+  const baakCount = users.filter(u => u.role === 'baak').length
+  const kaprodiCount = users.filter(u => u.role?.startsWith('kaprodi_')).length
+  const asessorCount = users.filter(u => u.role === 'asessor').length
+  const adminCount = users.filter(u => u.role === 'admin').length
 
-  const tabUsers = users.filter(u => activeTab === 'calon' ? u.role === 'calon_rpl' : u.role !== 'calon_rpl')
+  const tabUsers = users.filter(u => {
+    if (activeTab === 'calon') return u.role === 'calon_rpl'
+    if (activeTab === 'pmb') return u.role === 'pmb'
+    if (activeTab === 'baak') return u.role === 'baak'
+    if (activeTab === 'kaprodi') return u.role?.startsWith('kaprodi_')
+    if (activeTab === 'asessor') return u.role === 'asessor'
+    if (activeTab === 'admin') return u.role === 'admin'
+    return false
+  })
   const tabPendingCount = tabUsers.filter(u => !u.is_verified).length
 
   const filteredUsers = tabUsers.filter(u => 
     u.nama_lengkap?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     u.email?.toLowerCase().includes(searchTerm.toLowerCase())
   )
+
+  const TABS = [
+    { id: 'calon', label: 'Calon Mahasiswa RPL', count: calonCount, icon: UserCheck },
+    { id: 'pmb', label: 'PMB Officer', count: pmbCount, icon: Users },
+    { id: 'baak', label: 'BAAK', count: baakCount, icon: Shield },
+    { id: 'kaprodi', label: 'Ka. Prodi', count: kaprodiCount, icon: GraduationCap },
+    { id: 'asessor', label: 'Asessor', count: asessorCount, icon: Award },
+    { id: 'admin', label: 'Admin SIRPL', count: adminCount, icon: Settings }
+  ]
 
   if (loading) {
     return (
@@ -147,67 +168,54 @@ export default function AdminUsersPage() {
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: 8, marginBottom: 16, borderBottom: '1px solid var(--gray-200)', paddingBottom: 0 }}>
-        <button
-          onClick={() => setActiveTab('staff')}
-          style={{
-            padding: '10px 16px',
-            background: 'none',
-            border: 'none',
-            borderBottom: activeTab === 'staff' ? '2px solid var(--indigo-600)' : '2px solid transparent',
-            color: activeTab === 'staff' ? 'var(--indigo-600)' : 'var(--gray-500)',
-            fontWeight: activeTab === 'staff' ? 700 : 500,
-            fontSize: 13.5,
-            cursor: 'pointer',
-            transition: 'all 0.15s ease',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6
-          }}
-        >
-          <Shield size={14} />
-          Staf & Pengelola
-          <span style={{
-            fontSize: 11,
-            background: activeTab === 'staff' ? 'var(--indigo-50)' : 'var(--gray-100)',
-            color: activeTab === 'staff' ? 'var(--indigo-600)' : 'var(--gray-500)',
-            padding: '2px 6px',
-            borderRadius: 10,
-            fontWeight: 600
-          }}>
-            {staffCount}
-          </span>
-        </button>
-        <button
-          onClick={() => setActiveTab('calon')}
-          style={{
-            padding: '10px 16px',
-            background: 'none',
-            border: 'none',
-            borderBottom: activeTab === 'calon' ? '2px solid var(--indigo-600)' : '2px solid transparent',
-            color: activeTab === 'calon' ? 'var(--indigo-600)' : 'var(--gray-500)',
-            fontWeight: activeTab === 'calon' ? 700 : 500,
-            fontSize: 13.5,
-            cursor: 'pointer',
-            transition: 'all 0.15s ease',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6
-          }}
-        >
-          <UserCheck size={14} />
-          Calon Mahasiswa RPL
-          <span style={{
-            fontSize: 11,
-            background: activeTab === 'calon' ? 'var(--indigo-50)' : 'var(--gray-100)',
-            color: activeTab === 'calon' ? 'var(--indigo-600)' : 'var(--gray-500)',
-            padding: '2px 6px',
-            borderRadius: 10,
-            fontWeight: 600
-          }}>
-            {calonCount}
-          </span>
-        </button>
+      <div style={{ 
+        display: 'flex', 
+        gap: 4, 
+        marginBottom: 16, 
+        borderBottom: '1px solid var(--gray-200)', 
+        paddingBottom: 0,
+        overflowX: 'auto',
+        WebkitOverflowScrolling: 'touch',
+        scrollbarWidth: 'none'
+      }}>
+        {TABS.map(tab => {
+          const isActive = activeTab === tab.id
+          const Icon = tab.icon
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              style={{
+                padding: '10px 16px',
+                background: 'none',
+                border: 'none',
+                borderBottom: isActive ? '2px solid var(--indigo-600)' : '2px solid transparent',
+                color: isActive ? 'var(--indigo-600)' : 'var(--gray-500)',
+                fontWeight: isActive ? 700 : 500,
+                fontSize: 13.5,
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                whiteSpace: 'nowrap'
+              }}
+            >
+              <Icon size={14} />
+              {tab.label}
+              <span style={{
+                fontSize: 11,
+                background: isActive ? 'var(--indigo-50)' : 'var(--gray-100)',
+                color: isActive ? 'var(--indigo-600)' : 'var(--gray-500)',
+                padding: '2px 6px',
+                borderRadius: 10,
+                fontWeight: 600
+              }}>
+                {tab.count}
+              </span>
+            </button>
+          )
+        })}
       </div>
 
       <div className="card">
@@ -333,7 +341,7 @@ export default function AdminUsersPage() {
                         <td>
                           <select
                             value={u.role}
-                            disabled={isSelf}
+                            disabled={isSelf || u.role === 'admin'}
                             onChange={(e) => handleRoleChange(u.id, e.target.value)}
                             style={{
                               padding: '5px 8px',
@@ -342,11 +350,11 @@ export default function AdminUsersPage() {
                               fontSize: 12.5,
                               width: '100%',
                               outline: 'none',
-                              background: isSelf ? 'var(--gray-50)' : 'var(--surface)',
-                              cursor: isSelf ? 'not-allowed' : 'pointer'
+                              background: (isSelf || u.role === 'admin') ? 'var(--gray-50)' : 'var(--surface)',
+                              cursor: (isSelf || u.role === 'admin') ? 'not-allowed' : 'pointer'
                             }}
                           >
-                            {ROLES_LIST.map(r => (
+                            {ROLES_LIST.filter(r => r.value !== 'admin' || u.role === 'admin').map(r => (
                               <option key={r.value} value={r.value}>{r.label}</option>
                             ))}
                           </select>

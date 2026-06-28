@@ -70,7 +70,7 @@ export default function Login() {
     else if (roleVal === 'kaprodi_dkv') setMockName('Ka. Prodi DKV')
     else if (roleVal === 'kaprodi_ka') setMockName('Ka. Prodi KA')
     else if (roleVal === 'asessor') setMockName('Asessor RPL')
-    else if (roleVal === 'admin') setMockName('Admin Akademik')
+    else if (roleVal === 'admin') setMockName('Admin SIRPL')
   }
 
   async function handleMockLogin() {
@@ -188,7 +188,7 @@ export default function Login() {
                   <option value="kaprodi_dkv">Ka. Prodi DKV</option>
                   <option value="kaprodi_ka">Ka. Prodi KA</option>
                   <option value="asessor">Asessor RPL</option>
-                  <option value="admin">Admin Akademik</option>
+                  <option value="admin">Admin SIRPL</option>
                 </select>
               </div>
 

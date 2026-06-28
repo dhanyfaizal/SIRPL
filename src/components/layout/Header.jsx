@@ -114,7 +114,7 @@ export default function Header() {
       if (newRole === 'kaprodi_dkv') label = 'Ka. Prodi DKV'
       if (newRole === 'kaprodi_ka') label = 'Ka. Prodi KA'
       if (newRole === 'asessor') label = 'Asessor RPL'
-      if (newRole === 'admin') label = 'Admin Akademik'
+      if (newRole === 'admin') label = 'Admin SIRPL'
 
       await switchMockRole(newRole)
       toast.success(`Role simulasi beralih ke: ${label}`)
@@ -325,7 +325,7 @@ export default function Header() {
                     <option value="kaprodi_dkv">Ka. Prodi DKV</option>
                     <option value="kaprodi_ka">Ka. Prodi KA</option>
                     <option value="asessor">Asessor RPL</option>
-                    <option value="admin">Admin Akademik</option>
+                    <option value="admin">Admin SIRPL</option>
                   </select>
                 </div>
               )}
