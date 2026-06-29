@@ -980,16 +980,23 @@ export default function AdminDashboard() {
                 <div className="input-group">
                   <label className="input-label">Biaya UKP per Semester (Rp)</label>
                   <div style={{ position: 'relative' }}>
-                    <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', fontWeight: 600, color: 'var(--gray-400)', fontSize: 12 }}>Rp</span>
-                    <input
-                      type="number"
-                      value={configUkp}
-                      onChange={(e) => setConfigUkp(Math.max(0, parseFloat(e.target.value) || 0))}
-                      placeholder="Contoh: 5400000"
-                      className="input"
-                      style={{ paddingLeft: 30 }}
-                      disabled={!isConfigEditing}
-                    />
+                    {isConfigEditing ? (
+                      <>
+                        <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', fontWeight: 600, color: 'var(--gray-400)', fontSize: 12 }}>Rp</span>
+                        <input
+                          type="number"
+                          value={configUkp}
+                          onChange={(e) => setConfigUkp(Math.max(0, parseFloat(e.target.value) || 0))}
+                          placeholder="Contoh: 5400000"
+                          className="input"
+                          style={{ paddingLeft: 30 }}
+                        />
+                      </>
+                    ) : (
+                      <div className="input" style={{ display: 'flex', alignItems: 'center', background: 'var(--gray-50)', color: 'var(--gray-700)', fontWeight: 600 }}>
+                        Rp {configUkp.toLocaleString('id-ID')}
+                      </div>
+                    )}
                   </div>
                   <span className="input-hint" style={{ color: 'var(--indigo-600)', fontWeight: 500 }}>
                     Setara dengan Rp{(configUkp / 6).toLocaleString('id-ID', { maximumFractionDigits: 0 })} / bulan
@@ -999,48 +1006,69 @@ export default function AdminDashboard() {
                 <div className="input-group">
                   <label className="input-label">Biaya Rekognisi per SKS (Rp)</label>
                   <div style={{ position: 'relative' }}>
-                    <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', fontWeight: 600, color: 'var(--gray-400)', fontSize: 12 }}>Rp</span>
-                    <input
-                      type="number"
-                      value={configRekognisi}
-                      onChange={(e) => setConfigRekognisi(Math.max(0, parseFloat(e.target.value) || 0))}
-                      placeholder="Contoh: 50000"
-                      className="input"
-                      style={{ paddingLeft: 30 }}
-                      disabled={!isConfigEditing}
-                    />
+                    {isConfigEditing ? (
+                      <>
+                        <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', fontWeight: 600, color: 'var(--gray-400)', fontSize: 12 }}>Rp</span>
+                        <input
+                          type="number"
+                          value={configRekognisi}
+                          onChange={(e) => setConfigRekognisi(Math.max(0, parseFloat(e.target.value) || 0))}
+                          placeholder="Contoh: 50000"
+                          className="input"
+                          style={{ paddingLeft: 30 }}
+                        />
+                      </>
+                    ) : (
+                      <div className="input" style={{ display: 'flex', alignItems: 'center', background: 'var(--gray-50)', color: 'var(--gray-700)', fontWeight: 600 }}>
+                        Rp {configRekognisi.toLocaleString('id-ID')}
+                      </div>
+                    )}
                   </div>
                 </div>
 
                 <div className="input-group">
                   <label className="input-label">Biaya MOOCs per Mata Kuliah (Rp)</label>
                   <div style={{ position: 'relative' }}>
-                    <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', fontWeight: 600, color: 'var(--gray-400)', fontSize: 12 }}>Rp</span>
-                    <input
-                      type="number"
-                      value={configMoocs}
-                      onChange={(e) => setConfigMoocs(Math.max(0, parseFloat(e.target.value) || 0))}
-                      placeholder="Contoh: 100000"
-                      className="input"
-                      style={{ paddingLeft: 30 }}
-                      disabled={!isConfigEditing}
-                    />
+                    {isConfigEditing ? (
+                      <>
+                        <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', fontWeight: 600, color: 'var(--gray-400)', fontSize: 12 }}>Rp</span>
+                        <input
+                          type="number"
+                          value={configMoocs}
+                          onChange={(e) => setConfigMoocs(Math.max(0, parseFloat(e.target.value) || 0))}
+                          placeholder="Contoh: 100000"
+                          className="input"
+                          style={{ paddingLeft: 30 }}
+                        />
+                      </>
+                    ) : (
+                      <div className="input" style={{ display: 'flex', alignItems: 'center', background: 'var(--gray-50)', color: 'var(--gray-700)', fontWeight: 600 }}>
+                        Rp {configMoocs.toLocaleString('id-ID')}
+                      </div>
+                    )}
                   </div>
                 </div>
 
                 <div className="input-group">
                   <label className="input-label">Biaya Pendukung (Rp)</label>
                   <div style={{ position: 'relative' }}>
-                    <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', fontWeight: 600, color: 'var(--gray-400)', fontSize: 12 }}>Rp</span>
-                    <input
-                      type="number"
-                      value={configPendukung}
-                      onChange={(e) => setConfigPendukung(Math.max(0, parseFloat(e.target.value) || 0))}
-                      placeholder="Contoh: 1000000"
-                      className="input"
-                      style={{ paddingLeft: 30 }}
-                      disabled={!isConfigEditing}
-                    />
+                    {isConfigEditing ? (
+                      <>
+                        <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', fontWeight: 600, color: 'var(--gray-400)', fontSize: 12 }}>Rp</span>
+                        <input
+                          type="number"
+                          value={configPendukung}
+                          onChange={(e) => setConfigPendukung(Math.max(0, parseFloat(e.target.value) || 0))}
+                          placeholder="Contoh: 1000000"
+                          className="input"
+                          style={{ paddingLeft: 30 }}
+                        />
+                      </>
+                    ) : (
+                      <div className="input" style={{ display: 'flex', alignItems: 'center', background: 'var(--gray-50)', color: 'var(--gray-700)', fontWeight: 600 }}>
+                        Rp {configPendukung.toLocaleString('id-ID')}
+                      </div>
+                    )}
                   </div>
                 </div>
 
