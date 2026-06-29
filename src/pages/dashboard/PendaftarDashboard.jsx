@@ -1152,12 +1152,22 @@ export default function PendaftarDashboard() {
                       {(() => {
                         const semCourses = (penetapan.rencana_studi || []).filter(c => (c.semester || 1) === candidateSemTab)
                         const semMoocs = semCourses.filter(c => c.jalur === 'asinkron').length
-                        const costUkp = 5400000
-                        const costRekognisi = candidateSemTab === 1 ? (penetapan.total_sks_diakui || 0) * 50000 : 0
-                        const costMoocs = semMoocs * 100000
+                        
+                        const savedUkp = parseFloat(localStorage.getItem('si_rpl_biaya_ukp_semester') || '5400000')
+                        const savedRekognisi = parseFloat(localStorage.getItem('si_rpl_biaya_rekognisi_sks') || '50000')
+                        const savedMoocs = parseFloat(localStorage.getItem('si_rpl_biaya_moocs_mk') || '100000')
+                        const savedPendukung = parseFloat(localStorage.getItem('si_rpl_biaya_pendukung') || '1000000')
+
+                        const costUkp = savedUkp
+                        const costRekognisi = candidateSemTab === 1 ? (penetapan.total_sks_diakui || 0) * savedRekognisi : 0
+                        const costMoocs = semMoocs * savedMoocs
                         const costPotongan = penetapan.potongan_biaya || 0
-                        const semTotalBeforeDiskon = costUkp + costRekognisi + costMoocs
-                        const semTotal = Math.max(0, semTotalBeforeDiskon - costPotongan)
+                        
+                        const costPendukung = candidateSemTab === 1 ? savedPendukung : 0
+                        const costPotonganPendukung = candidateSemTab === 1 ? (penetapan.potongan_biaya_pendukung || 0) : 0
+
+                        const semTotalBeforeDiskon = costUkp + costRekognisi + costMoocs + costPendukung
+                        const semTotal = Math.max(0, semTotalBeforeDiskon - costPotongan - costPotonganPendukung)
 
                         return (
                           <div style={{ background: 'var(--indigo-50)', padding: 16, borderRadius: 8, border: '1px solid var(--indigo-100)', display: 'flex', flexDirection: 'column', gap: 10, fontSize: 12.5 }}>
@@ -1174,7 +1184,7 @@ export default function PendaftarDashboard() {
                               <div>
                                 <span style={{ fontWeight: 600, color: 'var(--gray-700)' }}>Biaya Rekognisi SKS</span>
                                 <span style={{ display: 'block', fontSize: 10.5, color: 'var(--gray-500)', marginTop: 2 }}>
-                                  {candidateSemTab === 1 ? `Rp50.000 x ${penetapan.total_sks_diakui || 0} SKS diakui` : 'Hanya dibebankan di Semester 1'}
+                                  {candidateSemTab === 1 ? `Rp${savedRekognisi.toLocaleString('id-ID')} x ${penetapan.total_sks_diakui || 0} SKS diakui` : 'Hanya dibebankan di Semester 1'}
                                 </span>
                               </div>
                               <span style={{ fontWeight: 700, color: 'var(--gray-800)' }}>Rp{costRekognisi.toLocaleString('id-ID')}</span>
@@ -1184,10 +1194,20 @@ export default function PendaftarDashboard() {
                               <div>
                                 <span style={{ fontWeight: 600, color: 'var(--gray-700)' }}>Biaya Kelas MOOCs</span>
                                 <span style={{ display: 'block', fontSize: 10.5, color: 'var(--gray-500)', marginTop: 2 }}>
-                                  Rp100.000 x {semMoocs} mata kuliah asinkron
+                                  Rp{savedMoocs.toLocaleString('id-ID')} x {semMoocs} mata kuliah asinkron
                                 </span>
                               </div>
                               <span style={{ fontWeight: 700, color: 'var(--gray-800)' }}>Rp{costMoocs.toLocaleString('id-ID')}</span>
+                            </div>
+
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderTop: '1px solid var(--indigo-100)', paddingTop: 8 }}>
+                              <div>
+                                <span style={{ fontWeight: 600, color: 'var(--gray-700)' }}>Biaya Pendukung</span>
+                                <span style={{ display: 'block', fontSize: 10.5, color: 'var(--gray-500)', marginTop: 2 }}>
+                                  {candidateSemTab === 1 ? 'Biaya penunjang perkuliahan (Sekali Bayar)' : 'Hanya dibebankan di Semester 1'}
+                                </span>
+                              </div>
+                              <span style={{ fontWeight: 700, color: 'var(--gray-800)' }}>Rp{costPendukung.toLocaleString('id-ID')}</span>
                             </div>
 
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderTop: '1px solid var(--indigo-100)', paddingTop: 8, color: costPotongan > 0 ? 'var(--danger)' : 'var(--gray-700)' }}>
@@ -1199,6 +1219,18 @@ export default function PendaftarDashboard() {
                               </div>
                               <span style={{ fontWeight: 700 }}>
                                 {costPotongan > 0 ? `- Rp${costPotongan.toLocaleString('id-ID')}` : 'Rp0'}
+                              </span>
+                            </div>
+
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderTop: '1px solid var(--indigo-100)', paddingTop: 8, color: costPotonganPendukung > 0 ? 'var(--danger)' : 'var(--gray-700)' }}>
+                              <div>
+                                <span style={{ fontWeight: costPotonganPendukung > 0 ? 700 : 600 }}>Potongan / Diskon Biaya Pendukung</span>
+                                <span style={{ display: 'block', fontSize: 10.5, color: 'var(--gray-500)', marginTop: 2 }}>
+                                  Catatan: {penetapan.catatan_potongan_pendukung || '-'}
+                                </span>
+                              </div>
+                              <span style={{ fontWeight: 700 }}>
+                                {costPotonganPendukung > 0 ? `- Rp${costPotonganPendukung.toLocaleString('id-ID')}` : 'Rp0'}
                               </span>
                             </div>
 

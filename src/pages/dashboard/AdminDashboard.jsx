@@ -131,6 +131,14 @@ export default function AdminDashboard() {
   // Admin Discount inputs
   const [potonganBiaya, setPotonganBiaya] = useState(0)
   const [catatanPotongan, setCatatanPotongan] = useState('')
+  const [potonganBiayaPendukung, setPotonganBiayaPendukung] = useState(0)
+  const [catatanPotonganPendukung, setCatatanPotonganPendukung] = useState('')
+
+  // Configurations for fee components
+  const [configUkp, setConfigUkp] = useState(5400000)
+  const [configRekognisi, setConfigRekognisi] = useState(50000)
+  const [configMoocs, setConfigMoocs] = useState(100000)
+  const [configPendukung, setConfigPendukung] = useState(1000000)
 
   // Rencana Studi Mapped state
   // Structure: { mkId, kode, nama, sks, jenis, jalur: 'asinkron' | 'sinkron', semester: 1 | 2 | 3 }
@@ -322,24 +330,56 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     loadSubmissions()
-    // Load max limit settings
-    const saved = localStorage.getItem('si_rpl_max_recognition_limit')
-    if (saved) {
-      setMaxLimit(saved)
-    } else {
+    // Load config settings
+    const savedLimit = localStorage.getItem('si_rpl_max_recognition_limit')
+    if (savedLimit) setMaxLimit(savedLimit)
+    else {
       localStorage.setItem('si_rpl_max_recognition_limit', '70')
       setMaxLimit('70')
     }
+
+    const savedUkp = localStorage.getItem('si_rpl_biaya_ukp_semester')
+    if (savedUkp) setConfigUkp(parseFloat(savedUkp))
+    else {
+      localStorage.setItem('si_rpl_biaya_ukp_semester', '5400000')
+      setConfigUkp(5400000)
+    }
+
+    const savedRekognisi = localStorage.getItem('si_rpl_biaya_rekognisi_sks')
+    if (savedRekognisi) setConfigRekognisi(parseFloat(savedRekognisi))
+    else {
+      localStorage.setItem('si_rpl_biaya_rekognisi_sks', '50000')
+      setConfigRekognisi(50000)
+    }
+
+    const savedMoocs = localStorage.getItem('si_rpl_biaya_moocs_mk')
+    if (savedMoocs) setConfigMoocs(parseFloat(savedMoocs))
+    else {
+      localStorage.setItem('si_rpl_biaya_moocs_mk', '100000')
+      setConfigMoocs(100000)
+    }
+
+    const savedPendukung = localStorage.getItem('si_rpl_biaya_pendukung')
+    if (savedPendukung) setConfigPendukung(parseFloat(savedPendukung))
+    else {
+      localStorage.setItem('si_rpl_biaya_pendukung', '1000000')
+      setConfigPendukung(1000000)
+    }
   }, [])
 
-  const handleSaveMaxLimit = () => {
-    const parsed = parseFloat(maxLimit)
-    if (isNaN(parsed) || parsed < 0 || parsed > 100) {
+  const handleSaveConfig = () => {
+    const parsedLimit = parseFloat(maxLimit)
+    if (isNaN(parsedLimit) || parsedLimit < 0 || parsedLimit > 100) {
       toast.error('Batas maksimal harus berupa angka antara 0 hingga 100!')
       return
     }
-    localStorage.setItem('si_rpl_max_recognition_limit', parsed.toString())
-    toast.success(`Batas maksimal rekognisi berhasil diatur ke ${parsed}%!`)
+    localStorage.setItem('si_rpl_max_recognition_limit', parsedLimit.toString())
+    localStorage.setItem('si_rpl_biaya_ukp_semester', configUkp.toString())
+    localStorage.setItem('si_rpl_biaya_rekognisi_sks', configRekognisi.toString())
+    localStorage.setItem('si_rpl_biaya_moocs_mk', configMoocs.toString())
+    localStorage.setItem('si_rpl_biaya_pendukung', configPendukung.toString())
+    
+    toast.success('Konfigurasi sistem & biaya studi berhasil disimpan!')
   }
 
   const loadPenetapanInitial = async (pengajuanId, prodiId) => {
@@ -363,6 +403,8 @@ export default function AdminDashboard() {
         setBiayaAsessor(parseFloat(penData.biaya_total) || 0)
         setPotonganBiaya(parseFloat(penData.potongan_biaya) || 0)
         setCatatanPotongan(penData.catatan_potongan || '')
+        setPotonganBiayaPendukung(parseFloat(penData.potongan_biaya_pendukung) || 0)
+        setCatatanPotonganPendukung(penData.catatan_potongan_pendukung || '')
         
         // If rencana_studi is already saved, use it!
         if (penData.rencana_studi && penData.rencana_studi.length > 0) {
@@ -376,6 +418,8 @@ export default function AdminDashboard() {
         setBiayaAsessor(0)
         setPotonganBiaya(0)
         setCatatanPotongan('')
+        setPotonganBiayaPendukung(0)
+        setCatatanPotonganPendukung('')
       }
 
       // 4. Map sisa mata kuliah ke Jalur (MOOCs/Tatap Muka)
@@ -436,12 +480,13 @@ export default function AdminDashboard() {
   }
 
   // Dynamic cost calculations based on user requirements
-  const biayaUkp = 4 * 5400000 // UKP 4 semesters (Rp5.400.000 per semester)
-  const biayaRekognisi = totalSksDiakui * 50000
+  const biayaUkp = 4 * configUkp // UKP 4 semesters
+  const biayaRekognisi = totalSksDiakui * configRekognisi
   const totalMoocs = mappedCourses.filter(c => c.jalur === 'asinkron').length
-  const biayaMoocs = totalMoocs * 100000
-  const biayaTotalSebelumPotongan = biayaUkp + biayaRekognisi + biayaMoocs
-  const finalBiayaTotal = Math.max(0, biayaTotalSebelumPotongan - (4 * potonganBiaya))
+  const biayaMoocs = totalMoocs * configMoocs
+  const biayaPendukung = configPendukung
+  const biayaTotalSebelumPotongan = biayaUkp + biayaRekognisi + biayaMoocs + biayaPendukung
+  const finalBiayaTotal = Math.max(0, biayaTotalSebelumPotongan - (4 * potonganBiaya) - potonganBiayaPendukung)
 
   const handleFinalize = async () => {
     if (mappedCourses.length > 0) {
@@ -461,6 +506,8 @@ export default function AdminDashboard() {
         biaya_total: finalBiayaTotal,
         potongan_biaya: parseFloat(potonganBiaya) || 0,
         catatan_potongan: catatanPotongan,
+        potongan_biaya_pendukung: parseFloat(potonganBiayaPendukung) || 0,
+        catatan_potongan_pendukung: catatanPotonganPendukung,
         rencana_studi: mappedCourses // Simpan mapping jalur matkul
       }
 
@@ -886,7 +933,7 @@ export default function AdminDashboard() {
               <div className="card-header">
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--indigo-600)' }}>
                   <Settings size={18} />
-                  <h3 style={{ fontSize: 13, fontWeight: 700 }}>Konfigurasi Batas Rekognisi</h3>
+                  <h3 style={{ fontSize: 13, fontWeight: 700 }}>Konfigurasi Sistem & Biaya</h3>
                 </div>
               </div>
               <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -904,14 +951,78 @@ export default function AdminDashboard() {
                     />
                     <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', fontWeight: 600, color: 'var(--gray-400)', fontSize: 13 }}>%</span>
                   </div>
-                  <span className="input-hint">Pemberitahuan peringatan akan muncul di dashboard Asessor jika persentase SKS diakui melebihi batas ini.</span>
+                  <span className="input-hint">Pemberitahuan peringatan di dashboard Asessor jika rekognisi melebihi batas ini.</span>
                 </div>
+
+                <div className="input-group">
+                  <label className="input-label">Biaya UKP per Semester (Rp)</label>
+                  <div style={{ position: 'relative' }}>
+                    <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', fontWeight: 600, color: 'var(--gray-400)', fontSize: 12 }}>Rp</span>
+                    <input
+                      type="number"
+                      value={configUkp}
+                      onChange={(e) => setConfigUkp(Math.max(0, parseFloat(e.target.value) || 0))}
+                      placeholder="Contoh: 5400000"
+                      className="input"
+                      style={{ paddingLeft: 30 }}
+                    />
+                  </div>
+                  <span className="input-hint" style={{ color: 'var(--indigo-600)', fontWeight: 500 }}>
+                    Setara dengan Rp{(configUkp / 6).toLocaleString('id-ID', { maximumFractionDigits: 0 })} / bulan
+                  </span>
+                </div>
+
+                <div className="input-group">
+                  <label className="input-label">Biaya Rekognisi per SKS (Rp)</label>
+                  <div style={{ position: 'relative' }}>
+                    <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', fontWeight: 600, color: 'var(--gray-400)', fontSize: 12 }}>Rp</span>
+                    <input
+                      type="number"
+                      value={configRekognisi}
+                      onChange={(e) => setConfigRekognisi(Math.max(0, parseFloat(e.target.value) || 0))}
+                      placeholder="Contoh: 50000"
+                      className="input"
+                      style={{ paddingLeft: 30 }}
+                    />
+                  </div>
+                </div>
+
+                <div className="input-group">
+                  <label className="input-label">Biaya MOOCs per Mata Kuliah (Rp)</label>
+                  <div style={{ position: 'relative' }}>
+                    <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', fontWeight: 600, color: 'var(--gray-400)', fontSize: 12 }}>Rp</span>
+                    <input
+                      type="number"
+                      value={configMoocs}
+                      onChange={(e) => setConfigMoocs(Math.max(0, parseFloat(e.target.value) || 0))}
+                      placeholder="Contoh: 100000"
+                      className="input"
+                      style={{ paddingLeft: 30 }}
+                    />
+                  </div>
+                </div>
+
+                <div className="input-group">
+                  <label className="input-label">Biaya Pendukung (Rp)</label>
+                  <div style={{ position: 'relative' }}>
+                    <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', fontWeight: 600, color: 'var(--gray-400)', fontSize: 12 }}>Rp</span>
+                    <input
+                      type="number"
+                      value={configPendukung}
+                      onChange={(e) => setConfigPendukung(Math.max(0, parseFloat(e.target.value) || 0))}
+                      placeholder="Contoh: 1000000"
+                      className="input"
+                      style={{ paddingLeft: 30 }}
+                    />
+                  </div>
+                </div>
+
                 <button
-                  onClick={handleSaveMaxLimit}
+                  onClick={handleSaveConfig}
                   className="btn btn-primary"
                   style={{ width: '100%', justifyContent: 'center', fontWeight: 600 }}
                 >
-                  Simpan Batas
+                  Simpan Konfigurasi
                 </button>
               </div>
             </div>
@@ -1215,7 +1326,7 @@ export default function AdminDashboard() {
                         <strong>Rp{biayaUkp.toLocaleString('id-ID')}</strong>
                       </div>
                       <span style={{ fontSize: 11, color: 'var(--gray-400)', marginTop: -2 }}>
-                        Rp5.400.000,00 per semester (Total Rp21.600.000,00)
+                        Rp{configUkp.toLocaleString('id-ID')} per semester (Rp{(configUkp / 6).toLocaleString('id-ID', { maximumFractionDigits: 0 })} per bulan) (Total Rp{biayaUkp.toLocaleString('id-ID')})
                       </span>
                     </div>
 
@@ -1225,7 +1336,7 @@ export default function AdminDashboard() {
                         <strong>Rp{biayaRekognisi.toLocaleString('id-ID')}</strong>
                       </div>
                       <span style={{ fontSize: 11, color: 'var(--gray-400)', marginTop: -2 }}>
-                        Rp50.000,00 per SKS diakui
+                        Rp{configRekognisi.toLocaleString('id-ID')} per SKS diakui
                       </span>
                     </div>
 
@@ -1235,7 +1346,17 @@ export default function AdminDashboard() {
                         <strong>Rp{biayaMoocs.toLocaleString('id-ID')}</strong>
                       </div>
                       <span style={{ fontSize: 11, color: 'var(--gray-400)', marginTop: -2 }}>
-                        Rp100.000,00 per mata kuliah sisa MOOCs (Asinkron)
+                        Rp{configMoocs.toLocaleString('id-ID')} per mata kuliah sisa MOOCs (Asinkron)
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: 'var(--gray-500)' }}>Biaya Pendukung:</span>
+                        <strong>Rp{biayaPendukung.toLocaleString('id-ID')}</strong>
+                      </div>
+                      <span style={{ fontSize: 11, color: 'var(--gray-400)', marginTop: -2 }}>
+                        Biaya penunjang perkuliahan
                       </span>
                     </div>
 
@@ -1243,10 +1364,24 @@ export default function AdminDashboard() {
                       <span style={{ color: 'var(--gray-700)' }}>Total Sebelum Diskon:</span>
                       <strong>Rp{biayaTotalSebelumPotongan.toLocaleString('id-ID')}</strong>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', color: potonganBiaya > 0 ? 'var(--danger)' : 'var(--gray-500)', fontWeight: potonganBiaya > 0 ? 600 : 500, fontSize: 12.5, marginTop: 2 }}>
-                      <span>Total Diskon (4 Semester):</span>
-                      <span>{potonganBiaya > 0 ? `- Rp${(4 * potonganBiaya).toLocaleString('id-ID')}` : 'Rp0'}</span>
-                    </div>
+                    {potonganBiaya > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--danger)', fontWeight: 600, fontSize: 12.5, marginTop: 2 }}>
+                        <span>Diskon UKP (4 Semester):</span>
+                        <span>- Rp{(4 * potonganBiaya).toLocaleString('id-ID')}</span>
+                      </div>
+                    )}
+                    {potonganBiayaPendukung > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--danger)', fontWeight: 600, fontSize: 12.5, marginTop: 2 }}>
+                        <span>Diskon Biaya Pendukung:</span>
+                        <span>- Rp{potonganBiayaPendukung.toLocaleString('id-ID')}</span>
+                      </div>
+                    )}
+                    {((4 * potonganBiaya) + potonganBiayaPendukung) > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--danger)', fontWeight: 700, fontSize: 12.5, marginTop: 2, borderTop: '1px dashed var(--gray-200)', paddingTop: 4 }}>
+                        <span>Total Diskon:</span>
+                        <span>- Rp{((4 * potonganBiaya) + potonganBiayaPendukung).toLocaleString('id-ID')}</span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Discount input Form */}
@@ -1273,6 +1408,36 @@ export default function AdminDashboard() {
                       value={catatanPotongan}
                       onChange={(e) => setCatatanPotongan(e.target.value)}
                       placeholder="Contoh: Beasiswa kemitraan khusus 20%"
+                      className="input"
+                      rows={2}
+                      style={{ resize: 'none', padding: '8px 12px' }}
+                      disabled={isReadOnly || submitting}
+                    />
+                  </div>
+
+                  <div className="input-group">
+                    <label className="input-label">Diskon / Potongan Biaya Pendukung (Rp)</label>
+                    <div style={{ position: 'relative' }}>
+                      <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', fontWeight: 600, color: 'var(--gray-400)', fontSize: 12 }}>Rp</span>
+                      <input
+                        type="number"
+                        value={potonganBiayaPendukung || ''}
+                        onChange={(e) => setPotonganBiayaPendukung(Math.max(0, parseFloat(e.target.value) || 0))}
+                        placeholder="Masukkan nominal potongan biaya pendukung"
+                        className="input"
+                        style={{ paddingLeft: 30 }}
+                        disabled={isReadOnly || submitting}
+                      />
+                    </div>
+                    <span className="input-hint">Pengurangan biaya pendukung perkuliahan secara individu</span>
+                  </div>
+
+                  <div className="input-group">
+                    <label className="input-label">Catatan Alasan Potongan Biaya Pendukung</label>
+                    <textarea
+                      value={catatanPotonganPendukung}
+                      onChange={(e) => setCatatanPotonganPendukung(e.target.value)}
+                      placeholder="Contoh: Potongan khusus alumni program short course"
                       className="input"
                       rows={2}
                       style={{ resize: 'none', padding: '8px 12px' }}

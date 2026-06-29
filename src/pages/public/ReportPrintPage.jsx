@@ -63,13 +63,20 @@ export default function ReportPrintPage() {
     const semCourses = rStudi.filter(c => (c.semester || 1) === semNum)
     const semMoocs = semCourses.filter(c => c.jalur === 'asinkron').length
 
-    const ukp = 5400000
-    const rekognisi = semNum === 1 ? (penetapan.total_sks_diakui || 0) * 50000 : 0
-    const moocs = semMoocs * 100000
-    const potongan = penetapan.potongan_biaya || 0
+    const savedUkp = parseFloat(localStorage.getItem('si_rpl_biaya_ukp_semester') || '5400000')
+    const savedRekognisi = parseFloat(localStorage.getItem('si_rpl_biaya_rekognisi_sks') || '50000')
+    const savedMoocs = parseFloat(localStorage.getItem('si_rpl_biaya_moocs_mk') || '100000')
+    const savedPendukung = parseFloat(localStorage.getItem('si_rpl_biaya_pendukung') || '1000000')
 
-    const total = Math.max(0, ukp + rekognisi + moocs - potongan)
-    return { ukp, rekognisi, moocs, potongan, total, semMoocs }
+    const ukp = savedUkp
+    const rekognisi = semNum === 1 ? (penetapan.total_sks_diakui || 0) * savedRekognisi : 0
+    const moocs = semMoocs * savedMoocs
+    const potongan = penetapan.potongan_biaya || 0
+    const pendukung = semNum === 1 ? savedPendukung : 0
+    const potonganPendukung = semNum === 1 ? (penetapan.potongan_biaya_pendukung || 0) : 0
+
+    const total = Math.max(0, ukp + rekognisi + moocs + pendukung - potongan - potonganPendukung)
+    return { ukp, rekognisi, moocs, potongan, pendukung, potonganPendukung, total, semMoocs, savedUkp, savedRekognisi, savedMoocs, savedPendukung }
   }
 
   const sem1 = getSemesterCost(1)
@@ -426,7 +433,7 @@ export default function ReportPrintPage() {
                     <tr>
                       <td style={{ border: '1px solid #cbd5e1', padding: '8px', fontWeight: 600, color: '#334155' }}>
                         1. Uang Kuliah Paket (UKP)
-                        <div style={{ fontSize: '9px', color: '#64748b', fontWeight: 400, marginTop: '2px' }}>Rp5.400.000 / Semester (Flat)</div>
+                        <div style={{ fontSize: '9px', color: '#64748b', fontWeight: 400, marginTop: '2px' }}>Rp{sem1.savedUkp.toLocaleString('id-ID')} / Semester (Flat)</div>
                       </td>
                       <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right' }}>Rp{sem1.ukp.toLocaleString('id-ID')}</td>
                       <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right' }}>Rp{sem2.ukp.toLocaleString('id-ID')}</td>
@@ -436,7 +443,7 @@ export default function ReportPrintPage() {
                     <tr>
                       <td style={{ border: '1px solid #cbd5e1', padding: '8px', fontWeight: 600, color: '#334155' }}>
                         2. Biaya Rekognisi SKS
-                        <div style={{ fontSize: '9px', color: '#64748b', fontWeight: 400, marginTop: '2px' }}>Rp50.000 / SKS ({penetapan.total_sks_diakui || 0} SKS diakui)</div>
+                        <div style={{ fontSize: '9px', color: '#64748b', fontWeight: 400, marginTop: '2px' }}>Rp{sem1.savedRekognisi.toLocaleString('id-ID')} / SKS ({penetapan.total_sks_diakui || 0} SKS diakui)</div>
                       </td>
                       <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right' }}>Rp{sem1.rekognisi.toLocaleString('id-ID')}</td>
                       <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right', color: '#94a3b8' }}>Rp0</td>
@@ -446,7 +453,7 @@ export default function ReportPrintPage() {
                     <tr>
                       <td style={{ border: '1px solid #cbd5e1', padding: '8px', fontWeight: 600, color: '#334155' }}>
                         3. Biaya Kelas MOOCs (Asinkron)
-                        <div style={{ fontSize: '9px', color: '#64748b', fontWeight: 400, marginTop: '2px' }}>Rp100.000 / Mata Kuliah Asinkron</div>
+                        <div style={{ fontSize: '9px', color: '#64748b', fontWeight: 400, marginTop: '2px' }}>Rp{sem1.savedMoocs.toLocaleString('id-ID')} / Mata Kuliah Asinkron</div>
                       </td>
                       <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right' }}>
                         Rp{sem1.moocs.toLocaleString('id-ID')} <span style={{ fontSize: '8.5px', color: '#64748b' }}>({sem1.semMoocs} MK)</span>
@@ -460,6 +467,16 @@ export default function ReportPrintPage() {
                       <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right' }}>
                         Rp{sem4.moocs.toLocaleString('id-ID')} <span style={{ fontSize: '8.5px', color: '#64748b' }}>({sem4.semMoocs} MK)</span>
                       </td>
+                    </tr>
+                    <tr>
+                      <td style={{ border: '1px solid #cbd5e1', padding: '8px', fontWeight: 600, color: '#334155' }}>
+                        5. Biaya Pendukung
+                        <div style={{ fontSize: '9px', color: '#64748b', fontWeight: 400, marginTop: '2px' }}>Rp{sem1.savedPendukung.toLocaleString('id-ID')} (Sekali Bayar)</div>
+                      </td>
+                      <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right' }}>Rp{sem1.pendukung.toLocaleString('id-ID')}</td>
+                      <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right', color: '#94a3b8' }}>Rp0</td>
+                      <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right', color: '#94a3b8' }}>Rp0</td>
+                      <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right', color: '#94a3b8' }}>Rp0</td>
                     </tr>
                     <tr style={{ color: (penetapan.potongan_biaya || 0) > 0 ? '#ef4444' : 'inherit' }}>
                       <td style={{ border: '1px solid #cbd5e1', padding: '8px', fontWeight: 600 }}>
@@ -478,6 +495,18 @@ export default function ReportPrintPage() {
                       <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right', fontWeight: 700 }}>
                         {sem4.potongan > 0 ? `- Rp${sem4.potongan.toLocaleString('id-ID')}` : 'Rp0'}
                       </td>
+                    </tr>
+                    <tr style={{ color: (penetapan.potongan_biaya_pendukung || 0) > 0 ? '#ef4444' : 'inherit' }}>
+                      <td style={{ border: '1px solid #cbd5e1', padding: '8px', fontWeight: 600 }}>
+                        6. Potongan Biaya Pendukung (Diskon Penunjang)
+                        <div style={{ fontSize: '9px', color: (penetapan.potongan_biaya_pendukung || 0) > 0 ? '#e11d48' : '#64748b', fontWeight: 400, marginTop: '2px' }}>Catatan: {penetapan.catatan_potongan_pendukung || '-'}</div>
+                      </td>
+                      <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right', fontWeight: 700 }}>
+                        {sem1.potonganPendukung > 0 ? `- Rp${sem1.potonganPendukung.toLocaleString('id-ID')}` : 'Rp0'}
+                      </td>
+                      <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right', color: '#94a3b8' }}>Rp0</td>
+                      <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right', color: '#94a3b8' }}>Rp0</td>
+                      <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right', color: '#94a3b8' }}>Rp0</td>
                     </tr>
                     <tr style={{ background: '#f8fafc', fontWeight: 800 }}>
                       <td style={{ border: '1px solid #cbd5e1', padding: '8px' }}>Subtotal Biaya Semester </td>

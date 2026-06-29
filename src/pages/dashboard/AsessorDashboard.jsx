@@ -241,8 +241,12 @@ export default function AsessorDashboard() {
   }
 
   // Financial Calculators
-  const BIAYA_UKP = 5400000 // Uang Kuliah Paket Semester
-  const BIAYA_PER_SKS_REKOGNISI = 50000
+  const savedUkp = parseFloat(localStorage.getItem('si_rpl_biaya_ukp_semester') || '5400000')
+  const savedRekognisi = parseFloat(localStorage.getItem('si_rpl_biaya_rekognisi_sks') || '50000')
+  const savedPendukung = parseFloat(localStorage.getItem('si_rpl_biaya_pendukung') || '1000000')
+
+  const BIAYA_UKP = savedUkp // Uang Kuliah Paket Semester
+  const BIAYA_PER_SKS_REKOGNISI = savedRekognisi
 
   // Filter rows that are approved ('disetujui')
   const approvedRows = rows.filter(r => r.statusTujuan === 'disetujui' && r.mkTujuanId)
@@ -256,7 +260,7 @@ export default function AsessorDashboard() {
 
   // Financial calculation
   const biayaPengakuan = totalSksDiakui * BIAYA_PER_SKS_REKOGNISI
-  const biayaTotalAwal = BIAYA_UKP + biayaPengakuan
+  const biayaTotalAwal = BIAYA_UKP + biayaPengakuan + savedPendukung
 
   const maxRecognitionLimit = parseFloat(localStorage.getItem('si_rpl_max_recognition_limit') || '70')
   const recognitionPercentage = totalSksKurikulum > 0 ? (totalSksDiakui / totalSksKurikulum) * 100 : 0
@@ -303,6 +307,8 @@ export default function AsessorDashboard() {
         biaya_total: biayaTotalAwal,
         potongan_biaya: 0, // Admin yang akan memasukkan jika ada potongan
         catatan_potongan: '',
+        potongan_biaya_pendukung: 0,
+        catatan_potongan_pendukung: '',
         rencana_studi: [] // Admin yang akan memetakan semester
       }
       await dbPenetapan.upsert(selectedItem.id, penetapanPayload)
