@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import { isMock } from '../../lib/supabase'
@@ -42,6 +42,62 @@ export default function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
 
+  // Turnstile state & refs
+  const [turnstileToken, setTurnstileToken] = useState(null)
+  const turnstileRef = useRef(null)
+  const widgetIdRef = useRef(null)
+  const siteKey = import.meta.env.VITE_CLOUDFLARE_TURNSTILE_SITE_KEY
+
+  useEffect(() => {
+    if (isMock || !siteKey) return
+
+    let widgetId = null
+
+    const renderWidget = () => {
+      if (window.turnstile && turnstileRef.current) {
+        try {
+          widgetId = window.turnstile.render(turnstileRef.current, {
+            sitekey: siteKey,
+            callback: (token) => {
+              setTurnstileToken(token)
+            },
+            'expired-callback': () => {
+              setTurnstileToken(null)
+            },
+            'error-callback': () => {
+              setTurnstileToken(null)
+            },
+          })
+          widgetIdRef.current = widgetId
+        } catch (e) {
+          console.error('Failed to render Turnstile widget:', e)
+        }
+      }
+    }
+
+    if (window.turnstile) {
+      renderWidget()
+    } else {
+      const interval = setInterval(() => {
+        if (window.turnstile) {
+          renderWidget()
+          clearInterval(interval)
+        }
+      }, 500)
+      return () => clearInterval(interval)
+    }
+
+    return () => {
+      if (widgetId !== null && window.turnstile) {
+        try {
+          window.turnstile.remove(widgetId)
+        } catch (e) {
+          console.error('Failed to remove Turnstile widget:', e)
+        }
+      }
+    }
+  }, [isMock, siteKey])
+
   // Mock states
   const [mockRole, setMockRole] = useState('calon_rpl')
   const [mockName, setMockName] = useState('Calon Mahasiswa')
@@ -70,14 +126,28 @@ export default function Login() {
       setError('Email dan password wajib diisi.')
       return
     }
+
+    if (!isMock && siteKey && !turnstileToken) {
+      setError('Silakan selesaikan verifikasi keamanan (Cloudflare Turnstile).')
+      return
+    }
+
     setError(null)
     setLoading(true)
     try {
-      const { error: signInError } = await signInWithEmail(email.trim(), password)
+      const { error: signInError } = await signInWithEmail(email.trim(), password, turnstileToken)
       if (signInError) throw signInError
     } catch (err) {
       setError(err.message || 'Gagal login. Periksa kembali email dan password Anda.')
       setLoading(false)
+      if (window.turnstile && widgetIdRef.current !== null) {
+        try {
+          window.turnstile.reset(widgetIdRef.current)
+          setTurnstileToken(null)
+        } catch (e) {
+          console.error('Failed to reset Turnstile widget:', e)
+        }
+      }
     }
   }
 
@@ -285,6 +355,18 @@ export default function Login() {
                   required
                 />
               </div>
+
+              {!isMock && siteKey && (
+                <div 
+                  ref={turnstileRef} 
+                  style={{ 
+                    display: 'flex', 
+                    justifyContent: 'center', 
+                    margin: '8px 0',
+                    minHeight: '65px' 
+                  }} 
+                />
+              )}
 
               <button
                 type="submit"

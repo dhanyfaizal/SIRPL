@@ -184,12 +184,13 @@ export default function AuthProvider({ children }) {
   }
 
   // ── Email Sign In (Supabase) ───────────────────────────────────
-  async function signInWithEmail(email, password) {
+  async function signInWithEmail(email, password, captchaToken) {
     if (isMock) {
       toast.error('Aplikasi sedang berjalan dalam MODE MOCK. Gunakan Simulasi Login Peran.')
       return { error: new Error('Mock mode active') }
     }
-    return supabase.auth.signInWithPassword({ email, password })
+    const options = captchaToken ? { captchaToken } : undefined
+    return supabase.auth.signInWithPassword({ email, password, options })
   }
 
   // ── Google Sign In (Supabase) ─────────────────────────────────
