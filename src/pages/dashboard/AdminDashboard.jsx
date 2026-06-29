@@ -151,6 +151,7 @@ export default function AdminDashboard() {
   const [catatanRevisi, setCatatanRevisi] = useState('')
   const [recRows, setRecRows] = useState([])
   const [submitting, setSubmitting] = useState(false)
+  const [isConfigEditing, setIsConfigEditing] = useState(false)
 
   // Custom Confirmation Modal state
   const [confirmModal, setConfirmModal] = useState({
@@ -367,19 +368,40 @@ export default function AdminDashboard() {
     }
   }, [])
 
-  const handleSaveConfig = () => {
+  const handleEditConfigClick = () => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Ubah Konfigurasi Sistem',
+      message: 'Apakah Anda yakin ingin mengubah konfigurasi sistem & biaya?',
+      confirmText: 'Ya, Ubah',
+      onConfirm: () => {
+        setIsConfigEditing(true)
+      }
+    })
+  }
+
+  const handleSaveConfigClick = () => {
     const parsedLimit = parseFloat(maxLimit)
     if (isNaN(parsedLimit) || parsedLimit < 0 || parsedLimit > 100) {
       toast.error('Batas maksimal harus berupa angka antara 0 hingga 100!')
       return
     }
-    localStorage.setItem('si_rpl_max_recognition_limit', parsedLimit.toString())
-    localStorage.setItem('si_rpl_biaya_ukp_semester', configUkp.toString())
-    localStorage.setItem('si_rpl_biaya_rekognisi_sks', configRekognisi.toString())
-    localStorage.setItem('si_rpl_biaya_moocs_mk', configMoocs.toString())
-    localStorage.setItem('si_rpl_biaya_pendukung', configPendukung.toString())
-    
-    toast.success('Konfigurasi sistem & biaya studi berhasil disimpan!')
+    setConfirmModal({
+      isOpen: true,
+      title: 'Simpan Konfigurasi Sistem',
+      message: 'Apakah konfigurasi yang dimasukkan sudah sesuai?',
+      confirmText: 'Ya, Simpan',
+      onConfirm: () => {
+        localStorage.setItem('si_rpl_max_recognition_limit', parsedLimit.toString())
+        localStorage.setItem('si_rpl_biaya_ukp_semester', configUkp.toString())
+        localStorage.setItem('si_rpl_biaya_rekognisi_sks', configRekognisi.toString())
+        localStorage.setItem('si_rpl_biaya_moocs_mk', configMoocs.toString())
+        localStorage.setItem('si_rpl_biaya_pendukung', configPendukung.toString())
+        
+        toast.success('Konfigurasi sistem & biaya studi berhasil disimpan!')
+        setIsConfigEditing(false)
+      }
+    })
   }
 
   const loadPenetapanInitial = async (pengajuanId, prodiId) => {
@@ -948,6 +970,7 @@ export default function AdminDashboard() {
                       className="input"
                       min="0"
                       max="100"
+                      disabled={!isConfigEditing}
                     />
                     <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', fontWeight: 600, color: 'var(--gray-400)', fontSize: 13 }}>%</span>
                   </div>
@@ -965,6 +988,7 @@ export default function AdminDashboard() {
                       placeholder="Contoh: 5400000"
                       className="input"
                       style={{ paddingLeft: 30 }}
+                      disabled={!isConfigEditing}
                     />
                   </div>
                   <span className="input-hint" style={{ color: 'var(--indigo-600)', fontWeight: 500 }}>
@@ -983,6 +1007,7 @@ export default function AdminDashboard() {
                       placeholder="Contoh: 50000"
                       className="input"
                       style={{ paddingLeft: 30 }}
+                      disabled={!isConfigEditing}
                     />
                   </div>
                 </div>
@@ -998,6 +1023,7 @@ export default function AdminDashboard() {
                       placeholder="Contoh: 100000"
                       className="input"
                       style={{ paddingLeft: 30 }}
+                      disabled={!isConfigEditing}
                     />
                   </div>
                 </div>
@@ -1013,16 +1039,17 @@ export default function AdminDashboard() {
                       placeholder="Contoh: 1000000"
                       className="input"
                       style={{ paddingLeft: 30 }}
+                      disabled={!isConfigEditing}
                     />
                   </div>
                 </div>
 
                 <button
-                  onClick={handleSaveConfig}
+                  onClick={isConfigEditing ? handleSaveConfigClick : handleEditConfigClick}
                   className="btn btn-primary"
                   style={{ width: '100%', justifyContent: 'center', fontWeight: 600 }}
                 >
-                  Simpan Konfigurasi
+                  {isConfigEditing ? 'Simpan Konfigurasi' : 'Set'}
                 </button>
               </div>
             </div>
