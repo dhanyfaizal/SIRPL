@@ -275,13 +275,40 @@ export default function PendaftarDashboard() {
     setSubmitting(true)
     try {
       await dbPengajuan.updateStatus(pengajuan.id, 'assessed_asessor', alasanSanggah)
-      toast.success('Sanggahan berhasil dikirim! Rencana studi Anda akan ditinjau kembali oleh Admin.')
+      toast.success('Sanggahan hasil RPL berhasil dikirim ke Admin untuk ditinjau kembali.')
       setShowSanggahModal(false)
       setAlasanSanggah('')
       loadData()
     } catch (err) {
       console.error(err)
       toast.error('Gagal mengirim sanggahan')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleApplyMonthlyPayment = async () => {
+    setSubmitting(true)
+    try {
+      const payload = {
+        monthly_payment_status: 'pending'
+      }
+      await dbPenetapan.upsert(pengajuan.id, payload)
+      
+      // Notify PMB Officer
+      await dbNotifikasi.createForRole(
+        'pmb',
+        'Pengajuan Pembiayaan Bulanan',
+        `Calon mahasiswa ${profile?.nama_lengkap || 'Calon RPL'} mengajukan opsi Pembiayaan Bulanan.`,
+        'monthly_payment',
+        '/dashboard'
+      )
+
+      toast.success('Permohonan pembiayaan bulanan berhasil diajukan!')
+      loadData(true)
+    } catch (err) {
+      console.error(err)
+      toast.error('Gagal mengajukan pembiayaan bulanan')
     } finally {
       setSubmitting(false)
     }
@@ -1047,8 +1074,16 @@ export default function PendaftarDashboard() {
             {stepIndex === 5 && penetapan && (
               <div className="card">
                 <div className="card-header" style={{ borderBottom: '1px solid var(--gray-100)', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-                  <h3 style={{ fontSize: 15, fontWeight: 800, color: 'var(--gray-900)', margin: 0 }}>Rencana Studi & Rincian Biaya per Semester</h3>
-                  <span className="badge-pill badge-primary" style={{ fontSize: 11.5 }}>Estimasi Total: Rp{parseFloat(penetapan.biaya_total || 0).toLocaleString('id-ID')}</span>
+                  <h3 style={{ fontSize: 15, fontWeight: 800, color: 'var(--gray-900)', margin: 0 }}>
+                    {penetapan.monthly_payment_status === 'approved' 
+                      ? 'Rencana Studi & Rincian Biaya per Bulan' 
+                      : 'Rencana Studi & Rincian Biaya per Semester'}
+                  </h3>
+                  <span className="badge-pill badge-primary" style={{ fontSize: 11.5 }}>
+                    {penetapan.monthly_payment_status === 'approved'
+                      ? `Estimasi Rata-rata per Bulan: Rp${Math.round(parseFloat(penetapan.biaya_total || 0) / 24).toLocaleString('id-ID')}`
+                      : `Estimasi Total: Rp${parseFloat(penetapan.biaya_total || 0).toLocaleString('id-ID')}`}
+                  </span>
                 </div>
                 <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                   
@@ -1146,7 +1181,9 @@ export default function PendaftarDashboard() {
                     {/* Cost Breakdown Column */}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                       <h4 style={{ fontSize: 13, fontWeight: 700, color: 'var(--gray-800)', marginBottom: 2 }}>
-                        Rincian Biaya Semester {candidateSemTab}
+                        {penetapan.monthly_payment_status === 'approved' 
+                          ? `Rincian Biaya per Bulan (Semester ${candidateSemTab})` 
+                          : `Rincian Biaya Semester ${candidateSemTab}`}
                       </h4>
 
                       {(() => {
@@ -1158,13 +1195,16 @@ export default function PendaftarDashboard() {
                         const savedMoocs = parseFloat(localStorage.getItem('si_rpl_biaya_moocs_mk') || '100000')
                         const savedPendukung = parseFloat(localStorage.getItem('si_rpl_biaya_pendukung') || '1000000')
 
-                        const costUkp = savedUkp
-                        const costRekognisi = candidateSemTab === 1 ? (penetapan.total_sks_diakui || 0) * savedRekognisi : 0
-                        const costMoocs = semMoocs * savedMoocs
-                        const costPotongan = penetapan.potongan_biaya || 0
+                        const isMonthly = penetapan.monthly_payment_status === 'approved'
+                        const divisor = isMonthly ? 6 : 1
+
+                        const costUkp = savedUkp / divisor
+                        const costRekognisi = (candidateSemTab === 1 ? (penetapan.total_sks_diakui || 0) * savedRekognisi : 0) / divisor
+                        const costMoocs = (semMoocs * savedMoocs) / divisor
+                        const costPotongan = (penetapan.potongan_biaya || 0) / divisor
                         
-                        const costPendukung = candidateSemTab === 1 ? savedPendukung : 0
-                        const costPotonganPendukung = candidateSemTab === 1 ? (penetapan.potongan_biaya_pendukung || 0) : 0
+                        const costPendukung = (candidateSemTab === 1 ? savedPendukung : 0) / divisor
+                        const costPotonganPendukung = (candidateSemTab === 1 ? (penetapan.potongan_biaya_pendukung || 0) : 0) / divisor
 
                         const semTotalBeforeDiskon = costUkp + costRekognisi + costMoocs + costPendukung
                         const semTotal = Math.max(0, semTotalBeforeDiskon - costPotongan - costPotonganPendukung)
@@ -1175,50 +1215,56 @@ export default function PendaftarDashboard() {
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                               <div>
                                 <span style={{ fontWeight: 600, color: 'var(--gray-700)' }}>Uang Kuliah Paket (UKP)</span>
-                                <span style={{ display: 'block', fontSize: 10.5, color: 'var(--gray-500)', marginTop: 2 }}>Biaya Flat per Semester</span>
+                                <span style={{ display: 'block', fontSize: 10.5, color: 'var(--gray-500)', marginTop: 2 }}>
+                                  {isMonthly ? 'Biaya Flat per Bulan' : 'Biaya Flat per Semester'}
+                                </span>
                               </div>
-                              <span style={{ fontWeight: 700, color: 'var(--gray-800)' }}>Rp{costUkp.toLocaleString('id-ID')}</span>
+                              <span style={{ fontWeight: 700, color: 'var(--gray-800)' }}>Rp{costUkp.toLocaleString('id-ID', { maximumFractionDigits: 0 })}</span>
                             </div>
 
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderTop: '1px solid var(--indigo-100)', paddingTop: 8 }}>
                               <div>
                                 <span style={{ fontWeight: 600, color: 'var(--gray-700)' }}>Biaya Rekognisi SKS</span>
                                 <span style={{ display: 'block', fontSize: 10.5, color: 'var(--gray-500)', marginTop: 2 }}>
-                                  {candidateSemTab === 1 ? `Rp${savedRekognisi.toLocaleString('id-ID')} x ${penetapan.total_sks_diakui || 0} SKS diakui` : 'Hanya dibebankan di Semester 1'}
+                                  {candidateSemTab === 1 
+                                    ? `Rp${savedRekognisi.toLocaleString('id-ID')} x ${penetapan.total_sks_diakui || 0} SKS diakui${isMonthly ? ' (dibagi 6)' : ''}` 
+                                    : 'Hanya dibebankan di Semester 1'}
                                 </span>
                               </div>
-                              <span style={{ fontWeight: 700, color: 'var(--gray-800)' }}>Rp{costRekognisi.toLocaleString('id-ID')}</span>
+                              <span style={{ fontWeight: 700, color: 'var(--gray-800)' }}>Rp{costRekognisi.toLocaleString('id-ID', { maximumFractionDigits: 0 })}</span>
                             </div>
 
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderTop: '1px solid var(--indigo-100)', paddingTop: 8 }}>
                               <div>
                                 <span style={{ fontWeight: 600, color: 'var(--gray-700)' }}>Biaya Kelas MOOCs</span>
                                 <span style={{ display: 'block', fontSize: 10.5, color: 'var(--gray-500)', marginTop: 2 }}>
-                                  Rp{savedMoocs.toLocaleString('id-ID')} x {semMoocs} mata kuliah asinkron
+                                  Rp{savedMoocs.toLocaleString('id-ID')} x {semMoocs} mata kuliah asinkron{isMonthly ? ' (dibagi 6)' : ''}
                                 </span>
                               </div>
-                              <span style={{ fontWeight: 700, color: 'var(--gray-800)' }}>Rp{costMoocs.toLocaleString('id-ID')}</span>
+                              <span style={{ fontWeight: 700, color: 'var(--gray-800)' }}>Rp{costMoocs.toLocaleString('id-ID', { maximumFractionDigits: 0 })}</span>
                             </div>
 
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderTop: '1px solid var(--indigo-100)', paddingTop: 8 }}>
                               <div>
                                 <span style={{ fontWeight: 600, color: 'var(--gray-700)' }}>Biaya Pendukung</span>
                                 <span style={{ display: 'block', fontSize: 10.5, color: 'var(--gray-500)', marginTop: 2 }}>
-                                  {candidateSemTab === 1 ? 'Biaya penunjang perkuliahan (Sekali Bayar)' : 'Hanya dibebankan di Semester 1'}
+                                  {candidateSemTab === 1 
+                                    ? `Biaya penunjang perkuliahan${isMonthly ? ' (dibagi 6)' : ' (Sekali Bayar)'}` 
+                                    : 'Hanya dibebankan di Semester 1'}
                                 </span>
                               </div>
-                              <span style={{ fontWeight: 700, color: 'var(--gray-800)' }}>Rp{costPendukung.toLocaleString('id-ID')}</span>
+                              <span style={{ fontWeight: 700, color: 'var(--gray-800)' }}>Rp{costPendukung.toLocaleString('id-ID', { maximumFractionDigits: 0 })}</span>
                             </div>
 
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderTop: '1px solid var(--indigo-100)', paddingTop: 8, color: costPotongan > 0 ? 'var(--danger)' : 'var(--gray-700)' }}>
                               <div>
                                 <span style={{ fontWeight: costPotongan > 0 ? 700 : 600 }}>Potongan / Diskon UKP</span>
                                 <span style={{ display: 'block', fontSize: 10.5, color: 'var(--gray-500)', marginTop: 2 }}>
-                                  Catatan: {penetapan.catatan_potongan || '-'} (per semester)
+                                  Catatan: {penetapan.catatan_potongan || '-'} {isMonthly ? '(per bulan)' : '(per semester)'}
                                 </span>
                               </div>
                               <span style={{ fontWeight: 700 }}>
-                                {costPotongan > 0 ? `- Rp${costPotongan.toLocaleString('id-ID')}` : 'Rp0'}
+                                {costPotongan > 0 ? `- Rp${costPotongan.toLocaleString('id-ID', { maximumFractionDigits: 0 })}` : 'Rp0'}
                               </span>
                             </div>
 
@@ -1226,17 +1272,19 @@ export default function PendaftarDashboard() {
                               <div>
                                 <span style={{ fontWeight: costPotonganPendukung > 0 ? 700 : 600 }}>Potongan / Diskon Biaya Pendukung</span>
                                 <span style={{ display: 'block', fontSize: 10.5, color: 'var(--gray-500)', marginTop: 2 }}>
-                                  Catatan: {penetapan.catatan_potongan_pendukung || '-'}
+                                  Catatan: {penetapan.catatan_potongan_pendukung || '-'} {isMonthly ? '(dibagi 6)' : ''}
                                 </span>
                               </div>
                               <span style={{ fontWeight: 700 }}>
-                                {costPotonganPendukung > 0 ? `- Rp${costPotonganPendukung.toLocaleString('id-ID')}` : 'Rp0'}
+                                {costPotonganPendukung > 0 ? `- Rp${costPotonganPendukung.toLocaleString('id-ID', { maximumFractionDigits: 0 })}` : 'Rp0'}
                               </span>
                             </div>
 
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '2px solid var(--indigo-200)', paddingTop: 10, marginTop: 4 }}>
-                              <span style={{ fontWeight: 800, color: 'var(--indigo-900)' }}>Subtotal Semester {candidateSemTab}:</span>
-                              <span style={{ fontWeight: 800, color: 'var(--indigo-700)', fontSize: 14 }}>Rp{semTotal.toLocaleString('id-ID')}</span>
+                              <span style={{ fontWeight: 800, color: 'var(--indigo-900)' }}>
+                                {isMonthly ? `Subtotal per Bulan (Semester ${candidateSemTab}):` : `Subtotal Semester ${candidateSemTab}:`}
+                              </span>
+                              <span style={{ fontWeight: 800, color: 'var(--indigo-700)', fontSize: 14 }}>Rp{semTotal.toLocaleString('id-ID', { maximumFractionDigits: 0 })}</span>
                             </div>
 
                           </div>
@@ -1635,8 +1683,30 @@ export default function PendaftarDashboard() {
                     border: '1px solid var(--danger)'
                   }}
                 >
-                  ⚠️ Sanggah Rencana Studi
+                  ⚠️ Ajukan Sanggah Hasil RPL
                 </button>
+                {penetapan && penetapan.monthly_payment_status !== 'approved' && (
+                  <button
+                    onClick={handleApplyMonthlyPayment}
+                    className="btn btn-secondary"
+                    disabled={submitting || penetapan.monthly_payment_status === 'pending'}
+                    style={{
+                      width: '100%',
+                      padding: '10px',
+                      fontWeight: 600,
+                      fontSize: 12.5,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 6,
+                      background: '#fff',
+                      color: penetapan.monthly_payment_status === 'pending' ? 'var(--gray-400)' : 'var(--indigo-600)',
+                      border: penetapan.monthly_payment_status === 'pending' ? '1px solid var(--gray-300)' : '1px solid var(--indigo-600)'
+                    }}
+                  >
+                    💳 {penetapan.monthly_payment_status === 'pending' ? 'Menunggu Persetujuan Pembiayaan Bulanan' : 'Ajukan Pembiayaan Bulanan'}
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -1685,7 +1755,7 @@ export default function PendaftarDashboard() {
         <div className="modal-overlay" onClick={() => setShowSanggahModal(false)}>
           <div className="modal" style={{ width: '500px', maxWidth: '95%' }} onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--danger)' }}>⚠️ Ajukan Sanggah Rencana Studi</h3>
+              <h3 style={{ fontSize: 15, fontWeight: 700, color: 'var(--danger)' }}>⚠️ Ajukan Sanggah Hasil RPL</h3>
               <button 
                 type="button" 
                 className="btn-close" 

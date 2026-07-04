@@ -231,6 +231,7 @@ export default function PmbDashboard() {
   const [catatanPotongan, setCatatanPotongan] = useState('')
   const [potonganBiayaPendukung, setPotonganBiayaPendukung] = useState(0)
   const [catatanPotonganPendukung, setCatatanPotonganPendukung] = useState('')
+  const [monthlyPaymentStatus, setMonthlyPaymentStatus] = useState('none')
 
   // Configurations for fee components
   const [configUkp, setConfigUkp] = useState(5400000)
@@ -272,7 +273,8 @@ export default function PmbDashboard() {
             total_sks_diakui: penData ? penData.total_sks_diakui : 0,
             total_sks_sisa: penData ? penData.total_sks_sisa : 0,
             biaya_total: penData ? penData.biaya_total : 0,
-            potongan_biaya: penData ? penData.potongan_biaya : 0
+            potongan_biaya: penData ? penData.potongan_biaya : 0,
+            monthly_payment_status: penData ? (penData.monthly_payment_status || 'none') : 'none'
           }
         })
       )
@@ -347,6 +349,7 @@ export default function PmbDashboard() {
         setCatatanPotongan(penData.catatan_potongan || '')
         setPotonganBiayaPendukung(parseFloat(penData.potongan_biaya_pendukung) || 0)
         setCatatanPotonganPendukung(penData.catatan_potongan_pendukung || '')
+        setMonthlyPaymentStatus(penData.monthly_payment_status || 'none')
         
         // If rencana_studi is already saved, use it!
         if (penData.rencana_studi && penData.rencana_studi.length > 0) {
@@ -361,6 +364,7 @@ export default function PmbDashboard() {
         setCatatanPotongan('')
         setPotonganBiayaPendukung(0)
         setCatatanPotonganPendukung('')
+        setMonthlyPaymentStatus('none')
       }
 
       // 4. Map sisa mata kuliah ke Jalur (MOOCs/Tatap Muka)
@@ -471,6 +475,47 @@ export default function PmbDashboard() {
     } catch (e) {
       console.error(e)
       toast.error('Gagal memperbarui diskon biaya')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const handleMonthlyPaymentApproval = async (isApproved) => {
+    setSubmitting(true)
+    try {
+      const payload = {
+        monthly_payment_status: isApproved ? 'approved' : 'rejected',
+        is_monthly_payment: isApproved
+      }
+      await dbPenetapan.upsert(selectedItem.id, payload)
+      
+      // Notify candidate
+      await dbNotifikasi.create(
+        selectedItem.user_id,
+        isApproved ? 'Pembiayaan Bulanan Disetujui' : 'Pembiayaan Bulanan Ditolak',
+        isApproved 
+          ? 'Pengajuan opsi Pembiayaan Bulanan Anda telah disetujui. Rincian biaya studi Anda kini dihitung per bulan.'
+          : 'Pengajuan opsi Pembiayaan Bulanan Anda ditolak. Rincian biaya studi tetap dihitung per semester.',
+        'monthly_payment',
+        '/dashboard'
+      )
+
+      toast.success(isApproved ? 'Pembiayaan bulanan berhasil disetujui!' : 'Pembiayaan bulanan ditolak.')
+      
+      // Refresh list
+      await loadData(true)
+      
+      // Update selectedItem local properties so UI re-renders with fresh data
+      setSelectedItem(prev => ({
+        ...prev,
+        monthly_payment_status: isApproved ? 'approved' : 'rejected'
+      }))
+      
+      // Update local state
+      setMonthlyPaymentStatus(isApproved ? 'approved' : 'rejected')
+    } catch (e) {
+      console.error(e)
+      toast.error('Gagal memproses permohonan pembiayaan')
     } finally {
       setSubmitting(false)
     }
@@ -966,6 +1011,42 @@ export default function PmbDashboard() {
                    <FileText size={15} /> Cetak Rencana Studi (PDF)
                  </button>
 
+                 {/* Monthly Payment request section */}
+                 {selectedItem.monthly_payment_status === 'pending' && (
+                   <div style={{ background: '#fffbeb', border: '1px solid #fef3c7', borderRadius: 8, padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                     <span style={{ fontSize: 12.5, fontWeight: 700, color: '#b45309', display: 'flex', alignItems: 'center', gap: 4 }}>
+                       💳 Pengajuan Pembiayaan Bulanan
+                     </span>
+                     <p style={{ fontSize: 11.5, color: '#78350f', margin: 0, lineHeight: 1.4 }}>
+                       Calon mahasiswa ini mengajukan opsi pembiayaan kuliah dicicil bulanan (biaya tiap semester dibagi 6 bulan).
+                     </p>
+                     <div style={{ display: 'flex', gap: 8 }}>
+                       <button
+                         onClick={() => handleMonthlyPaymentApproval(true)}
+                         className="btn btn-success"
+                         style={{ flex: 1, padding: '8px 12px', fontSize: 11.5, fontWeight: 700 }}
+                         disabled={submitting}
+                       >
+                         Setujui
+                       </button>
+                       <button
+                         onClick={() => handleMonthlyPaymentApproval(false)}
+                         className="btn btn-danger"
+                         style={{ flex: 1, padding: '8px 12px', fontSize: 11.5, fontWeight: 700, background: 'var(--danger)', color: '#fff', border: 'none' }}
+                         disabled={submitting}
+                       >
+                         Tolak
+                       </button>
+                     </div>
+                   </div>
+                 )}
+
+                 {selectedItem.monthly_payment_status === 'approved' && (
+                   <div style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: 8, padding: 10, display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: '#064e3b' }}>
+                     <span>💳 Pembiayaan Bulanan Aktif (Dibagi 6 bulan)</span>
+                   </div>
+                 )}
+
                  {/* Cost Summary Info */}
                  <div style={{ background: 'var(--gray-50)', padding: 14, borderRadius: 8, border: '1px solid var(--gray-200)', fontSize: 12.5, display: 'flex', flexDirection: 'column', gap: 10 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--gray-100)', paddingBottom: 6, alignItems: 'center' }}>
@@ -1116,11 +1197,17 @@ export default function PmbDashboard() {
                  </div>
 
                  {/* Final Cost Calculation */}
-                 <div style={{ borderTop: '2px solid var(--indigo-100)', paddingTop: 14, marginTop: 4 }}>
+                 <div style={{ borderTop: '2px solid var(--indigo-100)', paddingTop: 14, marginTop: 4, display: 'flex', flexDirection: 'column', gap: 6 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span style={{ fontWeight: 700, color: 'var(--gray-700)' }}>Total Biaya Akhir:</span>
                       <strong style={{ fontSize: 16, color: 'var(--success)' }}>Rp{finalBiayaTotal.toLocaleString('id-ID')}</strong>
                     </div>
+                    {(monthlyPaymentStatus === 'approved' || selectedItem.monthly_payment_status === 'approved') && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f0fdf4', padding: '6px 10px', borderRadius: 6, border: '1px solid #bbf7d0', fontSize: 12 }}>
+                        <span style={{ fontWeight: 600, color: '#166534' }}>Estimasi per Bulan (24 Bln):</span>
+                        <strong style={{ color: '#166534' }}>Rp{Math.round(finalBiayaTotal / 24).toLocaleString('id-ID')} / bln</strong>
+                      </div>
+                    )}
                  </div>
 
                  <button

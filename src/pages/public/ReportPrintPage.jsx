@@ -68,15 +68,18 @@ export default function ReportPrintPage() {
     const savedMoocs = parseFloat(localStorage.getItem('si_rpl_biaya_moocs_mk') || '100000')
     const savedPendukung = parseFloat(localStorage.getItem('si_rpl_biaya_pendukung') || '1000000')
 
-    const ukp = savedUkp
-    const rekognisi = semNum === 1 ? (penetapan.total_sks_diakui || 0) * savedRekognisi : 0
-    const moocs = semMoocs * savedMoocs
-    const potongan = penetapan.potongan_biaya || 0
-    const pendukung = semNum === 1 ? savedPendukung : 0
-    const potonganPendukung = semNum === 1 ? (penetapan.potongan_biaya_pendukung || 0) : 0
+    const isMonthly = penetapan.monthly_payment_status === 'approved'
+    const divisor = isMonthly ? 6 : 1
+
+    const ukp = savedUkp / divisor
+    const rekognisi = (semNum === 1 ? (penetapan.total_sks_diakui || 0) * savedRekognisi : 0) / divisor
+    const moocs = (semMoocs * savedMoocs) / divisor
+    const potongan = (penetapan.potongan_biaya || 0) / divisor
+    const pendukung = (semNum === 1 ? savedPendukung : 0) / divisor
+    const potonganPendukung = (semNum === 1 ? (penetapan.potongan_biaya_pendukung || 0) : 0) / divisor
 
     const total = Math.max(0, ukp + rekognisi + moocs + pendukung - potongan - potonganPendukung)
-    return { ukp, rekognisi, moocs, potongan, pendukung, potonganPendukung, total, semMoocs, savedUkp, savedRekognisi, savedMoocs, savedPendukung }
+    return { ukp, rekognisi, moocs, potongan, pendukung, potonganPendukung, total, semMoocs, savedUkp, savedRekognisi, savedMoocs, savedPendukung, isMonthly }
   }
 
   const sem1 = getSemesterCost(1)
@@ -84,7 +87,9 @@ export default function ReportPrintPage() {
   const sem3 = getSemesterCost(3)
   const sem4 = getSemesterCost(4)
 
-  const grandTotalCost = sem1.total + sem2.total + sem3.total + sem4.total
+  const isMonthly = penetapan.monthly_payment_status === 'approved'
+  const divisor = isMonthly ? 6 : 1
+  const grandTotalCost = (sem1.total + sem2.total + sem3.total + sem4.total) * divisor
 
   // recognized courses
   const recognizedCourses = (rekognisi?.data_mapping_mk || []).filter(c => c.Status === 'diakui')
@@ -417,7 +422,7 @@ export default function ReportPrintPage() {
               {/* Section 3: Financial Summary */}
               <div style={{ marginBottom: '28px' }}>
                 <h4 style={{ fontSize: '13px', fontWeight: 700, textTransform: 'uppercase', borderBottom: '1px solid #cbd5e1', paddingBottom: '4px', marginBottom: '10px', color: '#4f46e5' }}>
-                  III. Rincian Pembiayaan Studi per Semester
+                  {isMonthly ? 'III. Rincian Pembiayaan Studi per Bulan (Tiap 1 Semester dibagi 6 Bulan)' : 'III. Rincian Pembiayaan Studi per Semester'}
                 </h4>
                 <table style={{ width: '100%', fontSize: '11px', borderCollapse: 'collapse', marginBottom: '16px' }}>
                   <thead>
@@ -433,19 +438,25 @@ export default function ReportPrintPage() {
                     <tr>
                       <td style={{ border: '1px solid #cbd5e1', padding: '8px', fontWeight: 600, color: '#334155' }}>
                         1. Uang Kuliah Paket (UKP)
-                        <div style={{ fontSize: '9px', color: '#64748b', fontWeight: 400, marginTop: '2px' }}>Rp{sem1.savedUkp.toLocaleString('id-ID')} / Semester (Flat)</div>
+                        <div style={{ fontSize: '9px', color: '#64748b', fontWeight: 400, marginTop: '2px' }}>
+                          {isMonthly 
+                            ? `Rp${(sem1.savedUkp / 6).toLocaleString('id-ID')} / Bulan (Cicilan)`
+                            : `Rp${sem1.savedUkp.toLocaleString('id-ID')} / Semester (Flat)`}
+                        </div>
                       </td>
-                      <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right' }}>Rp{sem1.ukp.toLocaleString('id-ID')}</td>
-                      <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right' }}>Rp{sem2.ukp.toLocaleString('id-ID')}</td>
-                      <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right' }}>Rp{sem3.ukp.toLocaleString('id-ID')}</td>
-                      <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right' }}>Rp{sem4.ukp.toLocaleString('id-ID')}</td>
+                      <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right' }}>Rp{sem1.ukp.toLocaleString('id-ID', { maximumFractionDigits: 0 })}</td>
+                      <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right' }}>Rp{sem2.ukp.toLocaleString('id-ID', { maximumFractionDigits: 0 })}</td>
+                      <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right' }}>Rp{sem3.ukp.toLocaleString('id-ID', { maximumFractionDigits: 0 })}</td>
+                      <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right' }}>Rp{sem4.ukp.toLocaleString('id-ID', { maximumFractionDigits: 0 })}</td>
                     </tr>
                     <tr>
                       <td style={{ border: '1px solid #cbd5e1', padding: '8px', fontWeight: 600, color: '#334155' }}>
                         2. Biaya Rekognisi SKS
-                        <div style={{ fontSize: '9px', color: '#64748b', fontWeight: 400, marginTop: '2px' }}>Rp{sem1.savedRekognisi.toLocaleString('id-ID')} / SKS ({penetapan.total_sks_diakui || 0} SKS diakui)</div>
+                        <div style={{ fontSize: '9px', color: '#64748b', fontWeight: 400, marginTop: '2px' }}>
+                          Rp{sem1.savedRekognisi.toLocaleString('id-ID')} / SKS ({penetapan.total_sks_diakui || 0} SKS diakui){isMonthly ? ' (dibagi 6)' : ''}
+                        </div>
                       </td>
-                      <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right' }}>Rp{sem1.rekognisi.toLocaleString('id-ID')}</td>
+                      <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right' }}>Rp{sem1.rekognisi.toLocaleString('id-ID', { maximumFractionDigits: 0 })}</td>
                       <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right', color: '#94a3b8' }}>Rp0</td>
                       <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right', color: '#94a3b8' }}>Rp0</td>
                       <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right', color: '#94a3b8' }}>Rp0</td>
@@ -453,27 +464,31 @@ export default function ReportPrintPage() {
                     <tr>
                       <td style={{ border: '1px solid #cbd5e1', padding: '8px', fontWeight: 600, color: '#334155' }}>
                         3. Biaya Kelas MOOCs (Asinkron)
-                        <div style={{ fontSize: '9px', color: '#64748b', fontWeight: 400, marginTop: '2px' }}>Rp{sem1.savedMoocs.toLocaleString('id-ID')} / Mata Kuliah Asinkron</div>
+                        <div style={{ fontSize: '9px', color: '#64748b', fontWeight: 400, marginTop: '2px' }}>
+                          Rp{sem1.savedMoocs.toLocaleString('id-ID')} / Mata Kuliah Asinkron{isMonthly ? ' (dibagi 6)' : ''}
+                        </div>
                       </td>
                       <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right' }}>
-                        Rp{sem1.moocs.toLocaleString('id-ID')} <span style={{ fontSize: '8.5px', color: '#64748b' }}>({sem1.semMoocs} MK)</span>
+                        Rp{sem1.moocs.toLocaleString('id-ID', { maximumFractionDigits: 0 })} <span style={{ fontSize: '8.5px', color: '#64748b' }}>({sem1.semMoocs} MK)</span>
                       </td>
                       <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right' }}>
-                        Rp{sem2.moocs.toLocaleString('id-ID')} <span style={{ fontSize: '8.5px', color: '#64748b' }}>({sem2.semMoocs} MK)</span>
+                        Rp{sem2.moocs.toLocaleString('id-ID', { maximumFractionDigits: 0 })} <span style={{ fontSize: '8.5px', color: '#64748b' }}>({sem2.semMoocs} MK)</span>
                       </td>
                       <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right' }}>
-                        Rp{sem3.moocs.toLocaleString('id-ID')} <span style={{ fontSize: '8.5px', color: '#64748b' }}>({sem3.semMoocs} MK)</span>
+                        Rp{sem3.moocs.toLocaleString('id-ID', { maximumFractionDigits: 0 })} <span style={{ fontSize: '8.5px', color: '#64748b' }}>({sem3.semMoocs} MK)</span>
                       </td>
                       <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right' }}>
-                        Rp{sem4.moocs.toLocaleString('id-ID')} <span style={{ fontSize: '8.5px', color: '#64748b' }}>({sem4.semMoocs} MK)</span>
+                        Rp{sem4.moocs.toLocaleString('id-ID', { maximumFractionDigits: 0 })} <span style={{ fontSize: '8.5px', color: '#64748b' }}>({sem4.semMoocs} MK)</span>
                       </td>
                     </tr>
                     <tr>
                       <td style={{ border: '1px solid #cbd5e1', padding: '8px', fontWeight: 600, color: '#334155' }}>
                         5. Biaya Pendukung
-                        <div style={{ fontSize: '9px', color: '#64748b', fontWeight: 400, marginTop: '2px' }}>Rp{sem1.savedPendukung.toLocaleString('id-ID')} (Sekali Bayar)</div>
+                        <div style={{ fontSize: '9px', color: '#64748b', fontWeight: 400, marginTop: '2px' }}>
+                          Rp{sem1.savedPendukung.toLocaleString('id-ID')}{isMonthly ? ' (dibagi 6)' : ' (Sekali Bayar)'}
+                        </div>
                       </td>
-                      <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right' }}>Rp{sem1.pendukung.toLocaleString('id-ID')}</td>
+                      <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right' }}>Rp{sem1.pendukung.toLocaleString('id-ID', { maximumFractionDigits: 0 })}</td>
                       <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right', color: '#94a3b8' }}>Rp0</td>
                       <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right', color: '#94a3b8' }}>Rp0</td>
                       <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right', color: '#94a3b8' }}>Rp0</td>
@@ -481,39 +496,45 @@ export default function ReportPrintPage() {
                     <tr style={{ color: (penetapan.potongan_biaya || 0) > 0 ? '#ef4444' : 'inherit' }}>
                       <td style={{ border: '1px solid #cbd5e1', padding: '8px', fontWeight: 600 }}>
                         4. Potongan Biaya Khusus (Diskon UKP)
-                        <div style={{ fontSize: '9px', color: (penetapan.potongan_biaya || 0) > 0 ? '#e11d48' : '#64748b', fontWeight: 400, marginTop: '2px' }}>Catatan: {penetapan.catatan_potongan || '-'} (per semester)</div>
+                        <div style={{ fontSize: '9px', color: (penetapan.potongan_biaya || 0) > 0 ? '#e11d48' : '#64748b', fontWeight: 400, marginTop: '2px' }}>
+                          Catatan: {penetapan.catatan_potongan || '-'} {isMonthly ? '(per bulan)' : '(per semester)'}
+                        </div>
                       </td>
                       <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right', fontWeight: 700 }}>
-                        {sem1.potongan > 0 ? `- Rp${sem1.potongan.toLocaleString('id-ID')}` : 'Rp0'}
+                        {sem1.potongan > 0 ? `- Rp${sem1.potongan.toLocaleString('id-ID', { maximumFractionDigits: 0 })}` : 'Rp0'}
                       </td>
                       <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right', fontWeight: 700 }}>
-                        {sem2.potongan > 0 ? `- Rp${sem2.potongan.toLocaleString('id-ID')}` : 'Rp0'}
+                        {sem2.potongan > 0 ? `- Rp${sem2.potongan.toLocaleString('id-ID', { maximumFractionDigits: 0 })}` : 'Rp0'}
                       </td>
                       <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right', fontWeight: 700 }}>
-                        {sem3.potongan > 0 ? `- Rp${sem3.potongan.toLocaleString('id-ID')}` : 'Rp0'}
+                        {sem3.potongan > 0 ? `- Rp${sem3.potongan.toLocaleString('id-ID', { maximumFractionDigits: 0 })}` : 'Rp0'}
                       </td>
                       <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right', fontWeight: 700 }}>
-                        {sem4.potongan > 0 ? `- Rp${sem4.potongan.toLocaleString('id-ID')}` : 'Rp0'}
+                        {sem4.potongan > 0 ? `- Rp${sem4.potongan.toLocaleString('id-ID', { maximumFractionDigits: 0 })}` : 'Rp0'}
                       </td>
                     </tr>
                     <tr style={{ color: (penetapan.potongan_biaya_pendukung || 0) > 0 ? '#ef4444' : 'inherit' }}>
                       <td style={{ border: '1px solid #cbd5e1', padding: '8px', fontWeight: 600 }}>
                         6. Potongan Biaya Pendukung (Diskon Penunjang)
-                        <div style={{ fontSize: '9px', color: (penetapan.potongan_biaya_pendukung || 0) > 0 ? '#e11d48' : '#64748b', fontWeight: 400, marginTop: '2px' }}>Catatan: {penetapan.catatan_potongan_pendukung || '-'}</div>
+                        <div style={{ fontSize: '9px', color: (penetapan.potongan_biaya_pendukung || 0) > 0 ? '#e11d48' : '#64748b', fontWeight: 400, marginTop: '2px' }}>
+                          Catatan: {penetapan.catatan_potongan_pendukung || '-'} {isMonthly ? '(dibagi 6)' : ''}
+                        </div>
                       </td>
                       <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right', fontWeight: 700 }}>
-                        {sem1.potonganPendukung > 0 ? `- Rp${sem1.potonganPendukung.toLocaleString('id-ID')}` : 'Rp0'}
+                        {sem1.potonganPendukung > 0 ? `- Rp${sem1.potonganPendukung.toLocaleString('id-ID', { maximumFractionDigits: 0 })}` : 'Rp0'}
                       </td>
                       <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right', color: '#94a3b8' }}>Rp0</td>
                       <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right', color: '#94a3b8' }}>Rp0</td>
                       <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right', color: '#94a3b8' }}>Rp0</td>
                     </tr>
                     <tr style={{ background: '#f8fafc', fontWeight: 800 }}>
-                      <td style={{ border: '1px solid #cbd5e1', padding: '8px' }}>Subtotal Biaya Semester </td>
-                      <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right' }}>Rp{sem1.total.toLocaleString('id-ID')}</td>
-                      <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right' }}>Rp{sem2.total.toLocaleString('id-ID')}</td>
-                      <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right' }}>Rp{sem3.total.toLocaleString('id-ID')}</td>
-                      <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right' }}>Rp{sem4.total.toLocaleString('id-ID')}</td>
+                      <td style={{ border: '1px solid #cbd5e1', padding: '8px' }}>
+                        {isMonthly ? 'Subtotal Biaya per Bulan' : 'Subtotal Biaya Semester'}
+                      </td>
+                      <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right' }}>Rp{sem1.total.toLocaleString('id-ID', { maximumFractionDigits: 0 })}</td>
+                      <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right' }}>Rp{sem2.total.toLocaleString('id-ID', { maximumFractionDigits: 0 })}</td>
+                      <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right' }}>Rp{sem3.total.toLocaleString('id-ID', { maximumFractionDigits: 0 })}</td>
+                      <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right' }}>Rp{sem4.total.toLocaleString('id-ID', { maximumFractionDigits: 0 })}</td>
                     </tr>
                   </tbody>
                   <tfoot>
