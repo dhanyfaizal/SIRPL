@@ -69,7 +69,7 @@ export default function ReportPrintPage() {
     const savedPendukung = parseFloat(localStorage.getItem('si_rpl_biaya_pendukung') || '1000000')
 
     const isMonthly = penetapan.monthly_payment_status === 'approved'
-    const divisor = isMonthly ? 6 : 1
+    const divisor = 1
 
     const ukp = savedUkp / divisor
     const rekognisi = (semNum === 1 ? (penetapan.total_sks_diakui || 0) * savedRekognisi : 0) / divisor
@@ -88,8 +88,7 @@ export default function ReportPrintPage() {
   const sem4 = getSemesterCost(4)
 
   const isMonthly = penetapan.monthly_payment_status === 'approved'
-  const divisor = isMonthly ? 6 : 1
-  const grandTotalCost = (sem1.total + sem2.total + sem3.total + sem4.total) * divisor
+  const grandTotalCost = sem1.total + sem2.total + sem3.total + sem4.total
 
   // recognized courses
   const recognizedCourses = (rekognisi?.data_mapping_mk || []).filter(c => c.Status === 'diakui')
@@ -422,7 +421,7 @@ export default function ReportPrintPage() {
               {/* Section 3: Financial Summary */}
               <div style={{ marginBottom: '28px' }}>
                 <h4 style={{ fontSize: '13px', fontWeight: 700, textTransform: 'uppercase', borderBottom: '1px solid #cbd5e1', paddingBottom: '4px', marginBottom: '10px', color: '#4f46e5' }}>
-                  {isMonthly ? 'III. Rincian Pembiayaan Studi per Bulan (Tiap 1 Semester dibagi 6 Bulan)' : 'III. Rincian Pembiayaan Studi per Semester'}
+                  III. Rincian Pembiayaan Studi per Semester
                 </h4>
                 <table style={{ width: '100%', fontSize: '11px', borderCollapse: 'collapse', marginBottom: '16px' }}>
                   <thead>
@@ -439,9 +438,7 @@ export default function ReportPrintPage() {
                       <td style={{ border: '1px solid #cbd5e1', padding: '8px', fontWeight: 600, color: '#334155' }}>
                         1. Uang Kuliah Paket (UKP)
                         <div style={{ fontSize: '9px', color: '#64748b', fontWeight: 400, marginTop: '2px' }}>
-                          {isMonthly 
-                            ? `Rp${(sem1.savedUkp / 6).toLocaleString('id-ID')} / Bulan (Cicilan)`
-                            : `Rp${sem1.savedUkp.toLocaleString('id-ID')} / Semester (Flat)`}
+                          Rp{sem1.savedUkp.toLocaleString('id-ID')} / Semester (Flat)
                         </div>
                       </td>
                       <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right' }}>Rp{sem1.ukp.toLocaleString('id-ID', { maximumFractionDigits: 0 })}</td>
@@ -453,7 +450,7 @@ export default function ReportPrintPage() {
                       <td style={{ border: '1px solid #cbd5e1', padding: '8px', fontWeight: 600, color: '#334155' }}>
                         2. Biaya Rekognisi SKS
                         <div style={{ fontSize: '9px', color: '#64748b', fontWeight: 400, marginTop: '2px' }}>
-                          Rp{sem1.savedRekognisi.toLocaleString('id-ID')} / SKS ({penetapan.total_sks_diakui || 0} SKS diakui){isMonthly ? ' (dibagi 6)' : ''}
+                          Rp{sem1.savedRekognisi.toLocaleString('id-ID')} / SKS ({penetapan.total_sks_diakui || 0} SKS diakui)
                         </div>
                       </td>
                       <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right' }}>Rp{sem1.rekognisi.toLocaleString('id-ID', { maximumFractionDigits: 0 })}</td>
@@ -465,7 +462,7 @@ export default function ReportPrintPage() {
                       <td style={{ border: '1px solid #cbd5e1', padding: '8px', fontWeight: 600, color: '#334155' }}>
                         3. Biaya Kelas MOOCs (Asinkron)
                         <div style={{ fontSize: '9px', color: '#64748b', fontWeight: 400, marginTop: '2px' }}>
-                          Rp{sem1.savedMoocs.toLocaleString('id-ID')} / Mata Kuliah Asinkron{isMonthly ? ' (dibagi 6)' : ''}
+                          Rp{sem1.savedMoocs.toLocaleString('id-ID')} / Mata Kuliah Asinkron
                         </div>
                       </td>
                       <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right' }}>
@@ -485,7 +482,7 @@ export default function ReportPrintPage() {
                       <td style={{ border: '1px solid #cbd5e1', padding: '8px', fontWeight: 600, color: '#334155' }}>
                         5. Biaya Pendukung
                         <div style={{ fontSize: '9px', color: '#64748b', fontWeight: 400, marginTop: '2px' }}>
-                          Rp{sem1.savedPendukung.toLocaleString('id-ID')}{isMonthly ? ' (dibagi 6)' : ' (Sekali Bayar)'}
+                          Rp{sem1.savedPendukung.toLocaleString('id-ID')} (Sekali Bayar)
                         </div>
                       </td>
                       <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right' }}>Rp{sem1.pendukung.toLocaleString('id-ID', { maximumFractionDigits: 0 })}</td>
@@ -497,7 +494,7 @@ export default function ReportPrintPage() {
                       <td style={{ border: '1px solid #cbd5e1', padding: '8px', fontWeight: 600 }}>
                         4. Potongan Biaya Khusus (Diskon UKP)
                         <div style={{ fontSize: '9px', color: (penetapan.potongan_biaya || 0) > 0 ? '#e11d48' : '#64748b', fontWeight: 400, marginTop: '2px' }}>
-                          Catatan: {penetapan.catatan_potongan || '-'} {isMonthly ? '(per bulan)' : '(per semester)'}
+                          Catatan: {penetapan.catatan_potongan || '-'} (per semester)
                         </div>
                       </td>
                       <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right', fontWeight: 700 }}>
@@ -517,7 +514,7 @@ export default function ReportPrintPage() {
                       <td style={{ border: '1px solid #cbd5e1', padding: '8px', fontWeight: 600 }}>
                         6. Potongan Biaya Pendukung (Diskon Penunjang)
                         <div style={{ fontSize: '9px', color: (penetapan.potongan_biaya_pendukung || 0) > 0 ? '#e11d48' : '#64748b', fontWeight: 400, marginTop: '2px' }}>
-                          Catatan: {penetapan.catatan_potongan_pendukung || '-'} {isMonthly ? '(dibagi 6)' : ''}
+                          Catatan: {penetapan.catatan_potongan_pendukung || '-'}
                         </div>
                       </td>
                       <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right', fontWeight: 700 }}>
@@ -529,7 +526,7 @@ export default function ReportPrintPage() {
                     </tr>
                     <tr style={{ background: '#f8fafc', fontWeight: 800 }}>
                       <td style={{ border: '1px solid #cbd5e1', padding: '8px' }}>
-                        {isMonthly ? 'Subtotal Biaya per Bulan' : 'Subtotal Biaya Semester'}
+                        Subtotal Biaya Semester
                       </td>
                       <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right' }}>Rp{sem1.total.toLocaleString('id-ID', { maximumFractionDigits: 0 })}</td>
                       <td style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'right' }}>Rp{sem2.total.toLocaleString('id-ID', { maximumFractionDigits: 0 })}</td>
@@ -546,6 +543,34 @@ export default function ReportPrintPage() {
                     </tr>
                   </tfoot>
                 </table>
+
+                {isMonthly && (
+                  <table style={{ width: '100%', fontSize: '11px', borderCollapse: 'collapse', marginBottom: '16px', background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
+                    <tbody>
+                      <tr style={{ fontWeight: 700, color: '#166534' }}>
+                        <td style={{ border: '1px solid #bbf7d0', padding: '8px', width: '32%' }}>
+                          💳 Cicilan per Bulan (Opsi Bulanan Aktif)
+                        </td>
+                        <td style={{ border: '1px solid #bbf7d0', padding: '8px', textAlign: 'right', width: '17%' }}>
+                          Rp{Math.round(sem1.total / 6).toLocaleString('id-ID')} / bln
+                          <div style={{ fontSize: '9px', color: '#15803d', fontWeight: 400, marginTop: '2px' }}>(dibagi 6 bulan)</div>
+                        </td>
+                        <td style={{ border: '1px solid #bbf7d0', padding: '8px', textAlign: 'right', width: '17%' }}>
+                          Rp{Math.round(sem2.total / 6).toLocaleString('id-ID')} / bln
+                          <div style={{ fontSize: '9px', color: '#15803d', fontWeight: 400, marginTop: '2px' }}>(dibagi 6 bulan)</div>
+                        </td>
+                        <td style={{ border: '1px solid #bbf7d0', padding: '8px', textAlign: 'right', width: '17%' }}>
+                          Rp{Math.round(sem3.total / 6).toLocaleString('id-ID')} / bln
+                          <div style={{ fontSize: '9px', color: '#15803d', fontWeight: 400, marginTop: '2px' }}>(dibagi 6 bulan)</div>
+                        </td>
+                        <td style={{ border: '1px solid #bbf7d0', padding: '8px', textAlign: 'right', width: '17%' }}>
+                          Rp{Math.round(sem4.total / 6).toLocaleString('id-ID')} / bln
+                          <div style={{ fontSize: '9px', color: '#15803d', fontWeight: 400, marginTop: '2px' }}>(dibagi 6 bulan)</div>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                )}
 
                 {/* Note for PKKMB and graduation fees */}
                 <div style={{ fontSize: '10.5px', color: '#475569', background: '#f8fafc', border: '1px solid #cbd5e1', padding: '8px 12px', borderRadius: '4px', display: 'flex', gap: '6px', alignItems: 'center', marginBottom: '20px' }}>
