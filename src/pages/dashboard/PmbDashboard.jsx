@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
-import { dbPengajuan, dbProdi, dbPenetapan, getDocumentProgress } from '../../lib/db'
+import { dbPengajuan, dbProdi, dbPenetapan, dbMK, dbRekognisi, dbNotifikasi, getDocumentProgress } from '../../lib/db'
 import { supabase, isMock } from '../../lib/supabase'
-import { Clipboard, Eye, Search, Filter, ShieldAlert, Award, FileText, CheckCircle, Clock, Users, RotateCw } from 'lucide-react'
+import { Clipboard, Eye, Search, Filter, ShieldAlert, Award, FileText, CheckCircle, Clock, Users, RotateCw, DollarSign, AlertCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { generateMockDocSrcDoc } from '../../lib/mockDoc'
 import { exportToCSV } from '../../utils/exporter'
@@ -110,7 +110,6 @@ function formatWaitingTime(submittedAtStr, finishedAtStr = null) {
   return '1 Menit'
 }
 
-// Helper to clean and format WhatsApp number link
 function getWhatsAppUrl(num) {
   if (!num) return ''
   let cleaned = num.replace(/\D/g, '')
@@ -118,6 +117,91 @@ function getWhatsAppUrl(num) {
     cleaned = '62' + cleaned.substring(1)
   }
   return `https://wa.me/${cleaned}`
+}
+
+function distributeCoursesToStudySemesters(courses) {
+  // 1. Group courses by original curriculum semester (ganjil/genap)
+  const oddCourses = []
+  const evenCourses = []
+  
+  courses.forEach(c => {
+    const origSem = c.semester || 1
+    if (origSem % 2 !== 0) {
+      oddCourses.push(c)
+    } else {
+      evenCourses.push(c)
+    }
+  })
+
+  // Sort by original semester ascending
+  oddCourses.sort((a, b) => (a.semester || 1) - (b.semester || 1))
+  evenCourses.sort((a, b) => (a.semester || 1) - (b.semester || 1))
+
+  // 2. Distribute:
+  // - Ganjil courses go to Smt 1 and Smt 3.
+  // - Genap courses go to Smt 2 and Smt 4.
+  const smt1 = []
+  const smt3 = []
+  const smt2 = []
+  const smt4 = []
+
+  oddCourses.forEach(c => {
+    const origSem = c.semester || 1
+    if (origSem <= 3) {
+      smt1.push(c)
+    } else {
+      smt3.push(c)
+    }
+  })
+
+  evenCourses.forEach(c => {
+    const origSem = c.semester || 2
+    if (origSem <= 4) {
+      smt2.push(c)
+    } else {
+      smt4.push(c)
+    }
+  })
+
+  // 3. Map jalur and respect max 24 SKS sinkron per study semester
+  const mapJalurForSemester = (list, targetSemester) => {
+    let currentSinkronSks = 0
+    return list.map(c => {
+      const name = c.nama.toLowerCase()
+      const isMoocDefault = c.jenis === 'umum' || 
+                            name.includes('pengantar') || 
+                            name.includes('dasar') || 
+                            name.includes('etika') || 
+                            name.includes('kewirausahaan') || 
+                            name.includes('pancasila') || 
+                            name.includes('bahasa')
+      
+      let jalur = 'sinkron'
+      if (isMoocDefault) {
+        jalur = 'asinkron'
+      } else {
+        if (currentSinkronSks + c.sks <= 24) {
+          jalur = 'sinkron'
+          currentSinkronSks += c.sks
+        } else {
+          jalur = 'asinkron'
+        }
+      }
+
+      return {
+        ...c,
+        semester: targetSemester,
+        jalur
+      }
+    })
+  }
+
+  return [
+    ...mapJalurForSemester(smt1, 1),
+    ...mapJalurForSemester(smt2, 2),
+    ...mapJalurForSemester(smt3, 3),
+    ...mapJalurForSemester(smt4, 4)
+  ]
 }
 
 export default function PmbDashboard() {
@@ -139,6 +223,25 @@ export default function PmbDashboard() {
   const [previewSignedUrl, setPreviewSignedUrl] = useState(null)
 
   const [refreshing, setRefreshing] = useState(false)
+
+  // Pricing & Discount States
+  const [totalSksDiakui, setTotalSksDiakui] = useState(0)
+  const [totalSksSisa, setTotalSksSisa] = useState(0)
+  const [potonganBiaya, setPotonganBiaya] = useState(0)
+  const [catatanPotongan, setCatatanPotongan] = useState('')
+  const [potonganBiayaPendukung, setPotonganBiayaPendukung] = useState(0)
+  const [catatanPotonganPendukung, setCatatanPotonganPendukung] = useState('')
+
+  // Configurations for fee components
+  const [configUkp, setConfigUkp] = useState(5400000)
+  const [configRekognisi, setConfigRekognisi] = useState(50000)
+  const [configMoocs, setConfigMoocs] = useState(100000)
+  const [configPendukung, setConfigPendukung] = useState(1000000)
+  const [maxLimit, setMaxLimit] = useState('70')
+
+  // Mapped courses (for MOOCs count)
+  const [mappedCourses, setMappedCourses] = useState([])
+  const [submitting, setSubmitting] = useState(false)
 
   const handleRefresh = async () => {
     setRefreshing(true)
@@ -185,7 +288,100 @@ export default function PmbDashboard() {
 
   useEffect(() => {
     loadData()
+    
+    // Load config settings from localStorage
+    const savedLimit = localStorage.getItem('si_rpl_max_recognition_limit')
+    if (savedLimit) setMaxLimit(savedLimit)
+    else {
+      localStorage.setItem('si_rpl_max_recognition_limit', '70')
+      setMaxLimit('70')
+    }
+
+    const savedUkp = localStorage.getItem('si_rpl_biaya_ukp_semester')
+    if (savedUkp) setConfigUkp(parseFloat(savedUkp))
+    else {
+      localStorage.setItem('si_rpl_biaya_ukp_semester', '5400000')
+      setConfigUkp(5400000)
+    }
+
+    const savedRekognisi = localStorage.getItem('si_rpl_biaya_rekognisi_sks')
+    if (savedRekognisi) setConfigRekognisi(parseFloat(savedRekognisi))
+    else {
+      localStorage.setItem('si_rpl_biaya_rekognisi_sks', '50000')
+      setConfigRekognisi(50000)
+    }
+
+    const savedMoocs = localStorage.getItem('si_rpl_biaya_moocs_mk')
+    if (savedMoocs) setConfigMoocs(parseFloat(savedMoocs))
+    else {
+      localStorage.setItem('si_rpl_biaya_moocs_mk', '100000')
+      setConfigMoocs(100000)
+    }
+
+    const savedPendukung = localStorage.getItem('si_rpl_biaya_pendukung')
+    if (savedPendukung) setConfigPendukung(parseFloat(savedPendukung))
+    else {
+      localStorage.setItem('si_rpl_biaya_pendukung', '1000000')
+      setConfigPendukung(1000000)
+    }
   }, [])
+
+  const loadPenetapanDetails = async (pengajuanId, prodiId) => {
+    try {
+      // 1. Ambil kurikulum prodi terlebih dahulu
+      const { data: currData } = await dbMK.getByProdi(prodiId)
+      const curriculum = currData || []
+
+      // 2. Ambil rekognisi matkul diakui
+      const { data: recData } = await dbRekognisi.getByPengajuanId(pengajuanId)
+      const diakuiIds = (recData?.data_mapping_mk || [])
+        .filter(m => m.Status === 'diakui' || m.Status === 'disetujui')
+        .map(m => m.MK_Tujuan_ID)
+
+      // 3. Ambil biaya asesmen
+      const { data: penData } = await dbPenetapan.getByPengajuanId(pengajuanId)
+      if (penData) {
+        setTotalSksDiakui(penData.total_sks_diakui)
+        setTotalSksSisa(penData.total_sks_sisa)
+        setPotonganBiaya(parseFloat(penData.potongan_biaya) || 0)
+        setCatatanPotongan(penData.catatan_potongan || '')
+        setPotonganBiayaPendukung(parseFloat(penData.potongan_biaya_pendukung) || 0)
+        setCatatanPotonganPendukung(penData.catatan_potongan_pendukung || '')
+        
+        // If rencana_studi is already saved, use it!
+        if (penData.rencana_studi && penData.rencana_studi.length > 0) {
+          setMappedCourses(penData.rencana_studi)
+          return
+        }
+      } else {
+        // Fallback defaults
+        setTotalSksDiakui(0)
+        setTotalSksSisa(curriculum.reduce((acc, curr) => acc + curr.sks, 0))
+        setPotonganBiaya(0)
+        setCatatanPotongan('')
+        setPotonganBiayaPendukung(0)
+        setCatatanPotonganPendukung('')
+      }
+
+      // 4. Map sisa mata kuliah ke Jalur (MOOCs/Tatap Muka)
+      const rawMapping = curriculum
+        .filter(mk => !diakuiIds.includes(mk.id))
+        .map((mk) => ({
+          mkId: mk.id,
+          kode: mk.kode_mk,
+          nama: mk.nama_mk,
+          sks: mk.sks,
+          jenis: mk.jenis,
+          semester: mk.semester || 1
+        }))
+      
+      const initialMapping = distributeCoursesToStudySemesters(rawMapping)
+      setMappedCourses(initialMapping)
+    } catch (e) {
+      console.error(e)
+      toast.error('Gagal memuat rincian penetapan')
+    }
+  }
 
   useEffect(() => {
     if (selectedItem) {
@@ -193,6 +389,10 @@ export default function PmbDashboard() {
       setPreviewUrl(selectedItem.file_ijazah_sma_url || '')
       setPreviewName('Ijazah SMA/Sederajat')
       setPreviewSignedUrl(null)
+      
+      // Load pricing and discount details
+      const pId = selectedItem.prodi_pilihan_id || selectedItem.prodi?.id
+      loadPenetapanDetails(selectedItem.id, pId)
     }
   }, [selectedItem])
 
@@ -220,6 +420,59 @@ export default function PmbDashboard() {
         return { label: 'Selesai / Final', color: 'badge-emerald' }
       default:
         return { label: status.toUpperCase(), color: 'badge-slate' }
+    }
+  }
+
+  // Dynamic cost calculations based on user requirements
+  const biayaUkp = 4 * configUkp // UKP 4 semesters
+  const biayaRekognisi = totalSksDiakui * configRekognisi
+  const totalMoocs = mappedCourses.filter(c => c.jalur === 'asinkron').length
+  const biayaMoocs = totalMoocs * configMoocs
+  const biayaPendukung = configPendukung
+  const biayaTotalSebelumPotongan = biayaUkp + biayaRekognisi + biayaMoocs + biayaPendukung
+  const finalBiayaTotal = Math.max(0, biayaTotalSebelumPotongan - (4 * potonganBiaya) - potonganBiayaPendukung)
+
+  const handleSaveDiscount = async () => {
+    setSubmitting(true)
+    try {
+      const finalPayload = {
+        total_sks_diakui: totalSksDiakui,
+        total_sks_sisa: totalSksSisa,
+        biaya_total: finalBiayaTotal,
+        potongan_biaya: parseFloat(potonganBiaya) || 0,
+        catatan_potongan: catatanPotongan,
+        potongan_biaya_pendukung: parseFloat(potonganBiayaPendukung) || 0,
+        catatan_potongan_pendukung: catatanPotonganPendukung,
+        rencana_studi: mappedCourses
+      }
+
+      await dbPenetapan.upsert(selectedItem.id, finalPayload)
+      
+      // Notify candidate
+      await dbNotifikasi.create(
+        selectedItem.user_id,
+        'Pembaruan Potongan Biaya RPL',
+        `Biaya perkuliahan RPL Anda telah diperbarui dengan diskon tambahan oleh PMB Officer. Silakan cek detail biaya baru Anda.`,
+        'mapped_admin',
+        '/dashboard'
+      )
+
+      toast.success('Diskon biaya berhasil diperbarui dan dikirim ke calon!')
+      
+      // Reload submissions lists and update selectedItem so the list gets updated costs.
+      await loadData(true)
+      
+      // Update selectedItem local properties so UI re-renders with fresh data
+      setSelectedItem(prev => ({
+        ...prev,
+        biaya_total: finalBiayaTotal,
+        potongan_biaya: parseFloat(potonganBiaya) || 0
+      }))
+    } catch (e) {
+      console.error(e)
+      toast.error('Gagal memperbarui diskon biaya')
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -691,20 +944,196 @@ export default function PmbDashboard() {
                 )}
               </div>
 
-              {selectedItem.status === 'mapped_admin' && (
-                <div style={{ borderTop: '1px solid var(--gray-100)', paddingTop: 16, marginTop: 16 }}>
-                  <button
-                    onClick={() => window.open(`/report/${selectedItem.id}/print`, '_blank')}
-                    className="btn btn-primary"
-                    style={{ width: '100%', justifyContent: 'center', gap: 6, fontWeight: 700, display: 'flex', alignItems: 'center' }}
-                  >
-                    <FileText size={15} /> Cetak Rencana Studi (PDF)
-                  </button>
-                </div>
-              )}
-
             </div>
           </div>
+
+          {/* New Card: Cetak Rencana Studi dan Diskon Biaya */}
+          {selectedItem.status === 'mapped_admin' && (
+            <div className="card" style={{ marginTop: 16 }}>
+              <div className="card-header">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--indigo-600)' }}>
+                  <DollarSign size={18} />
+                  <h3 style={{ fontSize: 14, fontWeight: 700 }}>Cetak Rencana Studi dan Diskon Biaya</h3>
+                </div>
+              </div>
+              <div className="card-body" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                 {/* Cetak Rencana Studi (PDF) Button */}
+                 <button
+                   onClick={() => window.open(`/report/${selectedItem.id}/print`, '_blank')}
+                   className="btn btn-primary"
+                   style={{ width: '100%', justifyContent: 'center', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}
+                 >
+                   <FileText size={15} /> Cetak Rencana Studi (PDF)
+                 </button>
+
+                 {/* Cost Summary Info */}
+                 <div style={{ background: 'var(--gray-50)', padding: 14, borderRadius: 8, border: '1px solid var(--gray-200)', fontSize: 12.5, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--gray-100)', paddingBottom: 6, alignItems: 'center' }}>
+                      <span style={{ color: 'var(--gray-500)' }}>SKS Diakui / Sisa SKS:</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <strong style={{ color: 'var(--indigo-700)' }}>
+                          {totalSksDiakui} SKS / {totalSksSisa} SKS
+                          {(() => {
+                            const total = totalSksDiakui + totalSksSisa
+                            const pct = total > 0 ? (totalSksDiakui / total) * 100 : 0
+                            return ` (${pct.toFixed(0)}%)`
+                          })()}
+                        </strong>
+                        {(() => {
+                          const total = totalSksDiakui + totalSksSisa
+                          const pct = total > 0 ? (totalSksDiakui / total) * 100 : 0
+                          const limit = parseFloat(maxLimit) || 70
+                          return pct > limit ? (
+                            <AlertCircle size={14} color="var(--danger)" title={`Melebihi batas maksimal rekognisi (${limit}%)!`} style={{ flexShrink: 0 }} />
+                          ) : null
+                        })()}
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: 'var(--gray-500)' }}>Biaya UKP (4 Semester):</span>
+                        <strong>Rp{biayaUkp.toLocaleString('id-ID')}</strong>
+                      </div>
+                      <span style={{ fontSize: 11, color: 'var(--gray-400)', marginTop: -2 }}>
+                        Rp{configUkp.toLocaleString('id-ID')} per semester (Rp{(configUkp / 6).toLocaleString('id-ID', { maximumFractionDigits: 0 })} per bulan) (Total Rp{biayaUkp.toLocaleString('id-ID')})
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: 'var(--gray-500)' }}>Biaya Rekognisi ({totalSksDiakui} SKS):</span>
+                        <strong>Rp{biayaRekognisi.toLocaleString('id-ID')}</strong>
+                      </div>
+                      <span style={{ fontSize: 11, color: 'var(--gray-400)', marginTop: -2 }}>
+                        Rp{configRekognisi.toLocaleString('id-ID')} per SKS diakui
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: 'var(--gray-500)' }}>Biaya MOOCs ({totalMoocs} MK):</span>
+                        <strong>Rp{biayaMoocs.toLocaleString('id-ID')}</strong>
+                      </div>
+                      <span style={{ fontSize: 11, color: 'var(--gray-400)', marginTop: -2 }}>
+                        Rp{configMoocs.toLocaleString('id-ID')} per mata kuliah sisa MOOCs (Asinkron)
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <span style={{ color: 'var(--gray-500)' }}>Biaya Pendukung:</span>
+                        <strong>Rp{biayaPendukung.toLocaleString('id-ID')}</strong>
+                      </div>
+                      <span style={{ fontSize: 11, color: 'var(--gray-400)', marginTop: -2 }}>
+                        Biaya penunjang perkuliahan
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--gray-100)', paddingTop: 8, marginTop: 2, fontWeight: 700 }}>
+                      <span style={{ color: 'var(--gray-700)' }}>Total Sebelum Diskon:</span>
+                      <strong>Rp{biayaTotalSebelumPotongan.toLocaleString('id-ID')}</strong>
+                    </div>
+                    {potonganBiaya > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--danger)', fontWeight: 600, fontSize: 12.5, marginTop: 2 }}>
+                        <span>Diskon UKP (4 Semester):</span>
+                        <span>- Rp{(4 * potonganBiaya).toLocaleString('id-ID')}</span>
+                      </div>
+                    )}
+                    {potonganBiayaPendukung > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--danger)', fontWeight: 600, fontSize: 12.5, marginTop: 2 }}>
+                        <span>Diskon Biaya Pendukung:</span>
+                        <span>- Rp{potonganBiayaPendukung.toLocaleString('id-ID')}</span>
+                      </div>
+                    )}
+                    {((4 * potonganBiaya) + potonganBiayaPendukung) > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--danger)', fontWeight: 700, fontSize: 12.5, marginTop: 2, borderTop: '1px dashed var(--gray-200)', paddingTop: 4 }}>
+                        <span>Total Diskon:</span>
+                        <span>- Rp{((4 * potonganBiaya) + potonganBiayaPendukung).toLocaleString('id-ID')}</span>
+                      </div>
+                    )}
+                 </div>
+
+                 {/* Discount input Form */}
+                 <div className="input-group">
+                    <label className="input-label">Diskon / Potongan Biaya UKP per Semester (Rp)</label>
+                    <div style={{ position: 'relative' }}>
+                      <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', fontWeight: 600, color: 'var(--gray-400)', fontSize: 12 }}>Rp</span>
+                      <input
+                        type="number"
+                        value={potonganBiaya || ''}
+                        onChange={(e) => setPotonganBiaya(Math.max(0, parseFloat(e.target.value) || 0))}
+                        placeholder="Masukkan nominal potongan"
+                        className="input"
+                        style={{ paddingLeft: 30 }}
+                        disabled={submitting}
+                      />
+                    </div>
+                    <span className="input-hint">Pengurangan biaya kuliah paket (UKP) secara individu untuk setiap semester</span>
+                 </div>
+
+                 <div className="input-group">
+                    <label className="input-label">Catatan Alasan Potongan</label>
+                    <textarea
+                      value={catatanPotongan}
+                      onChange={(e) => setCatatanPotongan(e.target.value)}
+                      placeholder="Contoh: Beasiswa kemitraan khusus 20%"
+                      className="input"
+                      rows={2}
+                      style={{ resize: 'none', padding: '8px 12px' }}
+                      disabled={submitting}
+                    />
+                 </div>
+
+                 <div className="input-group">
+                    <label className="input-label">Diskon / Potongan Biaya Pendukung (Rp)</label>
+                    <div style={{ position: 'relative' }}>
+                      <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', fontWeight: 600, color: 'var(--gray-400)', fontSize: 12 }}>Rp</span>
+                      <input
+                        type="number"
+                        value={potonganBiayaPendukung || ''}
+                        onChange={(e) => setPotonganBiayaPendukung(Math.max(0, parseFloat(e.target.value) || 0))}
+                        placeholder="Masukkan nominal potongan biaya pendukung"
+                        className="input"
+                        style={{ paddingLeft: 30 }}
+                        disabled={submitting}
+                      />
+                    </div>
+                    <span className="input-hint">Pengurangan biaya pendukung perkuliahan secara individu</span>
+                 </div>
+
+                 <div className="input-group">
+                    <label className="input-label">Catatan Alasan Potongan Biaya Pendukung</label>
+                    <textarea
+                      value={catatanPotonganPendukung}
+                      onChange={(e) => setCatatanPotonganPendukung(e.target.value)}
+                      placeholder="Contoh: Potongan khusus alumni program short course"
+                      className="input"
+                      rows={2}
+                      style={{ resize: 'none', padding: '8px 12px' }}
+                      disabled={submitting}
+                    />
+                 </div>
+
+                 {/* Final Cost Calculation */}
+                 <div style={{ borderTop: '2px solid var(--indigo-100)', paddingTop: 14, marginTop: 4 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontWeight: 700, color: 'var(--gray-700)' }}>Total Biaya Akhir:</span>
+                      <strong style={{ fontSize: 16, color: 'var(--success)' }}>Rp{finalBiayaTotal.toLocaleString('id-ID')}</strong>
+                    </div>
+                 </div>
+
+                 <button
+                   onClick={handleSaveDiscount}
+                   className="btn btn-primary"
+                   style={{ width: '100%', justifyContent: 'center', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6 }}
+                   disabled={submitting}
+                 >
+                   <CheckCircle size={15} /> {submitting ? 'Mengirim...' : 'Kirim ke Calon'}
+                 </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
