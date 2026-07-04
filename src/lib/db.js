@@ -467,9 +467,9 @@ export const dbPenetapan = {
     }
     const { data: existing } = await supabase.from('penetapan_akhir').select('id').eq('pengajuan_id', pengajuanId).maybeSingle()
     if (existing) {
-      return supabase.from('penetapan_akhir').update(data).eq('pengajuan_id', pengajuanId).select().single()
+      return supabase.from('penetapan_akhir').update(data).eq('pengajuan_id', pengajuanId)
     } else {
-      return supabase.from('penetapan_akhir').insert({ pengajuan_id: pengajuanId, ...data }).select().single()
+      return supabase.from('penetapan_akhir').insert({ pengajuan_id: pengajuanId, ...data })
     }
   }
 }
@@ -632,7 +632,7 @@ export const dbNotifikasi = {
       saveLocalData('si_rpl_notifikasi', all)
       return { data: newItem, error: null }
     }
-    return supabase.from('notifikasi').insert(payload).select().single()
+    return supabase.from('notifikasi').insert(payload)
   },
 
   createForRole: async (targetRole, title, message, type, link = '') => {
@@ -670,7 +670,7 @@ export const dbNotifikasi = {
       is_read: false
     }))
     if (payloads.length === 0) return { data: [], error: null }
-    return supabase.from('notifikasi').insert(payloads).select()
+    return supabase.from('notifikasi').insert(payloads)
   },
 
   markAsRead: async (id) => {

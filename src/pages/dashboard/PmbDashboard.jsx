@@ -487,10 +487,11 @@ export default function PmbDashboard() {
         monthly_payment_status: isApproved ? 'approved' : 'rejected',
         is_monthly_payment: isApproved
       }
-      await dbPenetapan.upsert(selectedItem.id, payload)
+      const { error: upsertError } = await dbPenetapan.upsert(selectedItem.id, payload)
+      if (upsertError) throw upsertError
       
       // Notify candidate
-      await dbNotifikasi.create(
+      const { error: notifError } = await dbNotifikasi.create(
         selectedItem.user_id,
         isApproved ? 'Pembiayaan Bulanan Disetujui' : 'Pembiayaan Bulanan Ditolak',
         isApproved 
@@ -499,6 +500,7 @@ export default function PmbDashboard() {
         'monthly_payment',
         '/dashboard'
       )
+      if (notifError) throw notifError
 
       toast.success(isApproved ? 'Pembiayaan bulanan berhasil disetujui!' : 'Pembiayaan bulanan ditolak.')
       

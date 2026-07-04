@@ -293,16 +293,18 @@ export default function PendaftarDashboard() {
       const payload = {
         monthly_payment_status: 'pending'
       }
-      await dbPenetapan.upsert(pengajuan.id, payload)
+      const { error: upsertError } = await dbPenetapan.upsert(pengajuan.id, payload)
+      if (upsertError) throw upsertError
       
       // Notify PMB Officer
-      await dbNotifikasi.createForRole(
+      const { error: notifError } = await dbNotifikasi.createForRole(
         'pmb',
         'Pengajuan Pembiayaan Bulanan',
         `Calon mahasiswa ${profile?.nama_lengkap || 'Calon RPL'} mengajukan opsi Pembiayaan Bulanan.`,
         'monthly_payment',
         '/dashboard'
       )
+      if (notifError) throw notifError
 
       toast.success('Permohonan pembiayaan bulanan berhasil diajukan!')
       loadData(true)
