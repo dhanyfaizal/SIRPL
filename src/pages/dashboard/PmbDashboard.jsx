@@ -890,8 +890,10 @@ export default function PmbDashboard() {
             </div>
           </div>
 
-          {/* Right Checklist Monitoring Panel */}
-          <div className="card">
+          {/* Right Column Wrapper */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            {/* Right Checklist Monitoring Panel */}
+            <div className="card">
             <div className="card-header">
               <h3 style={{ fontSize: 14, fontWeight: 700 }}>Kelengkapan Berkas Calon</h3>
             </div>
@@ -1221,6 +1223,7 @@ export default function PmbDashboard() {
               </div>
             </div>
           )}
+          </div>
         </div>
       )}
     </div>
