@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react'
 import { dbPengajuan, dbPenetapan, getDocumentProgress } from '../../lib/db'
 import { supabase, isMock } from '../../lib/supabase'
-import { ClipboardCheck, FileText, CheckCircle, XCircle, Award, RotateCw } from 'lucide-react'
+import { ClipboardCheck, FileText, CheckCircle, XCircle, Award, RotateCw, ExternalLink } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { generateMockDocSrcDoc } from '../../lib/mockDoc'
 import { exportToCSV } from '../../utils/exporter'
 import AnalyticsTab from '../../components/AnalyticsTab'
 
-// Helper: Preview component for BAAK with signed URL support
+// Helper: Preview component for BAAK with signed URL support and New Tab view option
 function BaakDocPreview({ selectedItem, fileUrl, previewType, previewSignedUrl, setPreviewSignedUrl }) {
   const [loading, setLoading] = useState(false)
   const isStoragePath = fileUrl && fileUrl.includes('/')
@@ -26,6 +26,55 @@ function BaakDocPreview({ selectedItem, fileUrl, previewType, previewSignedUrl, 
     }
   }, [fileUrl, isStoragePath, previewSignedUrl])
 
+  const handleOpenNewTab = () => {
+    if (!fileUrl) {
+      toast.error('Berkas tidak tersedia')
+      return
+    }
+    if (previewSignedUrl) {
+      window.open(previewSignedUrl, '_blank')
+    } else if (!isMock && isStoragePath) {
+      supabase.storage
+        .from('rpl-documents')
+        .createSignedUrl(fileUrl, 3600)
+        .then(({ data, error }) => {
+          if (!error && data?.signedUrl) {
+            window.open(data.signedUrl, '_blank')
+          } else {
+            toast.error('Gagal memuat dokumen di tab baru')
+          }
+        })
+    } else {
+      const htmlContent = generateMockDocSrcDoc(
+        previewType,
+        fileUrl,
+        selectedItem?.profile?.nama_lengkap || 'Calon Mahasiswa',
+        selectedItem?.prodi?.nama || '-'
+      )
+      const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' })
+      const blobUrl = URL.createObjectURL(blob)
+      window.open(blobUrl, '_blank')
+    }
+  }
+
+  const renderHeader = () => (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 12px', background: '#f8fafc', borderBottom: '1px solid var(--gray-200)' }}>
+      <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--indigo-900)', display: 'flex', alignItems: 'center', gap: 6 }}>
+        <FileText size={13} color="var(--indigo-600)" /> Pratinjau Dokumen
+      </span>
+      <button
+        type="button"
+        onClick={handleOpenNewTab}
+        disabled={!fileUrl}
+        className="btn btn-secondary btn-xs"
+        style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 9px', fontSize: 11, fontWeight: 700, color: 'var(--indigo-600)', background: '#fff', borderColor: 'var(--indigo-200)' }}
+        title="Buka dokumen di tab baru"
+      >
+        <ExternalLink size={12} /> Buka di Tab Baru ↗
+      </button>
+    </div>
+  )
+
   if (loading) {
     return (
       <div style={{ height: 400, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -34,26 +83,25 @@ function BaakDocPreview({ selectedItem, fileUrl, previewType, previewSignedUrl, 
     )
   }
 
-  if (!isMock && isStoragePath && previewSignedUrl) {
-    return (
-      <div style={{ height: 400, background: '#fff' }}>
-        <iframe title="Pratinjau Dokumen PDF BAAK" src={previewSignedUrl} style={{ width: '100%', height: '100%', border: 'none' }} />
-      </div>
-    )
-  }
-
   return (
-    <div style={{ height: 400, background: '#fff' }}>
-      <iframe
-        title="Pratinjau Dokumen BAAK"
-        srcDoc={generateMockDocSrcDoc(
-          previewType,
-          fileUrl,
-          selectedItem.profile?.nama_lengkap || 'Calon Mahasiswa',
-          selectedItem.prodi?.nama || '-'
+    <div style={{ height: 400, background: '#fff', display: 'flex', flexDirection: 'column', border: '1px solid var(--gray-200)', borderRadius: 8, overflow: 'hidden' }}>
+      {renderHeader()}
+      <div style={{ flex: 1, width: '100%', position: 'relative' }}>
+        {!isMock && isStoragePath && previewSignedUrl ? (
+          <iframe title="Pratinjau Dokumen PDF BAAK" src={previewSignedUrl} style={{ width: '100%', height: '100%', border: 'none' }} />
+        ) : (
+          <iframe
+            title="Pratinjau Dokumen BAAK"
+            srcDoc={generateMockDocSrcDoc(
+              previewType,
+              fileUrl,
+              selectedItem?.profile?.nama_lengkap || 'Calon Mahasiswa',
+              selectedItem?.prodi?.nama || '-'
+            )}
+            style={{ width: '100%', height: '100%', border: 'none' }}
+          />
         )}
-        style={{ width: '100%', height: '100%', border: 'none' }}
-      />
+      </div>
     </div>
   )
 }

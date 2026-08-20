@@ -2,11 +2,11 @@ import { useState, useEffect } from 'react'
 import { dbPengajuan, dbProdi, dbPenetapan, dbFeedback, getDocumentProgress, dbNotifikasi } from '../../lib/db'
 import { supabase, isMock } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
-import { FileUp, Clipboard, Award, Shield, CheckCircle, FileText, Trash2, Plus, Eye, ArrowLeft, ArrowRight, HelpCircle, RotateCw } from 'lucide-react'
+import { FileUp, Clipboard, Award, Shield, CheckCircle, FileText, Trash2, Plus, Eye, ArrowLeft, ArrowRight, HelpCircle, RotateCw, ExternalLink } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { generateMockDocSrcDoc } from '../../lib/mockDoc'
 
-// Helper: Preview component that supports both real PDF (Supabase Storage) and mock HTML
+// Helper: Preview component that supports both real PDF (Supabase Storage) and mock HTML with New Tab view option
 function DocPreview({ fileUrl, previewType, profileName, prodiName }) {
   const [signedUrl, setSignedUrl] = useState(null)
   const [loadingUrl, setLoadingUrl] = useState(false)
@@ -31,6 +31,55 @@ function DocPreview({ fileUrl, previewType, profileName, prodiName }) {
     }
   }, [fileUrl, isStoragePath, isBlobUrl])
 
+  const handleOpenNewTab = () => {
+    if (!fileUrl) {
+      toast.error('Berkas tidak tersedia')
+      return
+    }
+    if (isBlobUrl || signedUrl) {
+      window.open(isBlobUrl ? fileUrl : signedUrl, '_blank')
+    } else if (!isMock && isStoragePath) {
+      supabase.storage
+        .from('rpl-documents')
+        .createSignedUrl(fileUrl, 3600)
+        .then(({ data, error }) => {
+          if (!error && data?.signedUrl) {
+            window.open(data.signedUrl, '_blank')
+          } else {
+            toast.error('Gagal memuat dokumen di tab baru')
+          }
+        })
+    } else {
+      const htmlContent = generateMockDocSrcDoc(
+        previewType,
+        fileUrl,
+        profileName || 'Calon Mahasiswa',
+        prodiName || '-'
+      )
+      const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' })
+      const blobUrl = URL.createObjectURL(blob)
+      window.open(blobUrl, '_blank')
+    }
+  }
+
+  const renderHeader = () => (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 12px', background: '#f8fafc', borderBottom: '1px solid var(--gray-200)' }}>
+      <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--indigo-900)', display: 'flex', alignItems: 'center', gap: 6 }}>
+        <FileText size={13} color="var(--indigo-600)" /> Pratinjau Dokumen Saya
+      </span>
+      <button
+        type="button"
+        onClick={handleOpenNewTab}
+        disabled={!fileUrl}
+        className="btn btn-secondary btn-xs"
+        style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 9px', fontSize: 11, fontWeight: 700, color: 'var(--indigo-600)', background: '#fff', borderColor: 'var(--indigo-200)' }}
+        title="Buka dokumen di tab baru"
+      >
+        <ExternalLink size={12} /> Buka di Tab Baru ↗
+      </button>
+    </div>
+  )
+
   if (loadingUrl) {
     return (
       <div style={{ border: '1px solid var(--gray-200)', borderRadius: 8, height: 420, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -39,26 +88,26 @@ function DocPreview({ fileUrl, previewType, profileName, prodiName }) {
     )
   }
 
-  if (isBlobUrl || (!isMock && isStoragePath && signedUrl)) {
-    const srcUrl = isBlobUrl ? fileUrl : signedUrl
-    return (
-      <div style={{ border: '1px solid var(--gray-200)', borderRadius: 8, overflow: 'hidden', height: 420, background: '#fff' }}>
-        <iframe
-          title="Pratinjau Dokumen PDF"
-          src={srcUrl}
-          style={{ width: '100%', height: '100%', border: 'none' }}
-        />
-      </div>
-    )
-  }
+  const pdfUrl = isBlobUrl ? fileUrl : signedUrl
 
   return (
-    <div style={{ border: '1px solid var(--gray-200)', borderRadius: 8, overflow: 'hidden', height: 420, background: '#fff' }}>
-      <iframe
-        title="Pratinjau Dokumen Calon"
-        srcDoc={generateMockDocSrcDoc(previewType, fileUrl, profileName, prodiName)}
-        style={{ width: '100%', height: '100%', border: 'none' }}
-      />
+    <div style={{ border: '1px solid var(--gray-200)', borderRadius: 8, overflow: 'hidden', height: 420, background: '#fff', display: 'flex', flexDirection: 'column' }}>
+      {renderHeader()}
+      <div style={{ flex: 1, width: '100%', position: 'relative' }}>
+        {pdfUrl ? (
+          <iframe
+            title="Pratinjau Dokumen PDF"
+            src={pdfUrl}
+            style={{ width: '100%', height: '100%', border: 'none' }}
+          />
+        ) : (
+          <iframe
+            title="Pratinjau Dokumen Calon"
+            srcDoc={generateMockDocSrcDoc(previewType, fileUrl, profileName, prodiName)}
+            style={{ width: '100%', height: '100%', border: 'none' }}
+          />
+        )}
+      </div>
     </div>
   )
 }

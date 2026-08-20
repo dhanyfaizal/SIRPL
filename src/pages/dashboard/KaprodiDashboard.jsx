@@ -198,8 +198,8 @@ const findBestMatch = (sourceName, curriculumList) => {
   return { bestMatch, confidence }
 }
 
-// Component: Loads real PDF with Signed URL or falls back to mock HTML
-function TranscriptPreview({ fileUrl, profileName, prodiName, height = 420, noBorder = false }) {
+// Component: Loads real PDF with Signed URL or falls back to mock HTML with New Tab view option
+function TranscriptPreview({ fileUrl, profileName, prodiName, height = 420, noBorder = false, docType = 'transkrip' }) {
   const [signedUrl, setSignedUrl] = useState(null)
   const [loadingUrl, setLoadingUrl] = useState(false)
   const isStoragePath = fileUrl && fileUrl.includes('/')
@@ -219,6 +219,45 @@ function TranscriptPreview({ fileUrl, profileName, prodiName, height = 420, noBo
     }
   }, [fileUrl, isStoragePath])
 
+  const handleOpenNewTab = () => {
+    if (signedUrl) {
+      window.open(signedUrl, '_blank')
+    } else if (!isMock && isStoragePath) {
+      supabase.storage
+        .from('rpl-documents')
+        .createSignedUrl(fileUrl, 3600)
+        .then(({ data, error }) => {
+          if (!error && data?.signedUrl) {
+            window.open(data.signedUrl, '_blank')
+          } else {
+            toast.error('Gagal memuat dokumen di tab baru')
+          }
+        })
+    } else {
+      const htmlContent = generateMockDocSrcDoc(docType, fileUrl, profileName, prodiName)
+      const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' })
+      const blobUrl = URL.createObjectURL(blob)
+      window.open(blobUrl, '_blank')
+    }
+  }
+
+  const renderHeader = () => (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 12px', background: '#f8fafc', borderBottom: '1px solid var(--gray-200)' }}>
+      <span style={{ fontSize: 11.5, fontWeight: 700, color: 'var(--indigo-900)', display: 'flex', alignItems: 'center', gap: 6 }}>
+        <FileText size={13} color="var(--indigo-600)" /> Pratinjau Transkrip Akademik
+      </span>
+      <button
+        type="button"
+        onClick={handleOpenNewTab}
+        className="btn btn-secondary btn-xs"
+        style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 9px', fontSize: 11, fontWeight: 700, color: 'var(--indigo-600)', background: '#fff', borderColor: 'var(--indigo-200)' }}
+        title="Buka dokumen transkrip di tab baru"
+      >
+        <ExternalLink size={12} /> Buka di Tab Baru ↗
+      </button>
+    </div>
+  )
+
   if (loadingUrl) {
     return (
       <div style={noBorder ? { width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' } : { border: '1px solid var(--gray-200)', borderRadius: 8, height, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fff' }}>
@@ -227,37 +266,26 @@ function TranscriptPreview({ fileUrl, profileName, prodiName, height = 420, noBo
     )
   }
 
-  if (!isMock && isStoragePath && signedUrl) {
-    return noBorder ? (
-      <iframe
-        title="Transcript PDF Preview"
-        src={signedUrl}
-        style={{ width: '100%', height: '100%', border: 'none' }}
-      />
-    ) : (
-      <div style={{ border: '1px solid var(--gray-200)', borderRadius: 8, overflow: 'hidden', height, background: '#fff' }}>
-        <iframe
-          title="Transcript PDF Preview"
-          src={signedUrl}
-          style={{ width: '100%', height: '100%', border: 'none' }}
-        />
-      </div>
-    )
-  }
+  const pdfUrl = signedUrl || (isStoragePath ? null : fileUrl)
 
-  return noBorder ? (
-    <iframe
-      title="Document Transcript Preview"
-      srcDoc={generateMockDocSrcDoc('transkrip', fileUrl, profileName, prodiName)}
-      style={{ width: '100%', height: '100%', border: 'none' }}
-    />
-  ) : (
-    <div style={{ border: '1px solid var(--gray-200)', borderRadius: 8, overflow: 'hidden', height, background: '#fff' }}>
-      <iframe
-        title="Document Transcript Preview"
-        srcDoc={generateMockDocSrcDoc('transkrip', fileUrl, profileName, prodiName)}
-        style={{ width: '100%', height: '100%', border: 'none' }}
-      />
+  return (
+    <div style={noBorder ? { width: '100%', height: '100%', display: 'flex', flexDirection: 'column' } : { border: '1px solid var(--gray-200)', borderRadius: 8, overflow: 'hidden', height, background: '#fff', display: 'flex', flexDirection: 'column' }}>
+      {renderHeader()}
+      <div style={{ flex: 1, width: '100%', position: 'relative' }}>
+        {pdfUrl ? (
+          <iframe
+            title="Transcript PDF Preview"
+            src={pdfUrl}
+            style={{ width: '100%', height: '100%', border: 'none' }}
+          />
+        ) : (
+          <iframe
+            title="Document Transcript Preview"
+            srcDoc={generateMockDocSrcDoc(docType, fileUrl, profileName, prodiName)}
+            style={{ width: '100%', height: '100%', border: 'none' }}
+          />
+        )}
+      </div>
     </div>
   )
 }
