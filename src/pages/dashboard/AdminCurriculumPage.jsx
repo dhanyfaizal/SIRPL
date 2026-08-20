@@ -103,11 +103,7 @@ export default function AdminCurriculumPage() {
     }
 
     try {
-      const { data: existingRules } = await dbMKMapping.getByProdi(targetId)
-      const existingMap = new Map((existingRules || []).map(r => [r.mk_id, r]))
-
       const mergedRows = prodiCourses.map(mk => {
-        const existing = existingMap.get(mk.id)
         const isUmum = mk.jenis === 'umum'
         return {
           mk_id: mk.id,
@@ -116,10 +112,7 @@ export default function AdminCurriculumPage() {
           sks: mk.sks,
           jenis: mk.jenis,
           semester: mk.semester || 1,
-          jalur_preset: existing?.jalur_preset || (isUmum ? 'asinkron' : 'sinkron'),
-          keywords_asinkron: existing?.keywords_asinkron ?? (isUmum ? mk.nama_mk : ''),
-          keywords_sinkron: existing?.keywords_sinkron ?? (!isUmum ? mk.nama_mk : ''),
-          min_nilai: existing?.min_nilai || (isUmum ? 'C' : 'B')
+          jalur: mk.jalur || (isUmum ? 'asinkron' : 'sinkron')
         }
       })
 
@@ -127,7 +120,7 @@ export default function AdminCurriculumPage() {
       setShowMappingModal(true)
     } catch (e) {
       console.error(e)
-      toast.error('Gagal mengambil data aturan pemetaan')
+      toast.error('Gagal mengambil data pemetaan mata kuliah')
     }
   }
 
@@ -136,13 +129,10 @@ export default function AdminCurriculumPage() {
       const isUmum = row.jenis === 'umum'
       return {
         ...row,
-        jalur_preset: isUmum ? 'asinkron' : 'sinkron',
-        keywords_asinkron: isUmum ? `${row.nama_mk}, ${row.kode_mk}, transkrip, moocs` : row.nama_mk,
-        keywords_sinkron: !isUmum ? `${row.nama_mk}, ${row.kode_mk}, sertifikasi, pengalaman` : row.nama_mk,
-        min_nilai: isUmum ? 'C' : 'B'
+        jalur: isUmum ? 'asinkron' : 'sinkron'
       }
     }))
-    toast.success('Preset aturan Sinkron & Asinkron berhasil di-generate secara otomatis!')
+    toast.success('Preset standar Sinkron (Prodi) & Asinkron (Institusi) berhasil diterapkannya!')
   }
 
   const handleSaveMapping = async () => {
@@ -152,15 +142,17 @@ export default function AdminCurriculumPage() {
       const { error } = await dbMKMapping.saveMapping(mappingProdiId, mappingRows)
       if (error) throw error
       const targetProdi = prodis.find(p => p.id === mappingProdiId)
-      toast.success(`Aturan mapping RPL untuk ${targetProdi?.nama || 'Prodi'} berhasil disimpan!`)
+      toast.success(`Pemetaan jalur Sinkron & Asinkron untuk ${targetProdi?.nama || 'Prodi'} berhasil disimpan!`)
       setShowMappingModal(false)
+      loadData(true)
     } catch (e) {
       console.error(e)
-      toast.error('Gagal menyimpan aturan mapping: ' + (e.message || ''))
+      toast.error('Gagal menyimpan pemetaan: ' + (e.message || ''))
     } finally {
       setSavingMapping(false)
     }
   }
+
 
 
   // ── Single Add ──────────────────────────────────────────────
@@ -832,24 +824,26 @@ export default function AdminCurriculumPage() {
                 <table>
                   <thead>
                     <tr>
-                      <th style={{ width: 100 }}>Kode MK</th>
+                      <th style={{ width: 95 }}>Kode MK</th>
                       <th>Nama Mata Kuliah</th>
-                      <th style={{ width: 60 }}>SKS</th>
-                      <th style={{ width: 110 }}>Jenis</th>
-                      <th style={{ width: 60 }}>Smt</th>
-                      <th style={{ width: 90 }}>Aksi</th>
+                      <th style={{ width: 50 }}>SKS</th>
+                      <th style={{ width: 100 }}>Jenis</th>
+                      <th style={{ width: 105 }}>Jalur RPL</th>
+                      <th style={{ width: 50 }}>Smt</th>
+                      <th style={{ width: 85 }}>Aksi</th>
                     </tr>
                   </thead>
                   <tbody>
                     {prodiGroups.map(group => (
                       <Fragment key={group.prodi.id}>
                         <tr>
-                          <td colSpan={6} style={{ background: '#f5f3ff', color: 'var(--indigo-800)', fontWeight: 700, padding: '10px 14px', fontSize: 13, borderBottom: '1px solid var(--indigo-100)' }}>
+                          <td colSpan={7} style={{ background: '#f5f3ff', color: 'var(--indigo-800)', fontWeight: 700, padding: '10px 14px', fontSize: 13, borderBottom: '1px solid var(--indigo-100)' }}>
                             {group.prodi.kode} - {group.prodi.nama} ({group.courses.length} MK)
                           </td>
                         </tr>
                         {group.courses.map(mk => {
                           const isEditing = editingMkId === mk.id
+                          const currentJalur = mk.jalur || (mk.jenis === 'umum' ? 'asinkron' : 'sinkron')
                           return (
                             <tr key={mk.id} style={{ background: isEditing ? '#f0f4ff' : 'transparent' }}>
                               <td>
@@ -911,6 +905,22 @@ export default function AdminCurriculumPage() {
                                   </span>
                                 )}
                               </td>
+                              <td>
+                                <span
+                                  className="badge-pill"
+                                  style={{
+                                    fontSize: 11,
+                                    fontWeight: 600,
+                                    padding: '3px 8px',
+                                    background: currentJalur === 'asinkron' ? '#f0fdf4' : '#faf5ff',
+                                    color: currentJalur === 'asinkron' ? '#166534' : '#6b21a8',
+                                    border: `1px solid ${currentJalur === 'asinkron' ? '#bbf7d0' : '#e9d5ff'}`
+                                  }}
+                                >
+                                  {currentJalur === 'asinkron' ? '🌐 Asinkron' : '🏫 Sinkron'}
+                                </span>
+                              </td>
+
                               <td style={{ textAlign: 'center' }}>
                                 {isEditing ? (
                                   <select
@@ -1023,7 +1033,7 @@ export default function AdminCurriculumPage() {
           <div
             className="modal"
             onClick={e => e.stopPropagation()}
-            style={{ maxWidth: '960px', width: '95%', maxHeight: '88vh', display: 'flex', flexDirection: 'column', padding: 0 }}
+            style={{ maxWidth: '720px', width: '95%', maxHeight: '88vh', display: 'flex', flexDirection: 'column', padding: 0 }}
           >
             <div className="modal-header" style={{ padding: '16px 24px', background: 'var(--indigo-50)', borderBottom: '1px solid var(--indigo-100)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -1035,7 +1045,7 @@ export default function AdminCurriculumPage() {
                     Menu Mapping Mata Kuliah (Sinkron & Asinkron)
                   </h3>
                   <p style={{ fontSize: 12, color: 'var(--indigo-600)', margin: 0 }}>
-                    Konfigurasi preset jalur & kata kunci pemetaan otomatis saat calon mahasiswa masuk tahapan mapping RPL
+                    Tentukan klasifikasi jalur Sinkron (Tatap Muka) atau Asinkron (MOOCs) per mata kuliah per prodi
                   </p>
                 </div>
               </div>
@@ -1068,17 +1078,17 @@ export default function AdminCurriculumPage() {
                 className="btn btn-secondary btn-sm"
                 style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--indigo-700)', borderColor: 'var(--indigo-300)', background: '#f5f3ff' }}
               >
-                <Sparkles size={14} color="var(--indigo-600)" /> Generate Preset Otomatis
+                <Sparkles size={14} color="var(--indigo-600)" /> Preset Standar
               </button>
             </div>
 
             <div className="modal-body" style={{ padding: '20px 24px', overflowY: 'auto', flex: 1 }}>
               <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', padding: 12, borderRadius: 8, marginBottom: 16, fontSize: 12, color: '#1e40af', lineHeight: 1.5 }}>
-                <strong>📌 Petunjuk Pemetaan Otomatis:</strong>
+                <strong>📌 Petunjuk Pemetaan Jalur:</strong>
                 <ul style={{ paddingLeft: 18, margin: '4px 0 0' }}>
-                  <li><strong>🏫 Sinkron (Tatap Muka & Portofolio):</strong> Dipetakan secara otomatis berdasarkan Bukti Pengalaman Kerja, Sertifikat Kompetensi, atau Portofolio yang diunggah calon.</li>
-                  <li><strong>🌐 Asinkron (MOOCs & Transkrip):</strong> Dipetakan secara otomatis berdasarkan Transkrip Nilai Perguruan Tinggi Asal / Pendidikan Formal.</li>
-                  <li><strong>Kata Kunci Padanan:</strong> Pisahkan dengan koma (cth: <code>algoritma, alpro, pemrograman dasar</code>) untuk pencocokan AI/OCR yang presisi saat tahapan mapping.</li>
+                  <li><strong>🏫 Sinkron (Tatap Muka):</strong> Mata kuliah yang diselesaikan via perkuliahan reguler / tatap muka / portofolio.</li>
+                  <li><strong>🌐 Asinkron (MOOCs):</strong> Mata kuliah umum / pembelajaran mandiri / transfer SKS.</li>
+                  <li>Pengaturan ini secara otomatis dibaca pada tahapan mapping untuk menentukan SKS/mata kuliah yang harus diambil oleh mahasiswa.</li>
                 </ul>
               </div>
 
@@ -1091,81 +1101,43 @@ export default function AdminCurriculumPage() {
                   <table>
                     <thead>
                       <tr>
-                        <th style={{ width: 220 }}>Mata Kuliah Kurikulum</th>
-                        <th style={{ width: 150 }}>Preset Jalur RPL</th>
-                        <th>Kata Kunci Transkrip (Asinkron)</th>
-                        <th>Kata Kunci Sertifikat/Exp (Sinkron)</th>
-                        <th style={{ width: 80 }}>Nilai Min</th>
+                        <th>Mata Kuliah Kurikulum</th>
+                        <th style={{ width: 220 }}>Jalur Pemetaan RPL</th>
                       </tr>
                     </thead>
                     <tbody>
                       {mappingRows.map((row, idx) => (
                         <tr key={row.mk_id}>
                           <td>
-                            <div style={{ fontWeight: 700, fontSize: 12, color: 'var(--indigo-700)' }}>
-                              {row.kode_mk} <span className={`badge-pill ${row.jenis === 'inti' ? 'badge-indigo' : 'badge-slate'}`} style={{ fontSize: 10, padding: '1px 5px' }}>{row.jenis === 'inti' ? 'Prodi' : 'Institusi'}</span>
+                            <div style={{ fontWeight: 700, fontSize: 12.5, color: 'var(--indigo-700)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <code>{row.kode_mk}</code>
+                              <span className={`badge-pill ${row.jenis === 'inti' ? 'badge-indigo' : 'badge-slate'}`} style={{ fontSize: 10, padding: '1px 5px' }}>
+                                {row.jenis === 'inti' ? 'MK Prodi' : 'MK Institusi'}
+                              </span>
                             </div>
-                            <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--gray-800)' }}>{row.nama_mk}</div>
-                            <div style={{ fontSize: 11, color: 'var(--gray-500)' }}>{row.sks} SKS • Semester {row.semester}</div>
+                            <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--gray-800)', marginTop: 2 }}>{row.nama_mk}</div>
+                            <div style={{ fontSize: 11.5, color: 'var(--gray-500)', marginTop: 1 }}>{row.sks} SKS • Semester {row.semester}</div>
                           </td>
 
                           <td>
                             <select
-                              value={row.jalur_preset}
+                              value={row.jalur || 'sinkron'}
                               onChange={(e) => {
                                 const val = e.target.value
-                                setMappingRows(prev => prev.map((r, i) => i === idx ? { ...r, jalur_preset: val } : r))
+                                setMappingRows(prev => prev.map((r, i) => i === idx ? { ...r, jalur: val } : r))
                               }}
                               className="input"
-                              style={{ padding: '6px 8px', fontSize: 11.5, fontWeight: 600 }}
+                              style={{
+                                padding: '8px 10px',
+                                fontSize: 12,
+                                fontWeight: 700,
+                                background: row.jalur === 'asinkron' ? '#f0fdf4' : '#faf5ff',
+                                borderColor: row.jalur === 'asinkron' ? '#86efac' : '#d8b4fe',
+                                color: row.jalur === 'asinkron' ? '#166534' : '#6b21a8'
+                              }}
                             >
-                              <option value="sinkron">🏫 Sinkron (Portofolio)</option>
-                              <option value="asinkron">🌐 Asinkron (Transkrip)</option>
-                              <option value="bebas">🔀 Bebas / Fleksibel</option>
-                            </select>
-                          </td>
-
-                          <td>
-                            <input
-                              type="text"
-                              value={row.keywords_asinkron}
-                              onChange={(e) => {
-                                const val = e.target.value
-                                setMappingRows(prev => prev.map((r, i) => i === idx ? { ...r, keywords_asinkron: val } : r))
-                              }}
-                              placeholder="cth: alpro, pemrograman dasar"
-                              className="input"
-                              style={{ padding: '6px 8px', fontSize: 11.5 }}
-                            />
-                          </td>
-
-                          <td>
-                            <input
-                              type="text"
-                              value={row.keywords_sinkron}
-                              onChange={(e) => {
-                                const val = e.target.value
-                                setMappingRows(prev => prev.map((r, i) => i === idx ? { ...r, keywords_sinkron: val } : r))
-                              }}
-                              placeholder="cth: programmer, web dev, sertifikasi"
-                              className="input"
-                              style={{ padding: '6px 8px', fontSize: 11.5 }}
-                            />
-                          </td>
-
-                          <td>
-                            <select
-                              value={row.min_nilai}
-                              onChange={(e) => {
-                                const val = e.target.value
-                                setMappingRows(prev => prev.map((r, i) => i === idx ? { ...r, min_nilai: val } : r))
-                              }}
-                              className="input"
-                              style={{ padding: '6px 6px', fontSize: 11.5, textAlign: 'center' }}
-                            >
-                              <option value="A">A</option>
-                              <option value="B">B</option>
-                              <option value="C">C</option>
+                              <option value="sinkron">🏫 Sinkron (Tatap Muka)</option>
+                              <option value="asinkron">🌐 Asinkron (MOOCs)</option>
                             </select>
                           </td>
                         </tr>
@@ -1199,4 +1171,5 @@ export default function AdminCurriculumPage() {
     </div>
   )
 }
+
 

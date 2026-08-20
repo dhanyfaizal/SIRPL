@@ -89,12 +89,9 @@ function distributeCoursesToStudySemesters(courses) {
                             name.includes('pancasila') || 
                             name.includes('bahasa')
       
-      let jalur = 'sinkron'
-      if (isMoocDefault) {
-        jalur = 'asinkron'
-      } else {
+      let jalur = c.jalur || (isMoocDefault ? 'asinkron' : 'sinkron')
+      if (jalur === 'sinkron') {
         if (currentSinkronSks + c.sks <= 24) {
-          jalur = 'sinkron'
           currentSinkronSks += c.sks
         } else {
           jalur = 'asinkron'

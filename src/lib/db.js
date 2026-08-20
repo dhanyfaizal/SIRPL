@@ -10,35 +10,36 @@ const MOCK_PRODI = [
 
 const MOCK_MK = [
   // Teknik Informatika - Umum
-  { id: 'mk-if-mku101', prodi_id: 'prodi-if', kode_mk: 'MKU101', nama_mk: 'Pancasila', sks: 2, jenis: 'umum' },
-  { id: 'mk-if-mku102', prodi_id: 'prodi-if', kode_mk: 'MKU102', nama_mk: 'Kewarganegaraan', sks: 2, jenis: 'umum' },
-  { id: 'mk-if-mku103', prodi_id: 'prodi-if', kode_mk: 'MKU103', nama_mk: 'Bahasa Indonesia', sks: 2, jenis: 'umum' },
-  { id: 'mk-if-mku104', prodi_id: 'prodi-if', kode_mk: 'MKU104', nama_mk: 'Bahasa Inggris Akademik', sks: 2, jenis: 'umum' },
-  { id: 'mk-if-mku105', prodi_id: 'prodi-if', kode_mk: 'MKU105', nama_mk: 'Kewirausahaan', sks: 3, jenis: 'umum' },
-  { id: 'mk-if-mku106', prodi_id: 'prodi-if', kode_mk: 'MKU106', nama_mk: 'Etika Profesi IT', sks: 2, jenis: 'umum' },
+  { id: 'mk-if-mku101', prodi_id: 'prodi-if', kode_mk: 'MKU101', nama_mk: 'Pancasila', sks: 2, jenis: 'umum', jalur: 'asinkron' },
+  { id: 'mk-if-mku102', prodi_id: 'prodi-if', kode_mk: 'MKU102', nama_mk: 'Kewarganegaraan', sks: 2, jenis: 'umum', jalur: 'asinkron' },
+  { id: 'mk-if-mku103', prodi_id: 'prodi-if', kode_mk: 'MKU103', nama_mk: 'Bahasa Indonesia', sks: 2, jenis: 'umum', jalur: 'asinkron' },
+  { id: 'mk-if-mku104', prodi_id: 'prodi-if', kode_mk: 'MKU104', nama_mk: 'Bahasa Inggris Akademik', sks: 2, jenis: 'umum', jalur: 'asinkron' },
+  { id: 'mk-if-mku105', prodi_id: 'prodi-if', kode_mk: 'MKU105', nama_mk: 'Kewirausahaan', sks: 3, jenis: 'umum', jalur: 'asinkron' },
+  { id: 'mk-if-mku106', prodi_id: 'prodi-if', kode_mk: 'MKU106', nama_mk: 'Etika Profesi IT', sks: 2, jenis: 'umum', jalur: 'asinkron' },
   // Teknik Informatika - Inti
-  { id: 'mk-if-mki201', prodi_id: 'prodi-if', kode_mk: 'MKI201', nama_mk: 'Dasar-Dasar Pemrograman', sks: 4, jenis: 'inti' },
-  { id: 'mk-if-mki202', prodi_id: 'prodi-if', kode_mk: 'MKI202', nama_mk: 'Struktur Data & Algoritma', sks: 4, jenis: 'inti' },
-  { id: 'mk-if-mki203', prodi_id: 'prodi-if', kode_mk: 'MKI203', nama_mk: 'Basis Data Terdistribusi', sks: 3, jenis: 'inti' },
-  { id: 'mk-if-mki204', prodi_id: 'prodi-if', kode_mk: 'MKI204', nama_mk: 'Pemrograman Web Enterprise', sks: 4, jenis: 'inti' },
-  { id: 'mk-if-mki205', prodi_id: 'prodi-if', kode_mk: 'MKI205', nama_mk: 'Rekayasa Perangkat Lunak', sks: 3, jenis: 'inti' },
-  { id: 'mk-if-mki206', prodi_id: 'prodi-if', kode_mk: 'MKI206', nama_mk: 'Kecerdasan Buatan (AI)', sks: 3, jenis: 'inti' },
-  { id: 'mk-if-mki207', prodi_id: 'prodi-if', kode_mk: 'MKI207', nama_mk: 'Keamanan Jaringan & Siber', sks: 3, jenis: 'inti' },
-  { id: 'mk-if-mki208', prodi_id: 'prodi-if', kode_mk: 'MKI208', nama_mk: 'Sistem Operasi', sks: 3, jenis: 'inti' },
+  { id: 'mk-if-mki201', prodi_id: 'prodi-if', kode_mk: 'MKI201', nama_mk: 'Dasar-Dasar Pemrograman', sks: 4, jenis: 'inti', jalur: 'sinkron' },
+  { id: 'mk-if-mki202', prodi_id: 'prodi-if', kode_mk: 'MKI202', nama_mk: 'Struktur Data & Algoritma', sks: 4, jenis: 'inti', jalur: 'sinkron' },
+  { id: 'mk-if-mki203', prodi_id: 'prodi-if', kode_mk: 'MKI203', nama_mk: 'Basis Data Terdistribusi', sks: 3, jenis: 'inti', jalur: 'sinkron' },
+  { id: 'mk-if-mki204', prodi_id: 'prodi-if', kode_mk: 'MKI204', nama_mk: 'Pemrograman Web Enterprise', sks: 4, jenis: 'inti', jalur: 'sinkron' },
+  { id: 'mk-if-mki205', prodi_id: 'prodi-if', kode_mk: 'MKI205', nama_mk: 'Rekayasa Perangkat Lunak', sks: 3, jenis: 'inti', jalur: 'sinkron' },
+  { id: 'mk-if-mki206', prodi_id: 'prodi-if', kode_mk: 'MKI206', nama_mk: 'Kecerdasan Buatan (AI)', sks: 3, jenis: 'inti', jalur: 'sinkron' },
+  { id: 'mk-if-mki207', prodi_id: 'prodi-if', kode_mk: 'MKI207', nama_mk: 'Keamanan Jaringan & Siber', sks: 3, jenis: 'inti', jalur: 'sinkron' },
+  { id: 'mk-if-mki208', prodi_id: 'prodi-if', kode_mk: 'MKI208', nama_mk: 'Sistem Operasi', sks: 3, jenis: 'inti', jalur: 'sinkron' },
 
   // Sistem Informasi
-  { id: 'mk-si-mku101', prodi_id: 'prodi-si', kode_mk: 'MKU101', nama_mk: 'Pancasila', sks: 2, jenis: 'umum' },
-  { id: 'mk-si-mku102', prodi_id: 'prodi-si', kode_mk: 'MKU102', nama_mk: 'Kewarganegaraan', sks: 2, jenis: 'umum' },
-  { id: 'mk-si-mki301', prodi_id: 'prodi-si', kode_mk: 'MKI301', nama_mk: 'Pengantar Sistem Informasi', sks: 3, jenis: 'inti' },
-  { id: 'mk-si-mki302', prodi_id: 'prodi-si', kode_mk: 'MKI302', nama_mk: 'Analisis & Perancangan Sistem', sks: 3, jenis: 'inti' },
-  { id: 'mk-si-mki303', prodi_id: 'prodi-si', kode_mk: 'MKI303', nama_mk: 'E-Business & E-Commerce', sks: 3, jenis: 'inti' },
+  { id: 'mk-si-mku101', prodi_id: 'prodi-si', kode_mk: 'MKU101', nama_mk: 'Pancasila', sks: 2, jenis: 'umum', jalur: 'asinkron' },
+  { id: 'mk-si-mku102', prodi_id: 'prodi-si', kode_mk: 'MKU102', nama_mk: 'Kewarganegaraan', sks: 2, jenis: 'umum', jalur: 'asinkron' },
+  { id: 'mk-si-mki301', prodi_id: 'prodi-si', kode_mk: 'MKI301', nama_mk: 'Pengantar Sistem Informasi', sks: 3, jenis: 'inti', jalur: 'sinkron' },
+  { id: 'mk-si-mki302', prodi_id: 'prodi-si', kode_mk: 'MKI302', nama_mk: 'Analisis & Perancangan Sistem', sks: 3, jenis: 'inti', jalur: 'sinkron' },
+  { id: 'mk-si-mki303', prodi_id: 'prodi-si', kode_mk: 'MKI303', nama_mk: 'E-Business & E-Commerce', sks: 3, jenis: 'inti', jalur: 'sinkron' },
 
   // Desain Komunikasi Visual
-  { id: 'mk-dkv-mku101', prodi_id: 'prodi-dkv', kode_mk: 'MKU101', nama_mk: 'Pancasila', sks: 2, jenis: 'umum' },
-  { id: 'mk-dkv-mki401', prodi_id: 'prodi-dkv', kode_mk: 'MKI401', nama_mk: 'Menggambar Bentuk', sks: 3, jenis: 'inti' },
-  { id: 'mk-dkv-mki402', prodi_id: 'prodi-dkv', kode_mk: 'MKI402', nama_mk: 'Tipografi Dasar', sks: 3, jenis: 'inti' },
-  { id: 'mk-dkv-mki403', prodi_id: 'prodi-dkv', kode_mk: 'MKI403', nama_mk: 'Desain Grafis Digital', sks: 4, jenis: 'inti' }
+  { id: 'mk-dkv-mku101', prodi_id: 'prodi-dkv', kode_mk: 'MKU101', nama_mk: 'Pancasila', sks: 2, jenis: 'umum', jalur: 'asinkron' },
+  { id: 'mk-dkv-mki401', prodi_id: 'prodi-dkv', kode_mk: 'MKI401', nama_mk: 'Menggambar Bentuk', sks: 3, jenis: 'inti', jalur: 'sinkron' },
+  { id: 'mk-dkv-mki402', prodi_id: 'prodi-dkv', kode_mk: 'MKI402', nama_mk: 'Tipografi Dasar', sks: 3, jenis: 'inti', jalur: 'sinkron' },
+  { id: 'mk-dkv-mki403', prodi_id: 'prodi-dkv', kode_mk: 'MKI403', nama_mk: 'Desain Grafis Digital', sks: 4, jenis: 'inti', jalur: 'sinkron' }
 ]
+
 
 // Inisialisasi data mock ke local storage jika belum ada
 function initMockStorage() {
@@ -180,40 +181,71 @@ export const dbMK = {
 export const dbMKMapping = {
   getByProdi: async (prodiId) => {
     if (isMock) {
-      const all = getLocalData('si_rpl_mk_mapping') || {}
-      return { data: all[prodiId] || [], error: null }
+      const list = getLocalData('si_rpl_mata_kuliah') || []
+      const prodiMK = list.filter(mk => mk.prodi_id === prodiId)
+      return { data: prodiMK, error: null }
     }
     try {
-      const { data, error } = await supabase.from('mata_kuliah_mapping').select('*').eq('prodi_id', prodiId)
+      const { data, error } = await supabase.from('mata_kuliah_kurikulum').select('*').eq('prodi_id', prodiId)
       if (error) throw error
       return { data: data || [], error: null }
     } catch (e) {
-      const all = getLocalData('si_rpl_mk_mapping') || {}
-      return { data: all[prodiId] || [], error: null }
+      const list = getLocalData('si_rpl_mata_kuliah') || []
+      const prodiMK = list.filter(mk => mk.prodi_id === prodiId)
+      return { data: prodiMK, error: null }
     }
   },
 
   saveMapping: async (prodiId, mappingList) => {
+    // mappingList: array of { mk_id, jalur }
     if (isMock) {
-      const all = getLocalData('si_rpl_mk_mapping') || {}
-      all[prodiId] = mappingList
-      saveLocalData('si_rpl_mk_mapping', all)
+      const list = getLocalData('si_rpl_mata_kuliah') || []
+      const mapObj = new Map(mappingList.map(m => [m.mk_id, m.jalur]))
+      const updated = list.map(mk => {
+        if (mapObj.has(mk.id)) {
+          return { ...mk, jalur: mapObj.get(mk.id) }
+        }
+        return mk
+      })
+      saveLocalData('si_rpl_mata_kuliah', updated)
       return { data: mappingList, error: null }
     }
+
     try {
-      const { data, error } = await supabase.from('mata_kuliah_mapping').upsert(
-        mappingList.map(m => ({ ...m, prodi_id: prodiId }))
+      // Direct bulk update for Supabase table mata_kuliah_kurikulum
+      const updatePromises = mappingList.map(m =>
+        supabase.from('mata_kuliah_kurikulum').update({ jalur: m.jalur }).eq('id', m.mk_id)
       )
-      if (error) throw error
-      return { data, error: null }
+      await Promise.all(updatePromises)
+
+      // Fallback local update
+      const list = getLocalData('si_rpl_mata_kuliah') || []
+      const mapObj = new Map(mappingList.map(m => [m.mk_id, m.jalur]))
+      const updated = list.map(mk => {
+        if (mapObj.has(mk.id)) {
+          return { ...mk, jalur: mapObj.get(mk.id) }
+        }
+        return mk
+      })
+      saveLocalData('si_rpl_mata_kuliah', updated)
+
+      return { data: mappingList, error: null }
     } catch (e) {
-      const all = getLocalData('si_rpl_mk_mapping') || {}
-      all[prodiId] = mappingList
-      saveLocalData('si_rpl_mk_mapping', all)
+      console.error('Error saving mapping to DB:', e)
+      const list = getLocalData('si_rpl_mata_kuliah') || []
+      const mapObj = new Map(mappingList.map(m => [m.mk_id, m.jalur]))
+      const updated = list.map(mk => {
+        if (mapObj.has(mk.id)) {
+          return { ...mk, jalur: mapObj.get(mk.id) }
+        }
+        return mk
+      })
+      saveLocalData('si_rpl_mata_kuliah', updated)
       return { data: mappingList, error: null }
     }
   }
 }
+
 
 
 // ── 3. Pengajuan RPL ───────────────────────────────────────────
