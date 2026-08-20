@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { dbPengajuan, dbMK, dbRekognisi, getDocumentProgress } from '../../lib/db'
 import SearchableSelect from '../../components/SearchableSelect'
-import { Award, Brain, RefreshCw, FileText, CheckCircle, Save, Plus, Trash2, Briefcase } from 'lucide-react'
+import { Award, Brain, RefreshCw, FileText, CheckCircle, Save, Plus, Trash2, Briefcase, ExternalLink } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../contexts/AuthContext'
 import { generateMockDocSrcDoc } from '../../lib/mockDoc'
