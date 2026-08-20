@@ -186,7 +186,11 @@ export default function AdminCurriculumPage() {
       loadData()
     } catch (e) {
       console.error(e)
-      toast.error('Gagal menambahkan mata kuliah: ' + (e.message || ''))
+      if (e.message?.includes('mata_kuliah_kurikulum_jenis_check') || e.code === '23514') {
+        toast.error('Postgres Supabase membatasi nilai jenis MK. Silakan jalankan script SQL migrasi 20260821000000_update_jenis_check_constraint.sql di Supabase SQL Editor!', { duration: 10000 })
+      } else {
+        toast.error('Gagal menambahkan mata kuliah: ' + (e.message || ''))
+      }
     } finally {
       setSubmitting(false)
     }
