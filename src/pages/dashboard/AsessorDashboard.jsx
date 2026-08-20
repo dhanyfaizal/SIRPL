@@ -734,17 +734,20 @@ export default function AsessorDashboard() {
                                     onClick={(e) => e.stopPropagation()}
                                   />
                                 ) : (
-                                  <span style={{ fontSize: 12.5 }}>{row.nilaiAsal}</span>
+                  <span style={{ fontSize: 12.5 }}>{row.nilaiAsal}</span>
                                 )}
                               </td>
                               <td>
                                 {row.isCertified && (selectedItem.status === 'recognized_kaprodi' || selectedItem.status === 'returned_admin') ? (
                                   <div onClick={(e) => e.stopPropagation()}>
                                     <SearchableSelect
-                                      options={curriculumMK.map(mk => ({
-                                        value: mk.id,
-                                        label: `${mk.kode_mk} - ${mk.nama_mk} (${mk.sks} SKS)`
-                                      }))}
+                                      options={curriculumMK.map(mk => {
+                                        const jTag = mk.jenis === 'pilihan' ? '⚡ MK PILIHAN' : mk.jenis === 'inti' ? 'MK PRODI' : 'MK INSTITUSI'
+                                        return {
+                                          value: mk.id,
+                                          label: `${mk.kode_mk} - ${mk.nama_mk} (${mk.sks} SKS, ${jTag})`
+                                        }
+                                      })}
                                       value={row.mkTujuanId}
                                       onChange={(val) => updateRowField(row.id, 'mkTujuanId', val)}
                                       placeholder="-- Pilih MK Kurikulum --"

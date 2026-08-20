@@ -33,12 +33,23 @@ const MOCK_MK = [
   { id: 'mk-si-mki302', prodi_id: 'prodi-si', kode_mk: 'MKI302', nama_mk: 'Analisis & Perancangan Sistem', sks: 3, jenis: 'inti', jalur: 'sinkron' },
   { id: 'mk-si-mki303', prodi_id: 'prodi-si', kode_mk: 'MKI303', nama_mk: 'E-Business & E-Commerce', sks: 3, jenis: 'inti', jalur: 'sinkron' },
 
-  // Desain Komunikasi Visual
-  { id: 'mk-dkv-mku101', prodi_id: 'prodi-dkv', kode_mk: 'MKU101', nama_mk: 'Pancasila', sks: 2, jenis: 'umum', jalur: 'asinkron' },
-  { id: 'mk-dkv-mki401', prodi_id: 'prodi-dkv', kode_mk: 'MKI401', nama_mk: 'Menggambar Bentuk', sks: 3, jenis: 'inti', jalur: 'sinkron' },
-  { id: 'mk-dkv-mki402', prodi_id: 'prodi-dkv', kode_mk: 'MKI402', nama_mk: 'Tipografi Dasar', sks: 3, jenis: 'inti', jalur: 'sinkron' },
-  { id: 'mk-dkv-mki403', prodi_id: 'prodi-dkv', kode_mk: 'MKI403', nama_mk: 'Desain Grafis Digital', sks: 4, jenis: 'inti', jalur: 'sinkron' }
+  // Teknik Informatika - Pilihan
+  { id: 'mk-if-mkp201', prodi_id: 'prodi-if', kode_mk: 'MKP201', nama_mk: 'Pemrograman Mobile & Android', sks: 3, jenis: 'pilihan', jalur: 'sinkron', semester: 5 },
+  { id: 'mk-if-mkp202', prodi_id: 'prodi-if', kode_mk: 'MKP202', nama_mk: 'Internet of Things (IoT)', sks: 3, jenis: 'pilihan', jalur: 'sinkron', semester: 5 },
+  { id: 'mk-if-mkp203', prodi_id: 'prodi-if', kode_mk: 'MKP203', nama_mk: 'Cloud Computing & DevOps', sks: 3, jenis: 'pilihan', jalur: 'sinkron', semester: 6 },
+
+  // Sistem Informasi - Pilihan
+  { id: 'mk-si-mkp301', prodi_id: 'prodi-si', kode_mk: 'MKP301', nama_mk: 'Business Intelligence & Analytics', sks: 3, jenis: 'pilihan', jalur: 'sinkron', semester: 5 },
+  { id: 'mk-si-mkp302', prodi_id: 'prodi-si', kode_mk: 'MKP302', nama_mk: 'Enterprise Resource Planning (ERP)', sks: 3, jenis: 'pilihan', jalur: 'sinkron', semester: 6 },
+
+  // Desain Komunikasi Visual - Pilihan
+  { id: 'mk-dkv-mkp401', prodi_id: 'prodi-dkv', kode_mk: 'MKP401', nama_mk: 'Motion Graphics & 3D Animation', sks: 3, jenis: 'pilihan', jalur: 'sinkron', semester: 5 },
+  { id: 'mk-dkv-mkp402', prodi_id: 'prodi-dkv', kode_mk: 'MKP402', nama_mk: 'Fotografi Komersial', sks: 3, jenis: 'pilihan', jalur: 'sinkron', semester: 6 },
+
+  // Komputerisasi Akuntansi - Pilihan
+  { id: 'mk-ka-mkp501', prodi_id: 'prodi-ka', kode_mk: 'MKP501', nama_mk: 'Audit Sistem Informasi Keuangan', sks: 3, jenis: 'pilihan', jalur: 'sinkron', semester: 5 }
 ]
+
 
 
 // Inisialisasi data mock ke local storage jika belum ada

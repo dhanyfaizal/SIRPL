@@ -476,6 +476,7 @@ export default function KaprodiDashboard() {
   const [ocrResults, setOcrResults] = useState([])
 
   const [leftTab, setLeftTab] = useState('transcript') // 'transcript' | 'curriculum' | 'certificate' | 'experience'
+  const [currSubTab, setCurrSubTab] = useState('all') // 'all' | 'wajib' | 'pilihan'
   const [activeLeftDocUrl, setActiveLeftDocUrl] = useState('')
   const [activeLeftDocType, setActiveLeftDocType] = useState('transkrip')
 
@@ -1790,7 +1791,40 @@ export default function KaprodiDashboard() {
                   )}
                   {leftTab === 'curriculum' && (
                     <div style={{ maxHeight: 480, overflowY: 'auto' }}>
-                      <h4 style={{ fontSize: 12, fontWeight: 700, marginBottom: 10, color: 'var(--gray-700)' }}>Daftar Kurikulum {selectedItem.prodi?.nama}</h4>
+                      <h4 style={{ fontSize: 12, fontWeight: 700, marginBottom: 8, color: 'var(--gray-700)' }}>Daftar Kurikulum {selectedItem.prodi?.nama}</h4>
+
+                      {/* Sub-Tab Bar for Curriculum Panel */}
+                      <div style={{ display: 'flex', gap: 4, marginBottom: 10, borderBottom: '1px solid var(--gray-200)', paddingBottom: 6 }}>
+                        <button
+                          onClick={() => setCurrSubTab('all')}
+                          className={`btn btn-xs ${currSubTab === 'all' ? 'btn-primary' : 'btn-secondary'}`}
+                          style={{ fontSize: 10.5, padding: '3px 8px', borderRadius: 12 }}
+                        >
+                          Semua ({curriculumMK.length})
+                        </button>
+                        <button
+                          onClick={() => setCurrSubTab('wajib')}
+                          className={`btn btn-xs ${currSubTab === 'wajib' ? 'btn-primary' : 'btn-secondary'}`}
+                          style={{ fontSize: 10.5, padding: '3px 8px', borderRadius: 12 }}
+                        >
+                          📌 Wajib ({curriculumMK.filter(m => m.jenis !== 'pilihan').length})
+                        </button>
+                        <button
+                          onClick={() => setCurrSubTab('pilihan')}
+                          className={`btn btn-xs ${currSubTab === 'pilihan' ? 'btn-primary' : 'btn-secondary'}`}
+                          style={{
+                            fontSize: 10.5,
+                            padding: '3px 8px',
+                            borderRadius: 12,
+                            background: currSubTab === 'pilihan' ? 'var(--amber-600)' : 'var(--surface)',
+                            color: currSubTab === 'pilihan' ? '#fff' : 'var(--gray-700)',
+                            borderColor: currSubTab === 'pilihan' ? 'var(--amber-600)' : 'var(--gray-300)'
+                          }}
+                        >
+                          ⚡ Pilihan ({curriculumMK.filter(m => m.jenis === 'pilihan').length})
+                        </button>
+                      </div>
+
                       <div className="table-wrap">
                         <table style={{ minWidth: 'auto', width: '100%' }}>
                           <thead>
@@ -1801,35 +1835,42 @@ export default function KaprodiDashboard() {
                             </tr>
                           </thead>
                           <tbody>
-                            {curriculumMK.map(mk => (
-                              <tr key={mk.id}>
-                                <td style={{ padding: '6px 8px', fontSize: 11.5 }}>
-                                  <strong>{mk.kode_mk}</strong><br />
-                                  <span style={{ color: 'var(--gray-600)' }}>{mk.nama_mk}</span>
-                                </td>
-                                <td style={{ padding: '6px 8px', fontSize: 11.5, text: 'center' }}>
-                                  {mk.sks} SKS
-                                </td>
-                                {canEvaluate && (
-                                  <td style={{ padding: '6px 8px', text: 'center' }}>
-                                    <button
-                                      onClick={() => addCurriculumToMapping(mk)}
-                                      className="btn btn-secondary"
-                                      style={{
-                                        padding: '2px 6px',
-                                        fontSize: 11,
-                                        background: '#ecfdf5',
-                                        color: '#047857',
-                                        borderColor: '#a7f3d0'
-                                      }}
-                                      title="Tambahkan ke Pemetaan"
-                                    >
-                                      + Map
-                                    </button>
+                            {curriculumMK
+                              .filter(mk => currSubTab === 'all' ? true : currSubTab === 'wajib' ? mk.jenis !== 'pilihan' : mk.jenis === 'pilihan')
+                              .map(mk => (
+                                <tr key={mk.id}>
+                                  <td style={{ padding: '6px 8px', fontSize: 11.5 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                      <strong>{mk.kode_mk}</strong>
+                                      {mk.jenis === 'pilihan' && (
+                                        <span className="badge-pill badge-amber" style={{ fontSize: 9, padding: '1px 4px' }}>⚡ Pilihan</span>
+                                      )}
+                                    </div>
+                                    <span style={{ color: 'var(--gray-600)' }}>{mk.nama_mk}</span>
                                   </td>
-                                )}
-                              </tr>
-                            ))}
+                                  <td style={{ padding: '6px 8px', fontSize: 11.5, textAlign: 'center' }}>
+                                    {mk.sks} SKS
+                                  </td>
+                                  {canEvaluate && (
+                                    <td style={{ padding: '6px 8px', textAlign: 'center' }}>
+                                      <button
+                                        onClick={() => addCurriculumToMapping(mk)}
+                                        className="btn btn-secondary"
+                                        style={{
+                                          padding: '2px 6px',
+                                          fontSize: 11,
+                                          background: mk.jenis === 'pilihan' ? '#fffbe0' : '#ecfdf5',
+                                          color: mk.jenis === 'pilihan' ? '#b45309' : '#047857',
+                                          borderColor: mk.jenis === 'pilihan' ? '#fde68a' : '#a7f3d0'
+                                        }}
+                                        title="Tambahkan ke Pemetaan"
+                                      >
+                                        + Map
+                                      </button>
+                                    </td>
+                                  )}
+                                </tr>
+                              ))}
                           </tbody>
                         </table>
                       </div>
@@ -2204,10 +2245,13 @@ export default function KaprodiDashboard() {
                               {/* Target MK Kurikulum */}
                               <td>
                                 <SearchableSelect
-                                  options={curriculumMK.map(mk => ({
-                                    value: mk.id,
-                                    label: `${mk.kode_mk} - ${mk.nama_mk} (${mk.sks} SKS, ${mk.jenis.toUpperCase()})`
-                                  }))}
+                                  options={curriculumMK.map(mk => {
+                                    const jTag = mk.jenis === 'pilihan' ? '⚡ MK PILIHAN' : mk.jenis === 'inti' ? 'MK PRODI' : 'MK INSTITUSI'
+                                    return {
+                                      value: mk.id,
+                                      label: `${mk.kode_mk} - ${mk.nama_mk} (${mk.sks} SKS, ${jTag})`
+                                    }
+                                  })}
                                   value={row.mkTujuanId}
                                   onChange={(val) => updateRow(row.id, 'mkTujuanId', val)}
                                   placeholder="-- Pilih MK Kurikulum --"

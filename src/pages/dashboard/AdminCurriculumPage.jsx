@@ -14,6 +14,7 @@ export default function AdminCurriculumPage() {
   const [allMK, setAllMK] = useState([])
   const [loading, setLoading] = useState(true)
   const [filterProdi, setFilterProdi] = useState('')
+  const [filterJenis, setFilterJenis] = useState('all') // 'all' | 'wajib' | 'pilihan'
   const [searchQuery, setSearchQuery] = useState('')
 
   // Single Add Form
@@ -215,6 +216,8 @@ export default function AdminCurriculumPage() {
       let jenis = 'inti'
       if (jenisRaw.toLowerCase() === 'institusi' || jenisRaw.toLowerCase() === 'umum') {
         jenis = 'umum'
+      } else if (jenisRaw.toLowerCase() === 'pilihan' || jenisRaw.toLowerCase() === 'elektif' || jenisRaw.toLowerCase().includes('pilihan')) {
+        jenis = 'pilihan'
       } else if (jenisRaw.toLowerCase() === 'program studi' || jenisRaw.toLowerCase() === 'prodi' || jenisRaw.toLowerCase() === 'inti') {
         jenis = 'inti'
       }
@@ -606,6 +609,7 @@ export default function AdminCurriculumPage() {
                     <select value={formJenis} onChange={(e) => setFormJenis(e.target.value)} className="input">
                       <option value="inti">MK Prodi (Inti)</option>
                       <option value="umum">MK Institusi (Umum)</option>
+                      <option value="pilihan">MK Pilihan (Elektif)</option>
                     </select>
                   </div>
                   <div className="input-group">
@@ -806,6 +810,47 @@ export default function AdminCurriculumPage() {
             })}
           </div>
 
+          {/* Sub-Tab Bar: Kategori Jenis Mata Kuliah */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            padding: '8px 16px',
+            background: '#fff',
+            borderBottom: '1px solid var(--gray-200)'
+          }}>
+            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--gray-400)', textTransform: 'uppercase', marginRight: 4 }}>Filter Jenis:</span>
+            <button
+              onClick={() => setFilterJenis('all')}
+              className={`btn btn-xs ${filterJenis === 'all' ? 'btn-primary' : 'btn-secondary'}`}
+              style={{ borderRadius: 16, padding: '4px 12px', fontSize: 11.5, fontWeight: 600 }}
+            >
+              📋 Semua MK ({allMK.filter(mk => !filterProdi || mk.prodi_id === filterProdi).length})
+            </button>
+            <button
+              onClick={() => setFilterJenis('wajib')}
+              className={`btn btn-xs ${filterJenis === 'wajib' ? 'btn-primary' : 'btn-secondary'}`}
+              style={{ borderRadius: 16, padding: '4px 12px', fontSize: 11.5, fontWeight: 600 }}
+            >
+              📌 MK Wajib ({allMK.filter(mk => (!filterProdi || mk.prodi_id === filterProdi) && mk.jenis !== 'pilihan').length})
+            </button>
+            <button
+              onClick={() => setFilterJenis('pilihan')}
+              className={`btn btn-xs ${filterJenis === 'pilihan' ? 'btn-primary' : 'btn-secondary'}`}
+              style={{
+                borderRadius: 16,
+                padding: '4px 12px',
+                fontSize: 11.5,
+                fontWeight: 600,
+                background: filterJenis === 'pilihan' ? 'var(--amber-600)' : 'var(--surface)',
+                color: filterJenis === 'pilihan' ? '#fff' : 'var(--gray-700)',
+                borderColor: filterJenis === 'pilihan' ? 'var(--amber-600)' : 'var(--gray-300)'
+              }}
+            >
+              ⚡ MK Pilihan ({allMK.filter(mk => (!filterProdi || mk.prodi_id === filterProdi) && mk.jenis === 'pilihan').length})
+            </button>
+          </div>
+
           <div className="card-body" style={{ padding: 0 }}>
             {allMK.length === 0 ? (
               <div className="empty-state">
@@ -898,10 +943,11 @@ export default function AdminCurriculumPage() {
                                   >
                                     <option value="inti">MK Prodi</option>
                                     <option value="umum">MK Institusi</option>
+                                    <option value="pilihan">MK Pilihan</option>
                                   </select>
                                 ) : (
-                                  <span className={`badge-pill ${mk.jenis === 'inti' ? 'badge-indigo' : 'badge-slate'}`}>
-                                    {mk.jenis === 'inti' ? 'MK Prodi' : 'MK Institusi'}
+                                  <span className={`badge-pill ${mk.jenis === 'pilihan' ? 'badge-amber' : mk.jenis === 'inti' ? 'badge-indigo' : 'badge-slate'}`}>
+                                    {mk.jenis === 'pilihan' ? '⚡ MK Pilihan' : mk.jenis === 'inti' ? 'MK Prodi' : 'MK Institusi'}
                                   </span>
                                 )}
                               </td>
