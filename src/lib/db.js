@@ -176,6 +176,46 @@ export const dbMK = {
   }
 }
 
+// ── 2b. Aturan Pemetaan Mata Kuliah (Sinkron & Asinkron) ──────
+export const dbMKMapping = {
+  getByProdi: async (prodiId) => {
+    if (isMock) {
+      const all = getLocalData('si_rpl_mk_mapping') || {}
+      return { data: all[prodiId] || [], error: null }
+    }
+    try {
+      const { data, error } = await supabase.from('mata_kuliah_mapping').select('*').eq('prodi_id', prodiId)
+      if (error) throw error
+      return { data: data || [], error: null }
+    } catch (e) {
+      const all = getLocalData('si_rpl_mk_mapping') || {}
+      return { data: all[prodiId] || [], error: null }
+    }
+  },
+
+  saveMapping: async (prodiId, mappingList) => {
+    if (isMock) {
+      const all = getLocalData('si_rpl_mk_mapping') || {}
+      all[prodiId] = mappingList
+      saveLocalData('si_rpl_mk_mapping', all)
+      return { data: mappingList, error: null }
+    }
+    try {
+      const { data, error } = await supabase.from('mata_kuliah_mapping').upsert(
+        mappingList.map(m => ({ ...m, prodi_id: prodiId }))
+      )
+      if (error) throw error
+      return { data, error: null }
+    } catch (e) {
+      const all = getLocalData('si_rpl_mk_mapping') || {}
+      all[prodiId] = mappingList
+      saveLocalData('si_rpl_mk_mapping', all)
+      return { data: mappingList, error: null }
+    }
+  }
+}
+
+
 // ── 3. Pengajuan RPL ───────────────────────────────────────────
 export const dbPengajuan = {
   getAll: async () => {

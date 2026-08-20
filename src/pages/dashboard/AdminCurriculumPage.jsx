@@ -1,6 +1,6 @@
 import { useState, useEffect, Fragment } from 'react'
-import { dbMK, dbProdi } from '../../lib/db'
-import { BookOpen, Upload, Trash2, Plus, Download, Filter, FileSpreadsheet, RotateCw, Edit2, Check, X, Search } from 'lucide-react'
+import { dbMK, dbProdi, dbMKMapping } from '../../lib/db'
+import { BookOpen, Upload, Trash2, Plus, Download, Filter, FileSpreadsheet, RotateCw, Edit2, Check, X, Search, Sliders, Sparkles, Layers, Globe, Building2, CheckCircle2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 
 const TEMPLATE_EXAMPLE = `MKU101,Pancasila,2,Institusi,1
@@ -36,6 +36,12 @@ export default function AdminCurriculumPage() {
   const [importParsed, setImportParsed] = useState([])
   const [importing, setImporting] = useState(false)
 
+  // Mapping Modal State (Sinkron & Asinkron per Prodi)
+  const [showMappingModal, setShowMappingModal] = useState(false)
+  const [mappingProdiId, setMappingProdiId] = useState('')
+  const [mappingRows, setMappingRows] = useState([])
+  const [savingMapping, setSavingMapping] = useState(false)
+
   // Custom Confirmation Modal state
   const [confirmModal, setConfirmModal] = useState({
     isOpen: false,
@@ -46,6 +52,7 @@ export default function AdminCurriculumPage() {
   })
 
   const [refreshing, setRefreshing] = useState(false)
+
 
   const handleRefresh = async () => {
     setRefreshing(true)
@@ -79,6 +86,82 @@ export default function AdminCurriculumPage() {
   useEffect(() => {
     loadData()
   }, [])
+
+  // ── Mapping Modal Handlers (Sinkron & Asinkron per Prodi) ─────
+  const handleOpenMappingModal = async (prodiId) => {
+    const targetId = prodiId || (prodis[0] ? prodis[0].id : '')
+    if (!targetId) {
+      toast.error('Pilih Program Studi terlebih dahulu')
+      return
+    }
+
+    setMappingProdiId(targetId)
+    const prodiCourses = allMK.filter(mk => mk.prodi_id === targetId)
+
+    if (prodiCourses.length === 0) {
+      toast.error('Program Studi ini belum memiliki mata kuliah kurikulum.')
+    }
+
+    try {
+      const { data: existingRules } = await dbMKMapping.getByProdi(targetId)
+      const existingMap = new Map((existingRules || []).map(r => [r.mk_id, r]))
+
+      const mergedRows = prodiCourses.map(mk => {
+        const existing = existingMap.get(mk.id)
+        const isUmum = mk.jenis === 'umum'
+        return {
+          mk_id: mk.id,
+          kode_mk: mk.kode_mk,
+          nama_mk: mk.nama_mk,
+          sks: mk.sks,
+          jenis: mk.jenis,
+          semester: mk.semester || 1,
+          jalur_preset: existing?.jalur_preset || (isUmum ? 'asinkron' : 'sinkron'),
+          keywords_asinkron: existing?.keywords_asinkron ?? (isUmum ? mk.nama_mk : ''),
+          keywords_sinkron: existing?.keywords_sinkron ?? (!isUmum ? mk.nama_mk : ''),
+          min_nilai: existing?.min_nilai || (isUmum ? 'C' : 'B')
+        }
+      })
+
+      setMappingRows(mergedRows)
+      setShowMappingModal(true)
+    } catch (e) {
+      console.error(e)
+      toast.error('Gagal mengambil data aturan pemetaan')
+    }
+  }
+
+  const handleGeneratePreset = () => {
+    setMappingRows(prev => prev.map(row => {
+      const isUmum = row.jenis === 'umum'
+      return {
+        ...row,
+        jalur_preset: isUmum ? 'asinkron' : 'sinkron',
+        keywords_asinkron: isUmum ? `${row.nama_mk}, ${row.kode_mk}, transkrip, moocs` : row.nama_mk,
+        keywords_sinkron: !isUmum ? `${row.nama_mk}, ${row.kode_mk}, sertifikasi, pengalaman` : row.nama_mk,
+        min_nilai: isUmum ? 'C' : 'B'
+      }
+    }))
+    toast.success('Preset aturan Sinkron & Asinkron berhasil di-generate secara otomatis!')
+  }
+
+  const handleSaveMapping = async () => {
+    if (!mappingProdiId) return
+    setSavingMapping(true)
+    try {
+      const { error } = await dbMKMapping.saveMapping(mappingProdiId, mappingRows)
+      if (error) throw error
+      const targetProdi = prodis.find(p => p.id === mappingProdiId)
+      toast.success(`Aturan mapping RPL untuk ${targetProdi?.nama || 'Prodi'} berhasil disimpan!`)
+      setShowMappingModal(false)
+    } catch (e) {
+      console.error(e)
+      toast.error('Gagal menyimpan aturan mapping: ' + (e.message || ''))
+    } finally {
+      setSavingMapping(false)
+    }
+  }
+
 
   // ── Single Add ──────────────────────────────────────────────
   const handleAddSingle = async (e) => {
@@ -604,7 +687,7 @@ export default function AdminCurriculumPage() {
               <BookOpen size={16} />
               <h3 style={{ fontSize: 14, fontWeight: 700 }}>Daftar Mata Kuliah Kurikulum</h3>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
               {/* Search Input */}
               <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
                 <Search size={14} color="var(--gray-400)" style={{ position: 'absolute', left: 10 }} />
@@ -620,7 +703,7 @@ export default function AdminCurriculumPage() {
                     background: 'var(--surface)',
                     fontSize: 12,
                     outline: 'none',
-                    width: '200px',
+                    width: '190px',
                     transition: 'border-color 0.15s ease',
                   }}
                   onFocus={(e) => e.target.style.borderColor = 'var(--indigo-500)'}
@@ -646,27 +729,91 @@ export default function AdminCurriculumPage() {
                 )}
               </div>
 
-              {/* Prodi Filter */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Filter size={14} color="var(--gray-400)" />
-                <select
-                  value={filterProdi}
-                  onChange={(e) => setFilterProdi(e.target.value)}
-                  style={{
-                    padding: '6px 10px', borderRadius: 6, border: '1px solid var(--gray-200)',
-                    background: 'var(--surface)', fontSize: 12, fontWeight: 500, outline: 'none'
-                  }}
-                >
-                  <option value="">Semua Prodi</option>
-                  {prodis.map(p => (
-                    <option key={p.id} value={p.id}>{p.kode} - {p.nama}</option>
-                  ))}
-                </select>
-              </div>
+              {/* Menu Mapping Button */}
+              <button
+                onClick={() => handleOpenMappingModal(filterProdi || (prodis[0] ? prodis[0].id : ''))}
+                className="btn"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '6px 12px',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: 'var(--indigo-700)',
+                  background: 'var(--indigo-50)',
+                  border: '1px solid var(--indigo-200)',
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+                title="Kelola aturan pemetaan otomatis (Sinkron & Asinkron) per Program Studi"
+              >
+                <Sliders size={14} color="var(--indigo-600)" />
+                Menu Mapping RPL
+              </button>
 
               <span className="badge-pill badge-indigo">{sortedMK.length} MK</span>
             </div>
           </div>
+
+          {/* Program Studi Tab Navigation Bar */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            overflowX: 'auto',
+            padding: '10px 16px',
+            background: 'var(--gray-50)',
+            borderBottom: '1px solid var(--gray-200)',
+            scrollbarWidth: 'none'
+          }}>
+            <button
+              onClick={() => setFilterProdi('')}
+              className={`btn btn-sm ${filterProdi === '' ? 'btn-primary' : 'btn-secondary'}`}
+              style={{
+                borderRadius: 20,
+                padding: '6px 14px',
+                fontSize: 12,
+                fontWeight: 600,
+                whiteSpace: 'nowrap',
+                background: filterProdi === '' ? 'var(--indigo-600)' : 'var(--surface)',
+                color: filterProdi === '' ? '#fff' : 'var(--gray-700)',
+                borderColor: filterProdi === '' ? 'var(--indigo-600)' : 'var(--gray-300)',
+                boxShadow: filterProdi === '' ? '0 2px 5px rgba(79, 70, 229, 0.3)' : 'none',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              📚 Semua Prodi ({allMK.length} MK)
+            </button>
+
+            {prodis.map(p => {
+              const count = allMK.filter(mk => mk.prodi_id === p.id).length
+              const isSelected = filterProdi === p.id
+              return (
+                <button
+                  key={p.id}
+                  onClick={() => setFilterProdi(p.id)}
+                  className={`btn btn-sm ${isSelected ? 'btn-primary' : 'btn-secondary'}`}
+                  style={{
+                    borderRadius: 20,
+                    padding: '6px 14px',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    whiteSpace: 'nowrap',
+                    background: isSelected ? 'var(--indigo-600)' : 'var(--surface)',
+                    color: isSelected ? '#fff' : 'var(--gray-700)',
+                    borderColor: isSelected ? 'var(--indigo-600)' : 'var(--gray-300)',
+                    boxShadow: isSelected ? '0 2px 5px rgba(79, 70, 229, 0.3)' : 'none',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  🎓 {p.kode} - {p.nama} ({count} MK)
+                </button>
+              )
+            })}
+          </div>
+
           <div className="card-body" style={{ padding: 0 }}>
             {allMK.length === 0 ? (
               <div className="empty-state">
@@ -870,6 +1017,186 @@ export default function AdminCurriculumPage() {
           </div>
         </div>
       )}
+      {/* Modal Pengaturan Mapping Mata Kuliah (Sinkron & Asinkron) */}
+      {showMappingModal && (
+        <div className="modal-overlay" onClick={() => setShowMappingModal(false)}>
+          <div
+            className="modal"
+            onClick={e => e.stopPropagation()}
+            style={{ maxWidth: '960px', width: '95%', maxHeight: '88vh', display: 'flex', flexDirection: 'column', padding: 0 }}
+          >
+            <div className="modal-header" style={{ padding: '16px 24px', background: 'var(--indigo-50)', borderBottom: '1px solid var(--indigo-100)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ background: 'var(--indigo-600)', color: '#fff', padding: 8, borderRadius: 8, display: 'flex' }}>
+                  <Sliders size={18} />
+                </div>
+                <div>
+                  <h3 className="modal-title" style={{ fontSize: 16, fontWeight: 700, color: 'var(--indigo-950)' }}>
+                    Menu Mapping Mata Kuliah (Sinkron & Asinkron)
+                  </h3>
+                  <p style={{ fontSize: 12, color: 'var(--indigo-600)', margin: 0 }}>
+                    Konfigurasi preset jalur & kata kunci pemetaan otomatis saat calon mahasiswa masuk tahapan mapping RPL
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowMappingModal(false)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 18, color: 'var(--gray-400)' }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Sub Header Controls */}
+            <div style={{ padding: '12px 24px', background: 'var(--surface)', borderBottom: '1px solid var(--gray-200)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--gray-600)' }}>Program Studi:</span>
+                <select
+                  value={mappingProdiId}
+                  onChange={(e) => handleOpenMappingModal(e.target.value)}
+                  className="input"
+                  style={{ padding: '6px 12px', fontSize: 12, fontWeight: 600, minWidth: 220 }}
+                >
+                  {prodis.map(p => (
+                    <option key={p.id} value={p.id}>{p.kode} - {p.nama}</option>
+                  ))}
+                </select>
+              </div>
+
+              <button
+                onClick={handleGeneratePreset}
+                className="btn btn-secondary btn-sm"
+                style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--indigo-700)', borderColor: 'var(--indigo-300)', background: '#f5f3ff' }}
+              >
+                <Sparkles size={14} color="var(--indigo-600)" /> Generate Preset Otomatis
+              </button>
+            </div>
+
+            <div className="modal-body" style={{ padding: '20px 24px', overflowY: 'auto', flex: 1 }}>
+              <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', padding: 12, borderRadius: 8, marginBottom: 16, fontSize: 12, color: '#1e40af', lineHeight: 1.5 }}>
+                <strong>📌 Petunjuk Pemetaan Otomatis:</strong>
+                <ul style={{ paddingLeft: 18, margin: '4px 0 0' }}>
+                  <li><strong>🏫 Sinkron (Tatap Muka & Portofolio):</strong> Dipetakan secara otomatis berdasarkan Bukti Pengalaman Kerja, Sertifikat Kompetensi, atau Portofolio yang diunggah calon.</li>
+                  <li><strong>🌐 Asinkron (MOOCs & Transkrip):</strong> Dipetakan secara otomatis berdasarkan Transkrip Nilai Perguruan Tinggi Asal / Pendidikan Formal.</li>
+                  <li><strong>Kata Kunci Padanan:</strong> Pisahkan dengan koma (cth: <code>algoritma, alpro, pemrograman dasar</code>) untuk pencocokan AI/OCR yang presisi saat tahapan mapping.</li>
+                </ul>
+              </div>
+
+              {mappingRows.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '30px 0', color: 'var(--gray-500)', fontSize: 13 }}>
+                  Belum ada mata kuliah untuk Program Studi ini. Silakan tambahkan mata kuliah terlebih dahulu.
+                </div>
+              ) : (
+                <div className="table-wrap" style={{ border: '1px solid var(--gray-200)', borderRadius: 8 }}>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th style={{ width: 220 }}>Mata Kuliah Kurikulum</th>
+                        <th style={{ width: 150 }}>Preset Jalur RPL</th>
+                        <th>Kata Kunci Transkrip (Asinkron)</th>
+                        <th>Kata Kunci Sertifikat/Exp (Sinkron)</th>
+                        <th style={{ width: 80 }}>Nilai Min</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {mappingRows.map((row, idx) => (
+                        <tr key={row.mk_id}>
+                          <td>
+                            <div style={{ fontWeight: 700, fontSize: 12, color: 'var(--indigo-700)' }}>
+                              {row.kode_mk} <span className={`badge-pill ${row.jenis === 'inti' ? 'badge-indigo' : 'badge-slate'}`} style={{ fontSize: 10, padding: '1px 5px' }}>{row.jenis === 'inti' ? 'Prodi' : 'Institusi'}</span>
+                            </div>
+                            <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--gray-800)' }}>{row.nama_mk}</div>
+                            <div style={{ fontSize: 11, color: 'var(--gray-500)' }}>{row.sks} SKS • Semester {row.semester}</div>
+                          </td>
+
+                          <td>
+                            <select
+                              value={row.jalur_preset}
+                              onChange={(e) => {
+                                const val = e.target.value
+                                setMappingRows(prev => prev.map((r, i) => i === idx ? { ...r, jalur_preset: val } : r))
+                              }}
+                              className="input"
+                              style={{ padding: '6px 8px', fontSize: 11.5, fontWeight: 600 }}
+                            >
+                              <option value="sinkron">🏫 Sinkron (Portofolio)</option>
+                              <option value="asinkron">🌐 Asinkron (Transkrip)</option>
+                              <option value="bebas">🔀 Bebas / Fleksibel</option>
+                            </select>
+                          </td>
+
+                          <td>
+                            <input
+                              type="text"
+                              value={row.keywords_asinkron}
+                              onChange={(e) => {
+                                const val = e.target.value
+                                setMappingRows(prev => prev.map((r, i) => i === idx ? { ...r, keywords_asinkron: val } : r))
+                              }}
+                              placeholder="cth: alpro, pemrograman dasar"
+                              className="input"
+                              style={{ padding: '6px 8px', fontSize: 11.5 }}
+                            />
+                          </td>
+
+                          <td>
+                            <input
+                              type="text"
+                              value={row.keywords_sinkron}
+                              onChange={(e) => {
+                                const val = e.target.value
+                                setMappingRows(prev => prev.map((r, i) => i === idx ? { ...r, keywords_sinkron: val } : r))
+                              }}
+                              placeholder="cth: programmer, web dev, sertifikasi"
+                              className="input"
+                              style={{ padding: '6px 8px', fontSize: 11.5 }}
+                            />
+                          </td>
+
+                          <td>
+                            <select
+                              value={row.min_nilai}
+                              onChange={(e) => {
+                                const val = e.target.value
+                                setMappingRows(prev => prev.map((r, i) => i === idx ? { ...r, min_nilai: val } : r))
+                              }}
+                              className="input"
+                              style={{ padding: '6px 6px', fontSize: 11.5, textAlign: 'center' }}
+                            >
+                              <option value="A">A</option>
+                              <option value="B">B</option>
+                              <option value="C">C</option>
+                            </select>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            <div className="modal-footer" style={{ padding: '14px 24px', background: 'var(--gray-50)', borderTop: '1px solid var(--gray-200)', display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+              <button
+                className="btn btn-secondary btn-sm"
+                onClick={() => setShowMappingModal(false)}
+              >
+                Batal
+              </button>
+              <button
+                className="btn btn-primary btn-sm"
+                disabled={savingMapping || mappingRows.length === 0}
+                onClick={handleSaveMapping}
+                style={{ gap: 6 }}
+              >
+                <CheckCircle2 size={14} />
+                {savingMapping ? 'Menyimpan...' : 'Simpan Aturan Mapping'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
+
