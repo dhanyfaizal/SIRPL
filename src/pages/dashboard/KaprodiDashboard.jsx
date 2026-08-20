@@ -7,30 +7,46 @@ import { useAuth } from '../../contexts/AuthContext'
 import { generateMockDocSrcDoc } from '../../lib/mockDoc'
 import { supabase, isMock } from '../../lib/supabase'
 
+// Helper: Safely parse JSON strings or array values
+const safeArray = (val) => {
+  if (!val) return []
+  if (Array.isArray(val)) return val
+  if (typeof val === 'string') {
+    try {
+      const parsed = JSON.parse(val)
+      return Array.isArray(parsed) ? parsed : []
+    } catch (e) {
+      return []
+    }
+  }
+  return []
+}
+
 // Helper: Get realistic list of transcript courses based on selected prodi
 const getOcrExtractedCourses = (prodiName) => {
-  if (prodiName.includes('Informatika') || prodiName.includes('TI') || prodiName.includes('IF')) {
+  const pName = typeof prodiName === 'string' ? prodiName : ''
+  if (pName.includes('Informatika') || pName.includes('TI') || pName.includes('IF')) {
     return [
       { nama: 'Algoritma & Pemrograman I', sks: 3, nilai: 'A' },
       { nama: 'Struktur Data & Algoritma', sks: 3, nilai: 'B' },
       { nama: 'Sistem Manajemen Basis Data', sks: 3, nilai: 'A' },
       { nama: 'Pendidikan Pancasila', sks: 2, nilai: 'A' }
     ]
-  } else if (prodiName.includes('Informasi') || prodiName.includes('SI')) {
+  } else if (pName.includes('Informasi') || pName.includes('SI')) {
     return [
       { nama: 'Pengantar Sistem Informasi', sks: 3, nilai: 'A' },
       { nama: 'Analisis & Perancangan Sistem', sks: 3, nilai: 'B' },
       { nama: 'Pengantar E-Business', sks: 3, nilai: 'A' },
       { nama: 'Pendidikan Pancasila', sks: 2, nilai: 'A' }
     ]
-  } else if (prodiName.includes('Visual') || prodiName.includes('DKV')) {
+  } else if (pName.includes('Visual') || pName.includes('DKV')) {
     return [
       { nama: 'Dasar Seni Rupa', sks: 3, nilai: 'A' },
       { nama: 'Pengantar Tipografi', sks: 3, nilai: 'A' },
       { nama: 'Desain Grafis Digital', sks: 4, nilai: 'B' },
       { nama: 'Pendidikan Pancasila', sks: 2, nilai: 'A' }
     ]
-  } else if (prodiName.includes('Akuntansi') || prodiName.includes('KA')) {
+  } else if (pName.includes('Akuntansi') || pName.includes('KA')) {
     return [
       { nama: 'Pengantar Akuntansi & Keuangan', sks: 3, nilai: 'A' },
       { nama: 'Sistem Informasi Keuangan', sks: 3, nilai: 'B' },
@@ -77,7 +93,8 @@ const findBestMatch = (sourceName, curriculumList) => {
   const modifiers = ['dasar', 'dasar-dasar', 'pengantar', 'teori', 'praktikum', 'praktik', 'lanjut', 'lanjutan', 'i', 'ii', 'iii', '1', '2', '3']
 
   const clean = (str) => {
-    return str.toLowerCase()
+    return (typeof str === 'string' ? str : String(str || ''))
+      .toLowerCase()
       .replace(/[-_]/g, ' ')
       .replace(/[^a-z0-9\s]/g, '')
       .trim()
@@ -618,8 +635,9 @@ export default function KaprodiDashboard() {
           })
         })
 
-        if (item?.sertifikat_kompetensi) {
-          item.sertifikat_kompetensi.forEach((c, idx) => {
+        const certList = safeArray(item?.sertifikat_kompetensi)
+        certList.forEach((c, idx) => {
+          if (c && c.nama) {
             const { bestMatch } = findBestMatch(c.nama, currMKList)
             fallbackRows.push({
               id: `row-auto-cert-${idx}-${Date.now()}`,
@@ -630,23 +648,24 @@ export default function KaprodiDashboard() {
               mkTujuanId: bestMatch ? bestMatch.id : '',
               status: 'diakui'
             })
-          })
-        }
+          }
+        })
 
-        if (item?.pengalaman_kerja) {
-          item.pengalaman_kerja.forEach((ex, idx) => {
-            const { bestMatch } = findBestMatch(`${ex.posisi} ${ex.deskripsi || ''}`, currMKList)
+        const exprList = safeArray(item?.pengalaman_kerja)
+        exprList.forEach((ex, idx) => {
+          if (ex && (ex.posisi || ex.perusahaan)) {
+            const { bestMatch } = findBestMatch(`${ex.posisi || ''} ${ex.deskripsi || ''}`, currMKList)
             fallbackRows.push({
               id: `row-auto-exp-${idx}-${Date.now()}`,
               kategoriAsal: 'pengalaman',
-              mkAsal: `${ex.posisi} di ${ex.perusahaan}`,
+              mkAsal: `${ex.posisi || 'Pengalaman'} di ${ex.perusahaan || 'Perusahaan'}`,
               sksAsal: 0,
               nilaiAsal: 'A',
               mkTujuanId: bestMatch ? bestMatch.id : '',
               status: 'diakui'
             })
-          })
-        }
+          }
+        })
 
         setRows(fallbackRows)
         setRecognitionMethod('manual')
