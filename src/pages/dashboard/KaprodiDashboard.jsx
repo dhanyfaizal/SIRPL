@@ -548,23 +548,79 @@ export default function KaprodiDashboard() {
     }
   }
 
-  const loadRecognitionTable = async (pengajuanId, isPending) => {
+  const loadRecognitionTable = async (pengajuanId, item) => {
     try {
       const { data } = await dbRekognisi.getByPengajuanId(pengajuanId)
-      if (data && data.data_mapping_mk) {
-        const initialRows = data.data_mapping_mk.map((item, idx) => ({
+      if (data && data.data_mapping_mk && data.data_mapping_mk.length > 0) {
+        const initialRows = data.data_mapping_mk.map((itemRow, idx) => ({
           id: 'row-rec-' + idx + '-' + Date.now(),
-          kategoriAsal: item.Kategori_Asal || 'transkrip',
-          mkAsal: item.MK_Asal,
-          sksAsal: item.SKS_Asal,
-          nilaiAsal: item.Nilai,
-          mkTujuanId: item.MK_Tujuan_ID,
-          status: item.Status || 'diakui'
+          kategoriAsal: itemRow.Kategori_Asal || 'transkrip',
+          mkAsal: itemRow.MK_Asal,
+          sksAsal: itemRow.SKS_Asal,
+          nilaiAsal: itemRow.Nilai,
+          mkTujuanId: itemRow.MK_Tujuan_ID,
+          status: itemRow.Status || 'diakui'
         }))
         setRows(initialRows)
-        if (!isPending) {
-          setRecognitionMethod('manual')
+        setRecognitionMethod('manual')
+        return
+      }
+
+      // Otomatis buat baris rekognisi awal jika pengajuan dikembalikan atau pernah di-proses
+      const st = (item?.status || '').toLowerCase()
+      if (st.includes('returned') || st.includes('recognized') || st.includes('assessed')) {
+        const prodiName = item?.prodi?.nama || 'Sistem Informasi'
+        const extCourses = getOcrExtractedCourses(prodiName)
+        const pId = item?.prodi_pilihan_id || item?.prodi?.id
+        const currRes = await dbMK.getByProdi(pId)
+        const currMKList = currRes?.data || curriculumMK
+
+        const fallbackRows = []
+        extCourses.forEach((ec, idx) => {
+          const { bestMatch } = findBestMatch(ec.nama, currMKList)
+          fallbackRows.push({
+            id: `row-auto-tx-${idx}-${Date.now()}`,
+            kategoriAsal: 'transkrip',
+            mkAsal: ec.nama,
+            sksAsal: ec.sks,
+            nilaiAsal: ec.nilai,
+            mkTujuanId: bestMatch ? bestMatch.id : '',
+            status: 'diakui'
+          })
+        })
+
+        if (item?.sertifikat_kompetensi) {
+          item.sertifikat_kompetensi.forEach((c, idx) => {
+            const { bestMatch } = findBestMatch(c.nama, currMKList)
+            fallbackRows.push({
+              id: `row-auto-cert-${idx}-${Date.now()}`,
+              kategoriAsal: 'sertifikat',
+              mkAsal: c.nama,
+              sksAsal: 0,
+              nilaiAsal: 'A',
+              mkTujuanId: bestMatch ? bestMatch.id : '',
+              status: 'diakui'
+            })
+          })
         }
+
+        if (item?.pengalaman_kerja) {
+          item.pengalaman_kerja.forEach((ex, idx) => {
+            const { bestMatch } = findBestMatch(`${ex.posisi} ${ex.deskripsi || ''}`, currMKList)
+            fallbackRows.push({
+              id: `row-auto-exp-${idx}-${Date.now()}`,
+              kategoriAsal: 'pengalaman',
+              mkAsal: `${ex.posisi} di ${ex.perusahaan}`,
+              sksAsal: 0,
+              nilaiAsal: 'A',
+              mkTujuanId: bestMatch ? bestMatch.id : '',
+              status: 'diakui'
+            })
+          })
+        }
+
+        setRows(fallbackRows)
+        setRecognitionMethod('manual')
       }
     } catch (e) {
       console.error(e)
@@ -575,10 +631,10 @@ export default function KaprodiDashboard() {
     if (selectedItem) {
       const pId = selectedItem.prodi_pilihan_id || selectedItem.prodi?.id
       loadCurriculum(pId)
-      const isPending = selectedItem.status === 'validated_baak' || selectedItem.status === 'returned_asessor'
-      loadRecognitionTable(selectedItem.id, isPending)
+      const st = (selectedItem.status || '').toLowerCase()
+      loadRecognitionTable(selectedItem.id, selectedItem)
 
-      if (!isPending) {
+      if (st.includes('returned') || st.includes('recognized') || st.includes('assessed')) {
         setRecognitionMethod('manual')
       }
       setCatatanRevisi(selectedItem.catatan_revisi || '')
@@ -586,6 +642,8 @@ export default function KaprodiDashboard() {
       setActiveLeftDocType('transkrip')
     }
   }, [selectedItem])
+
+
 
   const [scanEffect, setScanEffect] = useState(null) // 'javascript' | 'ai' | null
 
@@ -971,11 +1029,11 @@ export default function KaprodiDashboard() {
         }
 
         const friendlyModelNames = {
-          'deepseek-v4-flash': 'DeepSeek v4 Flash',
-          'gemini/gemini-2.5-flash': 'Gemini 2.5 Flash',
-          'gpt-5-nano': 'GPT-5 Nano',
-          'gpt-5-mini': 'GPT-5 Mini',
-          'gpt-4.1-mini': 'GPT-4.1 Mini'
+          'deepseek-v4-flash': 'AISYS Flash Engine',
+          'gemini/gemini-2.5-flash': 'AISYS Fast Vision',
+          'gpt-5-nano': 'AISYS Nano Engine',
+          'gpt-5-mini': 'AISYS (Artificial Intelligence STIKOM Yos Sudarso)',
+          'gpt-4.1-mini': 'AISYS Core Engine'
         }
         const modelLabel = friendlyModelNames[selectedAiModel] || 'Vision AI'
         setOcrProgress(`Menganalisis dan memetakan berkas dengan ${modelLabel}...`)
@@ -1331,9 +1389,18 @@ export default function KaprodiDashboard() {
     }
   }
 
-  const pendingList = submissions.filter(item => item.status === 'validated_baak' || item.status === 'returned_asessor')
-  const completedList = submissions.filter(item => ['recognized_kaprodi', 'assessed_asessor', 'mapped_admin'].includes(item.status))
-  const returnedList = submissions.filter(item => item.status === 'returned_kaprodi')
+  const pendingList = submissions.filter(item => {
+    const st = (item.status || '').toLowerCase()
+    return st === 'validated_baak' || st === 'returned_asessor'
+  })
+  const completedList = submissions.filter(item => {
+    const st = (item.status || '').toLowerCase()
+    return ['recognized_kaprodi', 'assessed_asessor', 'mapped_admin'].includes(st)
+  })
+  const returnedList = submissions.filter(item => {
+    const st = (item.status || '').toLowerCase()
+    return st === 'returned_kaprodi' || st === 'returned_baak'
+  })
 
   const activeList = activeTab === 'pending' ? pendingList : activeTab === 'completed' ? completedList : returnedList
 
@@ -1345,7 +1412,8 @@ export default function KaprodiDashboard() {
     )
   }
 
-  const canEvaluate = selectedItem && (selectedItem.status === 'validated_baak' || selectedItem.status === 'returned_asessor')
+  const canEvaluate = selectedItem && ['validated_baak', 'returned_asessor'].includes((selectedItem.status || '').toLowerCase())
+
 
   return (
     <div>
@@ -1419,44 +1487,47 @@ export default function KaprodiDashboard() {
                       </tr>
                     </thead>
                     <tbody>
-                      {activeList.map(item => (
-                        <tr key={item.id} style={{ borderLeft: item.status === 'returned_asessor' ? '4px solid var(--danger)' : '' }}>
-                          <td>
-                            <strong>{item.profile?.nama_lengkap}</strong>
-                            {item.status === 'returned_asessor' && (
-                              <span style={{ display: 'block', fontSize: 11, color: 'var(--danger)', fontWeight: 600, marginTop: 2 }}>
-                                ⚠️ Dikembalikan oleh Asessor: "{item.catatan_revisi}"
-                              </span>
-                            )}
-                          </td>
-                          <td>{item.profile?.email}</td>
-                          <td><span className="badge-pill badge-slate">{item.prodi?.nama}</span></td>
-                          <td>
-                            {(() => {
-                              const prog = getDocumentProgress(item);
-                              return (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, fontWeight: 700, color: 'var(--gray-500)' }}>
-                                    <span>Berkas: {prog.percent}%</span>
+                      {activeList.map(item => {
+                        const isRetAsessor = (item.status || '').toLowerCase() === 'returned_asessor'
+                        return (
+                          <tr key={item.id} style={{ borderLeft: isRetAsessor ? '4px solid var(--danger)' : '' }}>
+                            <td>
+                              <strong>{item.profile?.nama_lengkap}</strong>
+                              {isRetAsessor && (
+                                <span style={{ display: 'block', fontSize: 11, color: 'var(--danger)', fontWeight: 600, marginTop: 2 }}>
+                                  ⚠️ Dikembalikan oleh Asessor: "{item.catatan_revisi}"
+                                </span>
+                              )}
+                            </td>
+                            <td>{item.profile?.email}</td>
+                            <td><span className="badge-pill badge-slate">{item.prodi?.nama}</span></td>
+                            <td>
+                              {(() => {
+                                const prog = getDocumentProgress(item);
+                                return (
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, fontWeight: 700, color: 'var(--gray-500)' }}>
+                                      <span>Berkas: {prog.percent}%</span>
+                                    </div>
+                                    <div style={{ height: 4, background: 'var(--gray-100)', borderRadius: 2, overflow: 'hidden', display: 'flex', width: 100 }}>
+                                      <div style={{ width: `${prog.percent}%`, background: prog.percent === 100 ? 'var(--success)' : 'var(--amber-500)', height: '100%', borderRadius: 2 }} />
+                                    </div>
                                   </div>
-                                  <div style={{ height: 4, background: 'var(--gray-100)', borderRadius: 2, overflow: 'hidden', display: 'flex', width: 100 }}>
-                                    <div style={{ width: `${prog.percent}%`, background: prog.percent === 100 ? 'var(--success)' : 'var(--amber-500)', height: '100%', borderRadius: 2 }} />
-                                  </div>
-                                </div>
-                              );
-                            })()}
-                          </td>
-                          <td><span className={`badge-pill status-${item.status}`}>{item.status.toUpperCase()}</span></td>
-                          <td>
-                            <button
-                              onClick={() => setSelectedItem(item)}
-                              className="btn btn-primary btn-sm"
-                            >
-                              {activeTab === 'pending' ? 'Mulai Rekognisi' : 'Lihat'}
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
+                                );
+                              })()}
+                            </td>
+                            <td><span className={`badge-pill status-${(item.status || '').toLowerCase()}`}>{item.status ? item.status.toUpperCase() : ''}</span></td>
+                            <td>
+                              <button
+                                onClick={() => setSelectedItem(item)}
+                                className="btn btn-primary btn-sm"
+                              >
+                                {activeTab === 'pending' ? 'Mulai Rekognisi' : 'Lihat'}
+                              </button>
+                            </td>
+                          </tr>
+                        )
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -1468,15 +1539,21 @@ export default function KaprodiDashboard() {
         /* Detailed recognition process screen */
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           {/* Warning Banner if returned from Asessor */}
-          {selectedItem.status === 'returned_asessor' && (
-            <div className="card" style={{ borderLeft: '4px solid var(--danger)', backgroundColor: '#fff5f5' }}>
-              <div className="card-body">
-                <h4 style={{ color: '#c53030', display: 'flex', alignItems: 'center', gap: 8, margin: 0, fontSize: '14px', fontWeight: 700 }}>
-                  ⚠️ Pengajuan Dikembalikan oleh Asessor untuk Revisi
+          {(selectedItem.status || '').toLowerCase() === 'returned_asessor' && (
+
+            <div className="card" style={{ borderLeft: '4px solid var(--amber-500)', backgroundColor: '#fffbe0' }}>
+              <div className="card-body" style={{ padding: '14px 18px' }}>
+                <h4 style={{ color: '#b45309', display: 'flex', alignItems: 'center', gap: 8, margin: 0, fontSize: '14px', fontWeight: 700 }}>
+                  🔄 Pengajuan Dikembalikan oleh Asessor — Mata Kuliah Rekognisi Ditampilkan
                 </h4>
-                <p style={{ color: '#742a2a', fontSize: '13px', marginTop: 8, marginBottom: 0 }}>
-                  Catatan Asessor: <strong>{selectedItem.catatan_revisi || 'Harap perbaiki pemetaan Anda.'}</strong>
+                <p style={{ color: '#92400e', fontSize: '13px', marginTop: 6, marginBottom: 0, lineHeight: 1.5 }}>
+                  Mata kuliah yang telah direkognisi sebelumnya telah dimuat secara otomatis agar Anda tidak perlu mengulang proses OCR dari awal. Anda dapat langsung memeriksa, menambah, atau mengedit baris pemetaan di bawah.
                 </p>
+                {selectedItem.catatan_revisi && (
+                  <p style={{ color: '#78350f', fontSize: '13px', marginTop: 6, marginBottom: 0, fontWeight: 600 }}>
+                    Catatan Revisi Asessor: "{selectedItem.catatan_revisi}"
+                  </p>
+                )}
               </div>
             </div>
           )}
