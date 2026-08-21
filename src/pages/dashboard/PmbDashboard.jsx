@@ -4,7 +4,7 @@ import { supabase, isMock } from '../../lib/supabase'
 import { Clipboard, Eye, Search, Filter, ShieldAlert, Award, FileText, CheckCircle, Clock, Users, RotateCw, DollarSign, AlertCircle, ExternalLink } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { generateMockDocSrcDoc } from '../../lib/mockDoc'
-import { exportToCSV } from '../../utils/exporter'
+import { exportToCSV, exportToPDF } from '../../utils/exporter'
 import AnalyticsTab from '../../components/AnalyticsTab'
 
 // Helper: Preview component for PMB with New Tab view option
@@ -789,13 +789,22 @@ function isPlaceholderCourse(c) {
                   <option value="returned_baak">Revisi BAAK</option>
                 </select>
 
-                <button
-                  onClick={() => exportToCSV(filteredList, 'laporan-rpl-pmb.csv')}
-                  className="btn btn-secondary btn-sm"
-                  style={{ display: 'flex', alignItems: 'center', gap: 6 }}
-                >
-                  📥 Ekspor Data (.CSV)
-                </button>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    onClick={() => exportToCSV(filteredList, 'laporan-rpl-pmb.csv')}
+                    className="btn btn-secondary btn-sm"
+                    style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+                  >
+                    📥 Ekspor CSV
+                  </button>
+                  <button
+                    onClick={() => exportToPDF(filteredList, 'Laporan & Rekapitulasi RPL (PMB / Panitia Pendaftaran)')}
+                    className="btn btn-primary btn-sm"
+                    style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+                  >
+                    📄 Ekspor PDF
+                  </button>
+                </div>
               </div>
             </div>
 

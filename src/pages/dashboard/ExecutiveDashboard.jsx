@@ -3,6 +3,7 @@ import { dbPengajuan, dbProdi, dbPenetapan, getDocumentProgress } from '../../li
 import { LayoutDashboard, RefreshCw, Filter, ShieldAlert, Eye, Clock, Search, BarChart3, List } from 'lucide-react'
 import toast from 'react-hot-toast'
 import AnalyticsTab from '../../components/AnalyticsTab'
+import { exportToCSV, exportToPDF } from '../../utils/exporter'
 
 function formatWaitingTime(submittedAtStr, finishedAtStr = null) {
   if (!submittedAtStr) return '-'
@@ -284,10 +285,10 @@ export default function ExecutiveDashboard() {
       ) : (
         /* Render Applicants list panel */
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {/* Search bar inside list tab */}
+          {/* Search bar & Export inside list tab */}
           <div className="card" style={{ border: '1px solid var(--gray-200)', background: 'var(--surface)' }}>
-            <div className="card-body" style={{ padding: 12 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#f8fafc', padding: '6px 12px', borderRadius: 6, border: '1px solid var(--gray-200)' }}>
+            <div className="card-body" style={{ padding: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#f8fafc', padding: '6px 12px', borderRadius: 6, border: '1px solid var(--gray-200)', flex: 1, minWidth: 240 }}>
                 <Search size={16} style={{ color: 'var(--gray-400)' }} />
                 <input
                   type="text"
@@ -303,6 +304,22 @@ export default function ExecutiveDashboard() {
                     color: 'var(--gray-800)'
                   }}
                 />
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  onClick={() => exportToCSV(finalFilteredSubmissions, 'laporan-rpl-executive.csv')}
+                  className="btn btn-secondary btn-sm"
+                  style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+                >
+                  📥 Ekspor CSV
+                </button>
+                <button
+                  onClick={() => exportToPDF(finalFilteredSubmissions, 'Laporan & Rekapitulasi Eksekutif RPL')}
+                  className="btn btn-primary btn-sm"
+                  style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+                >
+                  📄 Ekspor PDF
+                </button>
               </div>
             </div>
           </div>

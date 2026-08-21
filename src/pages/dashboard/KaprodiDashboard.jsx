@@ -6,6 +6,7 @@ import toast from 'react-hot-toast'
 import { useAuth } from '../../contexts/AuthContext'
 import { generateMockDocSrcDoc } from '../../lib/mockDoc'
 import { supabase, isMock } from '../../lib/supabase'
+import { exportToCSV, exportToPDF } from '../../utils/exporter'
 
 // Helper: Safely parse JSON strings or array values
 const safeArray = (val) => {
@@ -1510,9 +1511,27 @@ export default function KaprodiDashboard() {
           </div>
 
           <div className="card">
-            <div className="card-header">
-              <h3 style={{ fontSize: 14, fontWeight: 700 }}>Daftar Pengajuan Calon Mahasiswa</h3>
-              <span className="badge-pill badge-indigo">{activeList.length} Pengajuan</span>
+            <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <h3 style={{ fontSize: 14, fontWeight: 700 }}>Daftar Pengajuan Calon Mahasiswa</h3>
+                <span className="badge-pill badge-indigo">{activeList.length} Pengajuan</span>
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button
+                  onClick={() => exportToCSV(activeList, `laporan-rpl-kaprodi-${activeTab}.csv`)}
+                  className="btn btn-secondary btn-sm"
+                  style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+                >
+                  📥 Ekspor CSV
+                </button>
+                <button
+                  onClick={() => exportToPDF(activeList, `Laporan & Rekapitulasi RPL (Kaprodi - ${activeTab.toUpperCase()})`)}
+                  className="btn btn-primary btn-sm"
+                  style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+                >
+                  📄 Ekspor PDF
+                </button>
+              </div>
             </div>
             <div className="card-body" style={{ padding: 0 }}>
               {activeList.length === 0 ? (

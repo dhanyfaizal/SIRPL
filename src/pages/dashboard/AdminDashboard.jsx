@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { dbPengajuan, dbMK, dbRekognisi, dbPenetapan, getDocumentProgress } from '../../lib/db'
 import { BookOpen, FileText, CheckCircle, Percent, DollarSign, Calendar, Edit2, RotateCcw, AlertCircle, Eye, Settings, ArrowLeft, RotateCw, Sparkles } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { exportToCSV } from '../../utils/exporter'
+import { exportToCSV, exportToPDF } from '../../utils/exporter'
 import AnalyticsTab from '../../components/AnalyticsTab'
 
 // Helper to format duration to human readable format
@@ -888,13 +888,22 @@ function isPlaceholderCourse(c) {
                     </h3>
                     <span className="badge-pill badge-indigo">{activeList.length} Pengajuan</span>
                   </div>
-                  <button
-                    onClick={() => exportToCSV(activeList, `laporan-rpl-admin-${activeTab}.csv`)}
-                    className="btn btn-secondary btn-sm"
-                    style={{ display: 'flex', alignItems: 'center', gap: 6 }}
-                  >
-                    📥 Ekspor Data (.CSV)
-                  </button>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button
+                      onClick={() => exportToCSV(activeList, `laporan-rpl-admin-${activeTab}.csv`)}
+                      className="btn btn-secondary btn-sm"
+                      style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+                    >
+                      📥 Ekspor CSV
+                    </button>
+                    <button
+                      onClick={() => exportToPDF(activeList, `Laporan & Rekapitulasi RPL (Admin - ${activeTab.toUpperCase()})`)}
+                      className="btn btn-primary btn-sm"
+                      style={{ display: 'flex', alignItems: 'center', gap: 6 }}
+                    >
+                      📄 Ekspor PDF
+                    </button>
+                  </div>
                 </div>
               <div className="card-body" style={{ padding: 0 }}>
                 {activeList.length === 0 ? (
