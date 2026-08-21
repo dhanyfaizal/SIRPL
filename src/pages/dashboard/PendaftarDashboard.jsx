@@ -300,7 +300,29 @@ export default function PendaftarDashboard() {
             if (prodiId) {
               const { data: currData } = await dbMKMapping.getByProdi(prodiId)
               if (currData && currData.length > 0) {
-                penetapanData.rencana_studi = syncRencanaStudiJalur(penetapanData.rencana_studi, currData)
+                let synced = syncRencanaStudiJalur(penetapanData.rencana_studi, currData)
+                const { data: recData } = await dbRekognisi.getByPengajuanId(activePengajuan.id)
+                const recMapping = recData?.data_mapping_mk || []
+                const diakuiIds = recMapping.filter(m => m.Status === 'DIAKUI').map(m => m.MK_Tujuan_ID).filter(Boolean)
+                const diakuiNames = recMapping.filter(m => m.Status === 'DIAKUI').map(m => m.MK_Tujuan_Nama).filter(Boolean)
+                const hasRecognizedElective = currData.some(mk => mk.jenis === 'pilihan' && (diakuiIds.includes(mk.id) || diakuiNames.includes(mk.nama_mk)))
+                
+                const hasElectiveInPlan = synced.some(c => c.jenis === 'pilihan' && c.kode !== '22SIF612XX' && c.nama !== 'Mata Kuliah Pilihan')
+                if (!hasRecognizedElective && !hasElectiveInPlan) {
+                  const defaultElective = currData.find(mk => mk.jenis === 'pilihan' && mk.kode_mk !== '22SIF612XX' && mk.nama_mk !== 'Mata Kuliah Pilihan' && !diakuiIds.includes(mk.id) && !diakuiNames.includes(mk.nama_mk))
+                  if (defaultElective) {
+                    synced.push({
+                      mkId: defaultElective.id,
+                      kode: defaultElective.kode_mk,
+                      nama: defaultElective.nama_mk,
+                      sks: defaultElective.sks,
+                      jenis: defaultElective.jenis,
+                      jalur: defaultElective.jalur || (defaultElective.jenis === 'umum' ? 'asinkron' : 'sinkron'),
+                      semester: defaultElective.semester || 4
+                    })
+                  }
+                }
+                penetapanData.rencana_studi = synced
               }
             }
           }

@@ -420,6 +420,26 @@ function isPlaceholderCourse(c) {
         return idMatch || nameMatch
       }
 
+      // Check if candidate has any recognized elective course
+      const hasRecognizedElective = curriculum.some(mk => mk.jenis === 'pilihan' && isCourseDiakui(mk))
+      
+      let activeTargetedIds = [...targetedMkIds]
+      let activeTargetedNames = [...targetedMkNames]
+
+      // If candidate has NO recognized elective course AND no elective course is targeted yet:
+      // Auto-target default non-placeholder elective (e.g. "Otomatisasi Kantor")
+      if (!hasRecognizedElective && activeTargetedIds.length === 0 && activeTargetedNames.length === 0) {
+        const defaultElective = curriculum.find(mk => mk.jenis === 'pilihan' && !isPlaceholderCourse(mk) && !isCourseDiakui(mk))
+        if (defaultElective) {
+          activeTargetedIds.push(defaultElective.id)
+          if (defaultElective.nama_mk || defaultElective.nama) {
+            activeTargetedNames.push(defaultElective.nama_mk || defaultElective.nama)
+          }
+          setTargetedMkIds(activeTargetedIds)
+          setTargetedMkNames(activeTargetedNames)
+        }
+      }
+
       // 3. Ambil biaya asesmen
       const { data: penData } = await dbPenetapan.getByPengajuanId(pengajuanId)
       if (penData) {
@@ -432,11 +452,29 @@ function isPlaceholderCourse(c) {
         
         // If rencana_studi is already saved, sync jalur with curriculum and filter out generic placeholders & unselected electives
         if (penData.rencana_studi && penData.rencana_studi.length > 0) {
-          const synced = syncRencanaStudiJalur(penData.rencana_studi, curriculum)
+          let synced = syncRencanaStudiJalur(penData.rencana_studi, curriculum)
+          const hasElectiveInPlan = synced.some(c => c.jenis === 'pilihan' && !isPlaceholderCourse(c))
+          if (!hasRecognizedElective && !hasElectiveInPlan) {
+            const defaultElective = curriculum.find(mk => mk.jenis === 'pilihan' && !isPlaceholderCourse(mk) && !isCourseDiakui(mk))
+            if (defaultElective) {
+              synced.push({
+                mkId: defaultElective.id,
+                kode: defaultElective.kode_mk,
+                nama: defaultElective.nama_mk,
+                sks: defaultElective.sks,
+                jenis: defaultElective.jenis,
+                jalur: defaultElective.jalur || (defaultElective.jenis === 'umum' ? 'asinkron' : 'sinkron'),
+                semester: defaultElective.semester || 4
+              })
+            }
+          }
+
           const filtered = synced.filter(c => {
             if (isPlaceholderCourse(c)) return false
             if (c.jenis === 'pilihan') {
-              return (targetedMkIds.length === 0 && targetedMkNames.length === 0) || isCourseTargeted(c)
+              return (activeTargetedIds.length === 0 && activeTargetedNames.length === 0) || 
+                     activeTargetedIds.includes(c.mkId || c.id) || 
+                     activeTargetedNames.includes(c.nama)
             }
             return true
           })
@@ -462,7 +500,7 @@ function isPlaceholderCourse(c) {
           if (isPlaceholderCourse(mk)) return false
           if (isCourseDiakui(mk)) return false
           if (mk.jenis === 'pilihan') {
-            return isCourseTargeted(mk)
+            return activeTargetedIds.includes(mk.id) || activeTargetedNames.includes(mk.nama_mk || mk.nama)
           }
           return true
         })
