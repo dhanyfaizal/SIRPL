@@ -244,11 +244,25 @@ export const dbMKMapping = {
     }
 
     try {
-      // Direct bulk update for Supabase table mata_kuliah_kurikulum
+      // 1. Direct bulk update for Supabase table mata_kuliah_kurikulum
       const updatePromises = mappingList.map(m =>
         supabase.from('mata_kuliah_kurikulum').update({ jalur: m.jalur }).eq('id', m.mk_id)
       )
       await Promise.all(updatePromises)
+
+      // 2. Bulk update Supabase table penetapan_akhir for candidates
+      const { data: currData } = await supabase.from('mata_kuliah_kurikulum').select('*').eq('prodi_id', prodiId)
+      const { data: penetapanData } = await supabase.from('penetapan_akhir').select('*')
+      if (penetapanData && penetapanData.length > 0 && currData && currData.length > 0) {
+        const updatePenPromises = penetapanData.map(pen => {
+          if (pen.rencana_studi && Array.isArray(pen.rencana_studi)) {
+            const updatedStudi = syncRencanaStudiJalur(pen.rencana_studi, currData, true)
+            return supabase.from('penetapan_akhir').update({ rencana_studi: updatedStudi }).eq('id', pen.id)
+          }
+          return Promise.resolve()
+        })
+        await Promise.all(updatePenPromises)
+      }
 
       updateLocalPenetapan()
 
@@ -263,9 +277,9 @@ export const dbMKMapping = {
 
 /**
  * Helper untuk menyelaraskan (sync) jalur matkul (sinkron / asinkron) pada rencana studi
- * agar konsisten dengan aturan `mata_kuliah_kurikulum` tanpa merusak pilihan yang sudah disimpan.
+ * agar 100% konsisten dengan aturan terbaru dari `mata_kuliah_kurikulum`.
  */
-export function syncRencanaStudiJalur(rencanaStudi, curriculum, forceOverride = false) {
+export function syncRencanaStudiJalur(rencanaStudi, curriculum) {
   if (!rencanaStudi || !Array.isArray(rencanaStudi)) return []
   if (!curriculum || !Array.isArray(curriculum) || curriculum.length === 0) return rencanaStudi
 
@@ -283,9 +297,7 @@ export function syncRencanaStudiJalur(rencanaStudi, curriculum, forceOverride = 
     const keyNama = String(item.nama || '').trim().toLowerCase()
 
     const currJalur = curriculumMap.get(keyKode) || curriculumMap.get(keyId) || curriculumMap.get(keyNama)
-    const syncedJalur = forceOverride 
-      ? (currJalur || item.jalur || 'sinkron')
-      : (item.jalur || currJalur || 'sinkron')
+    const syncedJalur = currJalur || item.jalur || 'sinkron'
 
     return {
       ...item,
