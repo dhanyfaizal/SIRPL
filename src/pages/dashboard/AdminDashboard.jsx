@@ -408,17 +408,18 @@ export default function AdminDashboard() {
       const curriculum = currData || []
       setCurriculumMK(curriculum)
 
-      // 2. Ambil rekognisi matkul diakui
+      // 2. Ambil rekognisi matkul diakui & targeted
       const { data: recData } = await dbRekognisi.getByPengajuanId(pengajuanId)
-      const diakuiIds = (recData?.data_mapping_mk || [])
+      const allMapping = recData?.data_mapping_mk || []
+      const diakuiIds = allMapping
         .filter(m => m.Status === 'diakui' || m.Status === 'disetujui')
         .map(m => m.MK_Tujuan_ID)
+      const targetedMkIds = allMapping.map(m => m.MK_Tujuan_ID).filter(Boolean)
 
       // 3. Ambil biaya asesmen
       const { data: penData } = await dbPenetapan.getByPengajuanId(pengajuanId)
       if (penData) {
         setTotalSksDiakui(penData.total_sks_diakui)
-        setTotalSksSisa(penData.total_sks_sisa)
         setBiayaAsessor(parseFloat(penData.biaya_total) || 0)
         setPotonganBiaya(parseFloat(penData.potongan_biaya) || 0)
         setCatatanPotongan(penData.catatan_potongan || '')
@@ -427,13 +428,19 @@ export default function AdminDashboard() {
         
         // If rencana_studi is already saved, use it!
         if (penData.rencana_studi && penData.rencana_studi.length > 0) {
-          setMappedCourses(penData.rencana_studi)
+          const filtered = penData.rencana_studi.filter(c => {
+            if (c.jenis === 'pilihan') {
+              return targetedMkIds.length === 0 || targetedMkIds.includes(c.mkId)
+            }
+            return true
+          })
+          setMappedCourses(filtered)
+          setTotalSksSisa(filtered.reduce((sum, item) => sum + item.sks, 0))
           return
         }
       } else {
         // Fallback defaults
         setTotalSksDiakui(0)
-        setTotalSksSisa(curriculum.reduce((acc, curr) => acc + curr.sks, 0))
         setBiayaAsessor(0)
         setPotonganBiaya(0)
         setCatatanPotongan('')
@@ -442,8 +449,15 @@ export default function AdminDashboard() {
       }
 
       // 4. Map sisa mata kuliah ke Jalur (MOOCs/Tatap Muka)
+      // Hanya sertakan MK Wajib yang belum diakui + MK Pilihan yang terpilih dalam data_mapping_mk
       const rawMapping = curriculum
-        .filter(mk => !diakuiIds.includes(mk.id))
+        .filter(mk => {
+          if (diakuiIds.includes(mk.id)) return false
+          if (mk.jenis === 'pilihan') {
+            return targetedMkIds.includes(mk.id)
+          }
+          return true
+        })
         .map((mk) => ({
           mkId: mk.id,
           kode: mk.kode_mk,
@@ -455,6 +469,7 @@ export default function AdminDashboard() {
       
       const initialMapping = distributeCoursesToStudySemesters(rawMapping)
       setMappedCourses(initialMapping)
+      setTotalSksSisa(initialMapping.reduce((sum, item) => sum + item.sks, 0))
     } catch (e) {
       console.error(e)
       toast.error('Gagal memuat rincian penetapan')
@@ -491,6 +506,29 @@ export default function AdminDashboard() {
     setMappedCourses(mappedCourses.map(c => c.mkId === mkId ? { ...c, semester: parseInt(semester) } : c))
   }
 
+  const toggleElectiveCourse = (mk, isChecked) => {
+    if (isChecked) {
+      if (!mappedCourses.some(c => c.mkId === mk.id)) {
+        const newCourse = {
+          mkId: mk.id,
+          kode: mk.kode_mk,
+          nama: mk.nama_mk,
+          sks: mk.sks,
+          jenis: mk.jenis,
+          jalur: mk.jalur || 'asinkron',
+          semester: mk.semester || 1
+        }
+        const newMapped = distributeCoursesToStudySemesters([...mappedCourses, newCourse])
+        setMappedCourses(newMapped)
+        setTotalSksSisa(newMapped.reduce((sum, c) => sum + c.sks, 0))
+      }
+    } else {
+      const newMapped = mappedCourses.filter(c => c.mkId !== mk.id)
+      setMappedCourses(newMapped)
+      setTotalSksSisa(newMapped.reduce((sum, c) => sum + c.sks, 0))
+    }
+  }
+
   const getSemesterStats = (semNum) => {
     const list = mappedCourses.filter(c => (c.semester || 1) === semNum)
     const totalSks = list.reduce((sum, c) => sum + c.sks, 0)
@@ -518,10 +556,11 @@ export default function AdminDashboard() {
 
     setSubmitting(true)
     try {
+      const actualTotalSksSisa = mappedCourses.reduce((sum, c) => sum + c.sks, 0)
       // 1. Simpan penetapan akhir beserta diskon dan rencana studi
       const finalPayload = {
         total_sks_diakui: totalSksDiakui,
-        total_sks_sisa: totalSksSisa,
+        total_sks_sisa: actualTotalSksSisa,
         biaya_total: finalBiayaTotal,
         potongan_biaya: parseFloat(potonganBiaya) || 0,
         catatan_potongan: catatanPotongan,
@@ -1159,6 +1198,49 @@ export default function AdminDashboard() {
                     </div>
                   ) : (
                     <div>
+                      {/* MK Pilihan Terpilih Selector */}
+                      {curriculumMK.filter(mk => mk.jenis === 'pilihan').length > 0 && (
+                        <div style={{ padding: '10px 16px', background: '#fffdf0', borderBottom: '1px solid #fde68a', fontSize: 12 }}>
+                          <div style={{ fontWeight: 600, color: '#b45309', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span>⚡ Mata Kuliah Pilihan Kurikulum:</span>
+                            <span style={{ fontSize: 11, fontWeight: 400, color: '#78350f' }}>(Centang untuk memasukkan MK Pilihan terpilih ke Mata Kuliah Sisa)</span>
+                          </div>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                            {curriculumMK.filter(mk => mk.jenis === 'pilihan').map(mk => {
+                              const isRecognized = recRows.some(r => r.MK_Tujuan_ID === mk.id && (r.Status === 'diakui' || r.Status === 'disetujui'))
+                              const isChecked = mappedCourses.some(c => c.mkId === mk.id)
+                              
+                              return (
+                                <label 
+                                  key={mk.id} 
+                                  style={{ 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    gap: 6, 
+                                    cursor: isReadOnly || isRecognized ? 'default' : 'pointer', 
+                                    opacity: isRecognized ? 0.6 : 1, 
+                                    background: '#fff', 
+                                    padding: '4px 10px', 
+                                    borderRadius: 6, 
+                                    border: isChecked ? '1px solid #f59e0b' : '1px solid var(--gray-200)',
+                                    boxShadow: isChecked ? '0 1px 2px rgba(245, 158, 11, 0.15)' : 'none'
+                                  }}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    disabled={isReadOnly || isRecognized}
+                                    checked={isChecked || isRecognized}
+                                    onChange={(e) => toggleElectiveCourse(mk, e.target.checked)}
+                                  />
+                                  <span style={{ fontWeight: isChecked ? 600 : 400, color: 'var(--gray-800)' }}>{mk.nama_mk} ({mk.sks} SKS)</span>
+                                  {isRecognized && <span style={{ fontSize: 10, color: '#059669', fontWeight: 600 }}>(Diakui)</span>}
+                                </label>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )}
+
                       {/* Semester Tabs */}
                       <div style={{ display: 'flex', gap: 6, padding: '12px 16px', background: 'var(--gray-50)', borderBottom: '1px solid var(--gray-200)', flexWrap: 'wrap' }}>
                         {[1, 2, 3, 4].map(semNum => {

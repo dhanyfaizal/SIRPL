@@ -379,17 +379,18 @@ export default function PmbDashboard() {
       const { data: currData } = await dbMK.getByProdi(prodiId)
       const curriculum = currData || []
 
-      // 2. Ambil rekognisi matkul diakui
+      // 2. Ambil rekognisi matkul diakui & targeted
       const { data: recData } = await dbRekognisi.getByPengajuanId(pengajuanId)
-      const diakuiIds = (recData?.data_mapping_mk || [])
+      const allMapping = recData?.data_mapping_mk || []
+      const diakuiIds = allMapping
         .filter(m => m.Status === 'diakui' || m.Status === 'disetujui')
         .map(m => m.MK_Tujuan_ID)
+      const targetedMkIds = allMapping.map(m => m.MK_Tujuan_ID).filter(Boolean)
 
       // 3. Ambil biaya asesmen
       const { data: penData } = await dbPenetapan.getByPengajuanId(pengajuanId)
       if (penData) {
         setTotalSksDiakui(penData.total_sks_diakui)
-        setTotalSksSisa(penData.total_sks_sisa)
         setPotonganBiaya(parseFloat(penData.potongan_biaya) || 0)
         setCatatanPotongan(penData.catatan_potongan || '')
         setPotonganBiayaPendukung(parseFloat(penData.potongan_biaya_pendukung) || 0)
@@ -398,13 +399,19 @@ export default function PmbDashboard() {
         
         // If rencana_studi is already saved, use it!
         if (penData.rencana_studi && penData.rencana_studi.length > 0) {
-          setMappedCourses(penData.rencana_studi)
+          const filtered = penData.rencana_studi.filter(c => {
+            if (c.jenis === 'pilihan') {
+              return targetedMkIds.length === 0 || targetedMkIds.includes(c.mkId)
+            }
+            return true
+          })
+          setMappedCourses(filtered)
+          setTotalSksSisa(filtered.reduce((sum, item) => sum + item.sks, 0))
           return
         }
       } else {
         // Fallback defaults
         setTotalSksDiakui(0)
-        setTotalSksSisa(curriculum.reduce((acc, curr) => acc + curr.sks, 0))
         setPotonganBiaya(0)
         setCatatanPotongan('')
         setPotonganBiayaPendukung(0)
@@ -414,7 +421,13 @@ export default function PmbDashboard() {
 
       // 4. Map sisa mata kuliah ke Jalur (MOOCs/Tatap Muka)
       const rawMapping = curriculum
-        .filter(mk => !diakuiIds.includes(mk.id))
+        .filter(mk => {
+          if (diakuiIds.includes(mk.id)) return false
+          if (mk.jenis === 'pilihan') {
+            return targetedMkIds.includes(mk.id)
+          }
+          return true
+        })
         .map((mk) => ({
           mkId: mk.id,
           kode: mk.kode_mk,
@@ -426,6 +439,7 @@ export default function PmbDashboard() {
       
       const initialMapping = distributeCoursesToStudySemesters(rawMapping)
       setMappedCourses(initialMapping)
+      setTotalSksSisa(initialMapping.reduce((sum, item) => sum + item.sks, 0))
     } catch (e) {
       console.error(e)
       toast.error('Gagal memuat rincian penetapan')

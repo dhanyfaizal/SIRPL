@@ -297,8 +297,12 @@ export default function AsessorDashboard() {
   // Total SKS diakui
   const totalSksDiakui = approvedRows.reduce((acc, curr) => acc + (parseInt(curr.sksTujuan) || 0), 0)
 
-  // Total SKS Kurikulum (seluruh MK prodi)
-  const totalSksKurikulum = curriculumMK.reduce((acc, curr) => acc + curr.sks, 0)
+  // Target course IDs mapped in the assessment rows
+  const targetedMkIds = rows.map(r => r.mkTujuanId).filter(Boolean)
+
+  // Total SKS Kurikulum (MK Wajib + MK Pilihan Terpilih)
+  const relevantCurriculumMK = curriculumMK.filter(mk => mk.jenis !== 'pilihan' || targetedMkIds.includes(mk.id))
+  const totalSksKurikulum = relevantCurriculumMK.reduce((acc, curr) => acc + curr.sks, 0)
   const totalSksSisa = Math.max(0, totalSksKurikulum - totalSksDiakui)
 
   // Financial calculation
