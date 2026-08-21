@@ -379,13 +379,35 @@ export default function PmbDashboard() {
       const { data: currData } = await dbMK.getByProdi(prodiId)
       const curriculum = currData || []
 
+function isPlaceholderCourse(c) {
+  if (!c) return false
+  const name = (c.nama_mk || c.nama || '').toLowerCase().trim()
+  const code = (c.kode_mk || c.kode || '').toUpperCase()
+  return name === 'mata kuliah pilihan' || name === 'mk pilihan' || code.includes('XX')
+}
+
       // 2. Ambil rekognisi matkul diakui & targeted
       const { data: recData } = await dbRekognisi.getByPengajuanId(pengajuanId)
       const allMapping = recData?.data_mapping_mk || []
-      const diakuiIds = allMapping
-        .filter(m => m.Status === 'diakui' || m.Status === 'disetujui')
-        .map(m => m.MK_Tujuan_ID)
+      
+      const diakuiRows = allMapping.filter(m => m.Status === 'diakui' || m.Status === 'disetujui')
+      const diakuiIds = diakuiRows.map(m => m.MK_Tujuan_ID).filter(Boolean)
+      const diakuiNames = diakuiRows.map(m => m.MK_Tujuan_Nama).filter(Boolean)
+
       const targetedMkIds = allMapping.map(m => m.MK_Tujuan_ID).filter(Boolean)
+      const targetedMkNames = allMapping.map(m => m.MK_Tujuan_Nama).filter(Boolean)
+
+      const isCourseDiakui = (mk) => {
+        const idMatch = mk.id && diakuiIds.includes(mk.id)
+        const nameMatch = (mk.nama_mk || mk.nama) && diakuiNames.includes(mk.nama_mk || mk.nama)
+        return idMatch || nameMatch
+      }
+
+      const isCourseTargeted = (mk) => {
+        const idMatch = mk.id && targetedMkIds.includes(mk.id)
+        const nameMatch = (mk.nama_mk || mk.nama) && targetedMkNames.includes(mk.nama_mk || mk.nama)
+        return idMatch || nameMatch
+      }
 
       // 3. Ambil biaya asesmen
       const { data: penData } = await dbPenetapan.getByPengajuanId(pengajuanId)
@@ -400,8 +422,9 @@ export default function PmbDashboard() {
         // If rencana_studi is already saved, use it!
         if (penData.rencana_studi && penData.rencana_studi.length > 0) {
           const filtered = penData.rencana_studi.filter(c => {
+            if (isPlaceholderCourse(c)) return false
             if (c.jenis === 'pilihan') {
-              return targetedMkIds.length === 0 || targetedMkIds.includes(c.mkId)
+              return (targetedMkIds.length === 0 && targetedMkNames.length === 0) || isCourseTargeted(c)
             }
             return true
           })
@@ -422,9 +445,10 @@ export default function PmbDashboard() {
       // 4. Map sisa mata kuliah ke Jalur (MOOCs/Tatap Muka)
       const rawMapping = curriculum
         .filter(mk => {
-          if (diakuiIds.includes(mk.id)) return false
+          if (isPlaceholderCourse(mk)) return false
+          if (isCourseDiakui(mk)) return false
           if (mk.jenis === 'pilihan') {
-            return targetedMkIds.includes(mk.id)
+            return isCourseTargeted(mk)
           }
           return true
         })

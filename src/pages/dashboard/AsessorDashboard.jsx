@@ -300,8 +300,19 @@ export default function AsessorDashboard() {
   // Target course IDs mapped in the assessment rows
   const targetedMkIds = rows.map(r => r.mkTujuanId).filter(Boolean)
 
-  // Total SKS Kurikulum (MK Wajib + MK Pilihan Terpilih)
-  const relevantCurriculumMK = curriculumMK.filter(mk => mk.jenis !== 'pilihan' || targetedMkIds.includes(mk.id))
+  const isPlaceholderCourse = (c) => {
+    if (!c) return false
+    const name = (c.nama_mk || c.nama || '').toLowerCase().trim()
+    const code = (c.kode_mk || c.kode || '').toUpperCase()
+    return name === 'mata kuliah pilihan' || name === 'mk pilihan' || code.includes('XX')
+  }
+
+  // Total SKS Kurikulum (MK Wajib + MK Pilihan Terpilih, abaikan placeholder)
+  const relevantCurriculumMK = curriculumMK.filter(mk => {
+    if (isPlaceholderCourse(mk)) return false
+    if (mk.jenis === 'pilihan') return targetedMkIds.includes(mk.id)
+    return true
+  })
   const totalSksKurikulum = relevantCurriculumMK.reduce((acc, curr) => acc + curr.sks, 0)
   const totalSksSisa = Math.max(0, totalSksKurikulum - totalSksDiakui)
 

@@ -401,6 +401,13 @@ export default function AdminDashboard() {
     })
   }
 
+function isPlaceholderCourse(c) {
+  if (!c) return false
+  const name = (c.nama_mk || c.nama || '').toLowerCase().trim()
+  const code = (c.kode_mk || c.kode || '').toUpperCase()
+  return name === 'mata kuliah pilihan' || name === 'mk pilihan' || code.includes('XX')
+}
+
   const loadPenetapanInitial = async (pengajuanId, prodiId) => {
     try {
       // 1. Ambil kurikulum prodi terlebih dahulu
@@ -411,10 +418,25 @@ export default function AdminDashboard() {
       // 2. Ambil rekognisi matkul diakui & targeted
       const { data: recData } = await dbRekognisi.getByPengajuanId(pengajuanId)
       const allMapping = recData?.data_mapping_mk || []
-      const diakuiIds = allMapping
-        .filter(m => m.Status === 'diakui' || m.Status === 'disetujui')
-        .map(m => m.MK_Tujuan_ID)
+      
+      const diakuiRows = allMapping.filter(m => m.Status === 'diakui' || m.Status === 'disetujui')
+      const diakuiIds = diakuiRows.map(m => m.MK_Tujuan_ID).filter(Boolean)
+      const diakuiNames = diakuiRows.map(m => m.MK_Tujuan_Nama).filter(Boolean)
+
       const targetedMkIds = allMapping.map(m => m.MK_Tujuan_ID).filter(Boolean)
+      const targetedMkNames = allMapping.map(m => m.MK_Tujuan_Nama).filter(Boolean)
+
+      const isCourseDiakui = (mk) => {
+        const idMatch = mk.id && diakuiIds.includes(mk.id)
+        const nameMatch = (mk.nama_mk || mk.nama) && diakuiNames.includes(mk.nama_mk || mk.nama)
+        return idMatch || nameMatch
+      }
+
+      const isCourseTargeted = (mk) => {
+        const idMatch = mk.id && targetedMkIds.includes(mk.id)
+        const nameMatch = (mk.nama_mk || mk.nama) && targetedMkNames.includes(mk.nama_mk || mk.nama)
+        return idMatch || nameMatch
+      }
 
       // 3. Ambil biaya asesmen
       const { data: penData } = await dbPenetapan.getByPengajuanId(pengajuanId)
@@ -426,11 +448,12 @@ export default function AdminDashboard() {
         setPotonganBiayaPendukung(parseFloat(penData.potongan_biaya_pendukung) || 0)
         setCatatanPotonganPendukung(penData.catatan_potongan_pendukung || '')
         
-        // If rencana_studi is already saved, use it!
+        // If rencana_studi is already saved, use it! Filter out generic placeholders & unselected electives
         if (penData.rencana_studi && penData.rencana_studi.length > 0) {
           const filtered = penData.rencana_studi.filter(c => {
+            if (isPlaceholderCourse(c)) return false
             if (c.jenis === 'pilihan') {
-              return targetedMkIds.length === 0 || targetedMkIds.includes(c.mkId)
+              return (targetedMkIds.length === 0 && targetedMkNames.length === 0) || isCourseTargeted(c)
             }
             return true
           })
@@ -449,12 +472,14 @@ export default function AdminDashboard() {
       }
 
       // 4. Map sisa mata kuliah ke Jalur (MOOCs/Tatap Muka)
-      // Hanya sertakan MK Wajib yang belum diakui + MK Pilihan yang terpilih dalam data_mapping_mk
+      // Abaikan generic placeholder "Mata Kuliah Pilihan" (22SIF612XX)
+      // Hanya sertakan MK Wajib yang belum diakui + MK Pilihan spesifik yang terpilih
       const rawMapping = curriculum
         .filter(mk => {
-          if (diakuiIds.includes(mk.id)) return false
+          if (isPlaceholderCourse(mk)) return false
+          if (isCourseDiakui(mk)) return false
           if (mk.jenis === 'pilihan') {
-            return targetedMkIds.includes(mk.id)
+            return isCourseTargeted(mk)
           }
           return true
         })
@@ -1199,16 +1224,16 @@ export default function AdminDashboard() {
                   ) : (
                     <div>
                       {/* MK Pilihan Terpilih Selector */}
-                      {curriculumMK.filter(mk => mk.jenis === 'pilihan').length > 0 && (
+                      {curriculumMK.filter(mk => mk.jenis === 'pilihan' && !isPlaceholderCourse(mk)).length > 0 && (
                         <div style={{ padding: '10px 16px', background: '#fffdf0', borderBottom: '1px solid #fde68a', fontSize: 12 }}>
                           <div style={{ fontWeight: 600, color: '#b45309', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
                             <span>⚡ Mata Kuliah Pilihan Kurikulum:</span>
                             <span style={{ fontSize: 11, fontWeight: 400, color: '#78350f' }}>(Centang untuk memasukkan MK Pilihan terpilih ke Mata Kuliah Sisa)</span>
                           </div>
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                            {curriculumMK.filter(mk => mk.jenis === 'pilihan').map(mk => {
-                              const isRecognized = recRows.some(r => r.MK_Tujuan_ID === mk.id && (r.Status === 'diakui' || r.Status === 'disetujui'))
-                              const isChecked = mappedCourses.some(c => c.mkId === mk.id)
+                            {curriculumMK.filter(mk => mk.jenis === 'pilihan' && !isPlaceholderCourse(mk)).map(mk => {
+                              const isRecognized = recRows.some(r => (r.MK_Tujuan_ID === mk.id || r.MK_Tujuan_Nama === mk.nama_mk) && (r.Status === 'diakui' || r.Status === 'disetujui'))
+                              const isChecked = mappedCourses.some(c => c.mkId === mk.id || c.nama === mk.nama_mk)
                               
                               return (
                                 <label 
