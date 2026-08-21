@@ -336,34 +336,7 @@ export default function PendaftarDashboard() {
     }
   }
 
-  const handleApplyMonthlyPayment = async () => {
-    setSubmitting(true)
-    try {
-      const payload = {
-        monthly_payment_status: 'pending'
-      }
-      const { error: upsertError } = await dbPenetapan.upsert(pengajuan.id, payload)
-      if (upsertError) throw upsertError
-      
-      // Notify PMB Officer
-      const { error: notifError } = await dbNotifikasi.createForRole(
-        'pmb',
-        'Pengajuan Pembiayaan Bulanan',
-        `Calon mahasiswa ${profile?.nama_lengkap || 'Calon RPL'} mengajukan opsi Pembiayaan Bulanan.`,
-        'monthly_payment',
-        '/dashboard'
-      )
-      if (notifError) throw notifError
 
-      toast.success('Permohonan pembiayaan bulanan berhasil diajukan!')
-      loadData(true)
-    } catch (err) {
-      console.error(err)
-      toast.error('Gagal mengajukan pembiayaan bulanan')
-    } finally {
-      setSubmitting(false)
-    }
-  }
 
   const handleSubmitFeedback = async (e) => {
     e.preventDefault()
@@ -1739,30 +1712,7 @@ export default function PendaftarDashboard() {
                     border: '1px solid var(--danger)'
                   }}
                 >
-                  ⚠️ Ajukan Sanggah Hasil RPL
                 </button>
-                {penetapan && penetapan.monthly_payment_status !== 'approved' && (
-                  <button
-                    onClick={handleApplyMonthlyPayment}
-                    className="btn btn-secondary"
-                    disabled={submitting || penetapan.monthly_payment_status === 'pending'}
-                    style={{
-                      width: '100%',
-                      padding: '10px',
-                      fontWeight: 600,
-                      fontSize: 12.5,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: 6,
-                      background: '#fff',
-                      color: penetapan.monthly_payment_status === 'pending' ? 'var(--gray-400)' : 'var(--indigo-600)',
-                      border: penetapan.monthly_payment_status === 'pending' ? '1px solid var(--gray-300)' : '1px solid var(--indigo-600)'
-                    }}
-                  >
-                    💳 {penetapan.monthly_payment_status === 'pending' ? 'Menunggu Persetujuan Pembiayaan Bulanan' : 'Ajukan Pembiayaan Bulanan'}
-                  </button>
-                )}
               </div>
             )}
           </div>

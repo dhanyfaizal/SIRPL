@@ -563,29 +563,32 @@ function isPlaceholderCourse(c) {
     }
   }
 
-  const handleMonthlyPaymentApproval = async (isApproved) => {
+  const handleToggleMonthlyPayment = async (enableMonthly) => {
     setSubmitting(true)
     try {
       const payload = {
-        monthly_payment_status: isApproved ? 'approved' : 'rejected',
-        is_monthly_payment: isApproved
+        monthly_payment_status: enableMonthly ? 'approved' : 'none',
+        is_monthly_payment: enableMonthly
       }
       const { error: upsertError } = await dbPenetapan.upsert(selectedItem.id, payload)
       if (upsertError) throw upsertError
       
       // Notify candidate
+      const notifTitle = enableMonthly ? 'Skema Pembiayaan Bulanan Diaktifkan' : 'Skema Pembiayaan Diberlakukan Reguler'
+      const notifMsg = enableMonthly 
+        ? 'PMB Officer telah menetapkan skema pembiayaan studi Anda menjadi Pembiayaan Bulanan (Cicilan UKP).'
+        : 'PMB Officer telah mengembalikan skema pembiayaan studi Anda menjadi Pembiayaan Reguler (Paket Semester).'
+      
       const { error: notifError } = await dbNotifikasi.create(
         selectedItem.user_id,
-        isApproved ? 'Pembiayaan Bulanan Disetujui' : 'Pembiayaan Bulanan Ditolak',
-        isApproved 
-          ? 'Pengajuan opsi Pembiayaan Bulanan Anda telah disetujui. Rincian biaya studi Anda kini dihitung per bulan.'
-          : 'Pengajuan opsi Pembiayaan Bulanan Anda ditolak. Rincian biaya studi tetap dihitung per semester.',
+        notifTitle,
+        notifMsg,
         'monthly_payment',
         '/dashboard'
       )
       if (notifError) throw notifError
 
-      toast.success(isApproved ? 'Pembiayaan bulanan berhasil disetujui!' : 'Pembiayaan bulanan ditolak.')
+      toast.success(enableMonthly ? 'Skema pembiayaan berhasil diubah ke Bulanan!' : 'Skema pembiayaan berhasil dikembalikan ke Reguler!')
       
       // Refresh list
       await loadData(true)
@@ -593,14 +596,14 @@ function isPlaceholderCourse(c) {
       // Update selectedItem local properties so UI re-renders with fresh data
       setSelectedItem(prev => ({
         ...prev,
-        monthly_payment_status: isApproved ? 'approved' : 'rejected'
+        monthly_payment_status: enableMonthly ? 'approved' : 'none'
       }))
       
       // Update local state
-      setMonthlyPaymentStatus(isApproved ? 'approved' : 'rejected')
+      setMonthlyPaymentStatus(enableMonthly ? 'approved' : 'none')
     } catch (e) {
       console.error(e)
-      toast.error('Gagal memproses permohonan pembiayaan')
+      toast.error('Gagal memperbarui skema pembiayaan')
     } finally {
       setSubmitting(false)
     }
@@ -1107,41 +1110,38 @@ function isPlaceholderCourse(c) {
                    <FileText size={15} /> Cetak Rencana Studi (PDF)
                  </button>
 
-                 {/* Monthly Payment request section */}
-                 {selectedItem.monthly_payment_status === 'pending' && (
-                   <div style={{ background: '#fffbeb', border: '1px solid #fef3c7', borderRadius: 8, padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                     <span style={{ fontSize: 12.5, fontWeight: 700, color: '#b45309', display: 'flex', alignItems: 'center', gap: 4 }}>
-                       💳 Pengajuan Pembiayaan Bulanan
+                 {/* Monthly Payment Management Section */}
+                 <div style={{ background: (monthlyPaymentStatus === 'approved' || selectedItem.monthly_payment_status === 'approved') ? '#ecfdf5' : '#f8fafc', border: (monthlyPaymentStatus === 'approved' || selectedItem.monthly_payment_status === 'approved') ? '1px solid #a7f3d0' : '1px solid var(--gray-200)', borderRadius: 8, padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                     <span style={{ fontSize: 12.5, fontWeight: 700, color: (monthlyPaymentStatus === 'approved' || selectedItem.monthly_payment_status === 'approved') ? '#064e3b' : 'var(--gray-800)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                       💳 Skema Pembiayaan: {(monthlyPaymentStatus === 'approved' || selectedItem.monthly_payment_status === 'approved') ? 'Bulanan (Cicilan UKP)' : 'Reguler (Paket Semester)'}
                      </span>
-                     <p style={{ fontSize: 11.5, color: '#78350f', margin: 0, lineHeight: 1.4 }}>
-                       Calon mahasiswa ini mengajukan opsi pembiayaan kuliah dicicil bulanan (biaya tiap semester dibagi 6 bulan).
-                     </p>
-                     <div style={{ display: 'flex', gap: 8 }}>
-                       <button
-                         onClick={() => handleMonthlyPaymentApproval(true)}
-                         className="btn btn-success"
-                         style={{ flex: 1, padding: '8px 12px', fontSize: 11.5, fontWeight: 700 }}
-                         disabled={submitting}
-                       >
-                         Setujui
-                       </button>
-                       <button
-                         onClick={() => handleMonthlyPaymentApproval(false)}
-                         className="btn btn-danger"
-                         style={{ flex: 1, padding: '8px 12px', fontSize: 11.5, fontWeight: 700, background: 'var(--danger)', color: '#fff', border: 'none' }}
-                         disabled={submitting}
-                       >
-                         Tolak
-                       </button>
-                     </div>
                    </div>
-                 )}
-
-                 {selectedItem.monthly_payment_status === 'approved' && (
-                   <div style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: 8, padding: 10, display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: '#064e3b' }}>
-                     <span>💳 Pembiayaan Bulanan Aktif (Dibagi 6 bulan)</span>
-                   </div>
-                 )}
+                   <p style={{ fontSize: 11.5, color: 'var(--gray-600)', margin: 0, lineHeight: 1.4 }}>
+                     {(monthlyPaymentStatus === 'approved' || selectedItem.monthly_payment_status === 'approved')
+                       ? 'Skema pembiayaan aktif sebagai pembayaran bulanan (biaya paket semester dibagi 6 bulan).'
+                       : 'Skema pembiayaan saat ini adalah pembayaran paket reguler per semester.'}
+                   </p>
+                   {(monthlyPaymentStatus === 'approved' || selectedItem.monthly_payment_status === 'approved') ? (
+                     <button
+                       onClick={() => handleToggleMonthlyPayment(false)}
+                       className="btn btn-secondary"
+                       style={{ width: '100%', padding: '8px 12px', fontSize: 11.5, fontWeight: 700, color: 'var(--danger)', borderColor: 'var(--danger)', background: '#fff', justifyContent: 'center' }}
+                       disabled={submitting}
+                     >
+                       🔄 Kembalikan ke Pembayaran Reguler (Paket Semester)
+                     </button>
+                   ) : (
+                     <button
+                       onClick={() => handleToggleMonthlyPayment(true)}
+                       className="btn btn-secondary"
+                       style={{ width: '100%', padding: '8px 12px', fontSize: 11.5, fontWeight: 700, color: 'var(--indigo-600)', borderColor: 'var(--indigo-200)', background: 'var(--indigo-50)', justifyContent: 'center' }}
+                       disabled={submitting}
+                     >
+                       💳 Set sebagai Pembiayaan Bulanan (Cicilan UKP)
+                     </button>
+                   )}
+                 </div>
 
                  {/* Cost Summary Info */}
                  <div style={{ background: 'var(--gray-50)', padding: 14, borderRadius: 8, border: '1px solid var(--gray-200)', fontSize: 12.5, display: 'flex', flexDirection: 'column', gap: 10 }}>
