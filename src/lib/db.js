@@ -209,9 +209,11 @@ export const dbMKMapping = {
 
   saveMapping: async (prodiId, mappingList) => {
     // mappingList: array of { mk_id, jalur }
-    if (isMock) {
+    const mapObj = new Map(mappingList.map(m => [m.mk_id, m.jalur]))
+    
+    // Helper to update local penetapan
+    const updateLocalPenetapan = () => {
       const list = getLocalData('si_rpl_mata_kuliah') || []
-      const mapObj = new Map(mappingList.map(m => [m.mk_id, m.jalur]))
       const updated = list.map(mk => {
         if (mapObj.has(mk.id)) {
           return { ...mk, jalur: mapObj.get(mk.id) }
@@ -219,6 +221,24 @@ export const dbMKMapping = {
         return mk
       })
       saveLocalData('si_rpl_mata_kuliah', updated)
+
+      // Sync existing penetapan local data
+      const penetapanList = getLocalData('si_rpl_penetapan') || []
+      const currList = updated.filter(m => m.prodi_id === prodiId)
+      const syncedPenetapan = penetapanList.map(pen => {
+        if (pen.rencana_studi && Array.isArray(pen.rencana_studi)) {
+          return {
+            ...pen,
+            rencana_studi: syncRencanaStudiJalur(pen.rencana_studi, currList)
+          }
+        }
+        return pen
+      })
+      saveLocalData('si_rpl_penetapan', syncedPenetapan)
+    }
+
+    if (isMock) {
+      updateLocalPenetapan()
       return { data: mappingList, error: null }
     }
 
@@ -229,32 +249,44 @@ export const dbMKMapping = {
       )
       await Promise.all(updatePromises)
 
-      // Fallback local update
-      const list = getLocalData('si_rpl_mata_kuliah') || []
-      const mapObj = new Map(mappingList.map(m => [m.mk_id, m.jalur]))
-      const updated = list.map(mk => {
-        if (mapObj.has(mk.id)) {
-          return { ...mk, jalur: mapObj.get(mk.id) }
-        }
-        return mk
-      })
-      saveLocalData('si_rpl_mata_kuliah', updated)
+      updateLocalPenetapan()
 
       return { data: mappingList, error: null }
     } catch (e) {
       console.error('Error saving mapping to DB:', e)
-      const list = getLocalData('si_rpl_mata_kuliah') || []
-      const mapObj = new Map(mappingList.map(m => [m.mk_id, m.jalur]))
-      const updated = list.map(mk => {
-        if (mapObj.has(mk.id)) {
-          return { ...mk, jalur: mapObj.get(mk.id) }
-        }
-        return mk
-      })
-      saveLocalData('si_rpl_mata_kuliah', updated)
+      updateLocalPenetapan()
       return { data: mappingList, error: null }
     }
   }
+}
+
+/**
+ * Helper untuk menyelaraskan (sync) jalur matkul (sinkron / asinkron) pada rencana studi
+ * agar 100% konsisten dengan aturan terbaru dari `mata_kuliah_kurikulum`.
+ */
+export function syncRencanaStudiJalur(rencanaStudi, curriculum) {
+  if (!rencanaStudi || !Array.isArray(rencanaStudi)) return []
+  if (!curriculum || !Array.isArray(curriculum) || curriculum.length === 0) return rencanaStudi
+
+  const curriculumMap = new Map()
+  curriculum.forEach(mk => {
+    const jalurVal = mk.jalur || (mk.jenis === 'umum' ? 'asinkron' : 'sinkron')
+    if (mk.kode_mk) curriculumMap.set(String(mk.kode_mk).trim().toUpperCase(), jalurVal)
+    if (mk.id) curriculumMap.set(String(mk.id), jalurVal)
+    if (mk.nama_mk) curriculumMap.set(String(mk.nama_mk).trim().toLowerCase(), jalurVal)
+  })
+
+  return rencanaStudi.map(item => {
+    const keyKode = String(item.kode || '').trim().toUpperCase()
+    const keyId = String(item.mkId || item.id || '')
+    const keyNama = String(item.nama || '').trim().toLowerCase()
+
+    const syncedJalur = curriculumMap.get(keyKode) || curriculumMap.get(keyId) || curriculumMap.get(keyNama) || item.jalur || 'sinkron'
+    return {
+      ...item,
+      jalur: syncedJalur
+    }
+  })
 }
 
 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { dbPengajuan, dbMK, dbRekognisi, dbPenetapan, getDocumentProgress } from '../../lib/db'
+import { dbPengajuan, dbMK, dbRekognisi, dbPenetapan, getDocumentProgress, syncRencanaStudiJalur } from '../../lib/db'
 import { BookOpen, FileText, CheckCircle, Percent, DollarSign, Calendar, Edit2, RotateCcw, AlertCircle, Eye, Settings, ArrowLeft, RotateCw, Sparkles } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { exportToCSV, exportToPDF } from '../../utils/exporter'
@@ -78,26 +78,8 @@ function distributeCoursesToStudySemesters(courses) {
 
   // 3. Map jalur and respect max 24 SKS sinkron per study semester
   const mapJalurForSemester = (list, targetSemester) => {
-    let currentSinkronSks = 0
     return list.map(c => {
-      const name = c.nama.toLowerCase()
-      const isMoocDefault = c.jenis === 'umum' || 
-                            name.includes('pengantar') || 
-                            name.includes('dasar') || 
-                            name.includes('etika') || 
-                            name.includes('kewirausahaan') || 
-                            name.includes('pancasila') || 
-                            name.includes('bahasa')
-      
-      let jalur = c.jalur || (isMoocDefault ? 'asinkron' : 'sinkron')
-      if (jalur === 'sinkron') {
-        if (currentSinkronSks + c.sks <= 24) {
-          currentSinkronSks += c.sks
-        } else {
-          jalur = 'asinkron'
-        }
-      }
-
+      const jalur = c.jalur || (c.jenis === 'umum' ? 'asinkron' : 'sinkron')
       return {
         ...c,
         semester: targetSemester,
@@ -448,9 +430,10 @@ function isPlaceholderCourse(c) {
         setPotonganBiayaPendukung(parseFloat(penData.potongan_biaya_pendukung) || 0)
         setCatatanPotonganPendukung(penData.catatan_potongan_pendukung || '')
         
-        // If rencana_studi is already saved, use it! Filter out generic placeholders & unselected electives
+        // If rencana_studi is already saved, sync jalur with curriculum and filter out generic placeholders & unselected electives
         if (penData.rencana_studi && penData.rencana_studi.length > 0) {
-          const filtered = penData.rencana_studi.filter(c => {
+          const synced = syncRencanaStudiJalur(penData.rencana_studi, curriculum)
+          const filtered = synced.filter(c => {
             if (isPlaceholderCourse(c)) return false
             if (c.jenis === 'pilihan') {
               return (targetedMkIds.length === 0 && targetedMkNames.length === 0) || isCourseTargeted(c)
@@ -489,6 +472,7 @@ function isPlaceholderCourse(c) {
           nama: mk.nama_mk,
           sks: mk.sks,
           jenis: mk.jenis,
+          jalur: mk.jalur || (mk.jenis === 'umum' ? 'asinkron' : 'sinkron'),
           semester: mk.semester || 1
         }))
       

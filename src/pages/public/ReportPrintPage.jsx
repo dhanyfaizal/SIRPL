@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { dbPengajuan, dbRekognisi, dbPenetapan } from '../../lib/db'
+import { dbPengajuan, dbRekognisi, dbPenetapan, dbMKMapping, syncRencanaStudiJalur } from '../../lib/db'
 import { Printer, ChevronLeft } from 'lucide-react'
 
 export default function ReportPrintPage() {
@@ -22,6 +22,12 @@ export default function ReportPrintPage() {
         setRekognisi(rData)
 
         const { data: peData } = await dbPenetapan.getByPengajuanId(id)
+        if (peData && peData.rencana_studi && pData?.prodi_id) {
+          const { data: currData } = await dbMKMapping.getByProdi(pData.prodi_id)
+          if (currData && currData.length > 0) {
+            peData.rencana_studi = syncRencanaStudiJalur(peData.rencana_studi, currData)
+          }
+        }
         setPenetapan(peData)
       } catch (e) {
         console.error(e)

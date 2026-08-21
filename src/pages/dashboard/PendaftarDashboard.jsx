@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { dbPengajuan, dbProdi, dbPenetapan, dbFeedback, getDocumentProgress, dbNotifikasi } from '../../lib/db'
+import { dbPengajuan, dbProdi, dbPenetapan, dbFeedback, getDocumentProgress, dbNotifikasi, dbMKMapping, syncRencanaStudiJalur } from '../../lib/db'
 import { supabase, isMock } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import { FileUp, Clipboard, Award, Shield, CheckCircle, FileText, Trash2, Plus, Eye, ArrowLeft, ArrowRight, HelpCircle, RotateCw, ExternalLink } from 'lucide-react'
@@ -295,6 +295,12 @@ export default function PendaftarDashboard() {
 
         if (activePengajuan.status === 'mapped_admin') {
           const { data: penetapanData } = await dbPenetapan.getByPengajuanId(activePengajuan.id)
+          if (penetapanData && penetapanData.rencana_studi) {
+            const { data: currData } = await dbMKMapping.getByProdi(activePengajuan.prodi_id)
+            if (currData && currData.length > 0) {
+              penetapanData.rencana_studi = syncRencanaStudiJalur(penetapanData.rencana_studi, currData)
+            }
+          }
           setPenetapan(penetapanData || null)
           
           const { data: fbData } = await dbFeedback.getByPengajuanId(activePengajuan.id)
