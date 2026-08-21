@@ -22,8 +22,9 @@ export default function ReportPrintPage() {
         setRekognisi(rData)
 
         const { data: peData } = await dbPenetapan.getByPengajuanId(id)
-        if (peData && peData.rencana_studi && pData?.prodi_id) {
-          const { data: currData } = await dbMKMapping.getByProdi(pData.prodi_id)
+        const prodiId = pData?.prodi_pilihan_id || pData?.prodi_id
+        if (peData && peData.rencana_studi && prodiId) {
+          const { data: currData } = await dbMKMapping.getByProdi(prodiId)
           if (currData && currData.length > 0) {
             peData.rencana_studi = syncRencanaStudiJalur(peData.rencana_studi, currData)
           }

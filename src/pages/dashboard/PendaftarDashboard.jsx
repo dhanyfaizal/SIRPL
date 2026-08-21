@@ -296,9 +296,12 @@ export default function PendaftarDashboard() {
         if (activePengajuan.status === 'mapped_admin') {
           const { data: penetapanData } = await dbPenetapan.getByPengajuanId(activePengajuan.id)
           if (penetapanData && penetapanData.rencana_studi) {
-            const { data: currData } = await dbMKMapping.getByProdi(activePengajuan.prodi_id)
-            if (currData && currData.length > 0) {
-              penetapanData.rencana_studi = syncRencanaStudiJalur(penetapanData.rencana_studi, currData)
+            const prodiId = activePengajuan.prodi_pilihan_id || activePengajuan.prodi_id
+            if (prodiId) {
+              const { data: currData } = await dbMKMapping.getByProdi(prodiId)
+              if (currData && currData.length > 0) {
+                penetapanData.rencana_studi = syncRencanaStudiJalur(penetapanData.rencana_studi, currData)
+              }
             }
           }
           setPenetapan(penetapanData || null)

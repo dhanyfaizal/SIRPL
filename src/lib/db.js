@@ -191,6 +191,7 @@ export const dbMK = {
 // ── 2b. Aturan Pemetaan Mata Kuliah (Sinkron & Asinkron) ──────
 export const dbMKMapping = {
   getByProdi: async (prodiId) => {
+    if (!prodiId || prodiId === 'undefined') return { data: [], error: null }
     if (isMock) {
       const list = getLocalData('si_rpl_mata_kuliah') || []
       const prodiMK = list.filter(mk => mk.prodi_id === prodiId)
@@ -530,6 +531,7 @@ export const dbPengajuan = {
 // ── 4. Tabel Rekognisi ─────────────────────────────────────────
 export const dbRekognisi = {
   getByPengajuanId: async (pengajuanId) => {
+    if (!pengajuanId || pengajuanId === 'undefined') return { data: null, error: null }
     if (isMock) {
       const store = JSON.parse(localStorage.getItem('si_rpl_rekognisi') || '{}')
       const data = store[pengajuanId] || null
@@ -567,6 +569,7 @@ export const dbRekognisi = {
 // ── 5. Penetapan Akhir ─────────────────────────────────────────
 export const dbPenetapan = {
   getByPengajuanId: async (pengajuanId) => {
+    if (!pengajuanId || pengajuanId === 'undefined') return { data: null, error: null }
     if (isMock) {
       const store = JSON.parse(localStorage.getItem('si_rpl_penetapan') || '{}')
       const data = store[pengajuanId] || null
