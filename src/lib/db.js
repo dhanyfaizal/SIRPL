@@ -229,7 +229,7 @@ export const dbMKMapping = {
         if (pen.rencana_studi && Array.isArray(pen.rencana_studi)) {
           return {
             ...pen,
-            rencana_studi: syncRencanaStudiJalur(pen.rencana_studi, currList)
+            rencana_studi: syncRencanaStudiJalur(pen.rencana_studi, currList, true)
           }
         }
         return pen
@@ -262,9 +262,9 @@ export const dbMKMapping = {
 
 /**
  * Helper untuk menyelaraskan (sync) jalur matkul (sinkron / asinkron) pada rencana studi
- * agar 100% konsisten dengan aturan terbaru dari `mata_kuliah_kurikulum`.
+ * agar konsisten dengan aturan `mata_kuliah_kurikulum` tanpa merusak pilihan yang sudah disimpan.
  */
-export function syncRencanaStudiJalur(rencanaStudi, curriculum) {
+export function syncRencanaStudiJalur(rencanaStudi, curriculum, forceOverride = false) {
   if (!rencanaStudi || !Array.isArray(rencanaStudi)) return []
   if (!curriculum || !Array.isArray(curriculum) || curriculum.length === 0) return rencanaStudi
 
@@ -281,7 +281,11 @@ export function syncRencanaStudiJalur(rencanaStudi, curriculum) {
     const keyId = String(item.mkId || item.id || '')
     const keyNama = String(item.nama || '').trim().toLowerCase()
 
-    const syncedJalur = curriculumMap.get(keyKode) || curriculumMap.get(keyId) || curriculumMap.get(keyNama) || item.jalur || 'sinkron'
+    const currJalur = curriculumMap.get(keyKode) || curriculumMap.get(keyId) || curriculumMap.get(keyNama)
+    const syncedJalur = forceOverride 
+      ? (currJalur || item.jalur || 'sinkron')
+      : (item.jalur || currJalur || 'sinkron')
+
     return {
       ...item,
       jalur: syncedJalur
