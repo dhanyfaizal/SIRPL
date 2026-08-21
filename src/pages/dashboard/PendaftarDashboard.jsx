@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { dbPengajuan, dbProdi, dbPenetapan, dbFeedback, getDocumentProgress, dbNotifikasi, dbMKMapping, syncRencanaStudiJalur } from '../../lib/db'
+import { dbPengajuan, dbProdi, dbPenetapan, dbRekognisi, dbFeedback, getDocumentProgress, dbNotifikasi, dbMKMapping, syncRencanaStudiJalur } from '../../lib/db'
 import { supabase, isMock } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import { FileUp, Clipboard, Award, Shield, CheckCircle, FileText, Trash2, Plus, Eye, ArrowLeft, ArrowRight, HelpCircle, RotateCw, ExternalLink } from 'lucide-react'
