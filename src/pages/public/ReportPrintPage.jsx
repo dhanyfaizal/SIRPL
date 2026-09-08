@@ -172,19 +172,30 @@ export default function ReportPrintPage() {
         }
 
         @media print {
+          html, body, #root {
+            height: auto !important;
+            min-height: auto !important;
+            overflow: visible !important;
+            background: #ffffff !important;
+          }
           .no-print {
             display: none !important;
           }
           .report-page-container {
-            background: none !important;
+            background: #ffffff !important;
             min-height: auto !important;
+            height: auto !important;
             display: block !important;
+            overflow: visible !important;
+            margin: 0 !important;
+            padding: 0 !important;
           }
           .report-header-sticky {
             display: none !important;
           }
           .report-scroll-area {
             padding: 0 !important;
+            margin: 0 !important;
             overflow: visible !important;
             display: block !important;
           }
@@ -205,43 +216,203 @@ export default function ReportPrintPage() {
           }
           tr {
             page-break-inside: avoid !important;
+            break-inside: avoid !important;
           }
           table {
             page-break-inside: auto !important;
           }
-          .section-page-break {
-            page-break-before: always !important;
-            break-before: page !important;
-          }
+
           @page {
-            margin: 15mm 20mm 20mm 20mm;
+            size: A4 portrait;
+            margin: 10mm 12mm 10mm 12mm;
           }
 
-          /* New Page-by-page layout for printing */
+          /* Fixed-page container matching exact printable height of A4 */
           .print-page {
             display: flex !important;
             flex-direction: column !important;
             justify-content: space-between !important;
-            height: 258mm !important;
+            height: 275mm !important;
+            max-height: 275mm !important;
             box-sizing: border-box !important;
+            page-break-inside: avoid !important;
+            break-inside: avoid !important;
+            overflow: hidden !important;
             margin-bottom: 0 !important;
+            padding: 0 !important;
           }
+          
+          .section-page-break {
+            page-break-before: always !important;
+            break-before: page !important;
+          }
+          
           .print-content {
-            flex-grow: 1;
+            flex-grow: 1 !important;
+            display: flex !important;
+            flex-direction: column !important;
           }
+          
           .print-footer-normal {
             display: flex !important;
-            justify-content: space-between;
-            font-size: 9px;
-            color: #64748b;
-            border-top: 1.5px solid #cbd5e1;
-            padding-top: 6px;
-            background: #ffffff;
-            font-family: 'Inter', system-ui, sans-serif;
-            margin-top: 20px;
+            justify-content: space-between !important;
+            align-items: center !important;
+            font-size: 8.5px !important;
+            color: #64748b !important;
+            border-top: 1.5px solid #cbd5e1 !important;
+            padding-top: 5px !important;
+            margin-top: auto !important;
+            background: #ffffff !important;
+            font-family: 'Inter', system-ui, sans-serif !important;
+            line-height: 1.2 !important;
           }
-          th, td {
+
+          /* Compact styling for Page 1 */
+          .report-letterhead {
+            gap: 14px !important;
+            padding-bottom: 10px !important;
+            margin-bottom: 12px !important;
+            border-bottom: 2.5px double #1e293b !important;
+          }
+          .report-letterhead img {
+            width: 58px !important;
+          }
+          .report-letterhead div {
+            margin-right: 58px !important;
+          }
+          .report-letterhead-title {
+            font-size: 15px !important;
+            margin-bottom: 2px !important;
+          }
+          .report-letterhead-sub1 {
+            font-size: 9.5px !important;
+            margin-bottom: 1px !important;
+          }
+          .report-letterhead-sub2 {
+            font-size: 8.5px !important;
+          }
+          
+          .report-doc-title {
+            margin-bottom: 10px !important;
+          }
+          .report-doc-title h3 {
+            font-size: 13.5px !important;
+            margin-bottom: 2px !important;
+          }
+          .report-doc-title span {
+            font-size: 10px !important;
+          }
+
+          .report-metadata-box {
+            padding: 6px 12px !important;
+            margin-bottom: 10px !important;
+            font-size: 10.5px !important;
+            gap: 12px !important;
+          }
+          .report-metadata-box td {
+            padding: 1.5px 0 !important;
+          }
+
+          .report-section-block {
+            margin-bottom: 0 !important;
+          }
+          .report-section-title {
+            font-size: 11.5px !important;
+            padding-bottom: 3px !important;
+            margin-bottom: 6px !important;
+          }
+
+          .report-rec-table {
+            font-size: 9.5px !important;
+          }
+          .report-rec-table th {
             padding: 4px 6px !important;
+            font-size: 9.5px !important;
+          }
+          .report-rec-table td {
+            padding: 3px 6px !important;
+            font-size: 9.5px !important;
+            line-height: 1.25 !important;
+          }
+          .report-rec-table tfoot td {
+            padding: 4px 6px !important;
+            font-size: 10px !important;
+            font-weight: 700 !important;
+          }
+
+          /* Compact styling for Page 2 */
+          .report-semester-grid {
+            gap: 8px !important;
+            margin-bottom: 6px !important;
+          }
+          .report-semester-card {
+            padding: 6px 8px !important;
+          }
+          .report-semester-card h5 {
+            font-size: 10px !important;
+            margin-bottom: 4px !important;
+            padding-bottom: 3px !important;
+          }
+          .report-semester-table {
+            font-size: 9px !important;
+          }
+          .report-semester-table th {
+            padding: 3px 4px !important;
+            font-size: 8.5px !important;
+          }
+          .report-semester-table td {
+            padding: 2.5px 4px !important;
+            font-size: 9px !important;
+            line-height: 1.2 !important;
+          }
+          .report-total-sisa {
+            font-size: 10.5px !important;
+            margin-top: 6px !important;
+          }
+
+          /* Compact styling for Page 3 */
+          .report-finance-table {
+            font-size: 9.5px !important;
+            margin-bottom: 8px !important;
+          }
+          .report-finance-table th {
+            padding: 4px 5px !important;
+            font-size: 9.5px !important;
+          }
+          .report-finance-table td {
+            padding: 3.5px 5px !important;
+            font-size: 9.5px !important;
+            line-height: 1.2 !important;
+          }
+          .report-finance-subdesc {
+            font-size: 8px !important;
+            margin-top: 1px !important;
+          }
+          .report-monthly-table {
+            font-size: 9.5px !important;
+            margin-bottom: 8px !important;
+          }
+          .report-monthly-table td {
+            padding: 3.5px 5px !important;
+          }
+          .report-info-note {
+            font-size: 9px !important;
+            padding: 5px 8px !important;
+            margin-bottom: 10px !important;
+            line-height: 1.3 !important;
+          }
+          .report-signature-date {
+            font-size: 11px !important;
+            margin-bottom: 8px !important;
+            padding-right: 30px !important;
+          }
+          .report-signature-grid {
+            gap: 24px !important;
+            font-size: 11px !important;
+          }
+          .report-signature-space {
+            margin-bottom: 45px !important;
+            line-height: 1.4 !important;
           }
         }
       `}} />
@@ -263,7 +434,7 @@ export default function ReportPrintPage() {
           <div className="print-page" style={{ marginBottom: '28px' }}>
             <div className="print-content">
               {/* Official Letter Head */}
-              <div style={{
+              <div className="report-letterhead" style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: '20px',
@@ -278,20 +449,20 @@ export default function ReportPrintPage() {
                   onError={e => e.target.style.display = 'none'}
                 />
                 <div style={{ flexGrow: 1, textAlign: 'center', marginRight: '95px' }}>
-                  <h2 style={{ fontSize: '18px', fontWeight: 800, margin: '0 0 4px 0', textTransform: 'uppercase', letterSpacing: '0.5px', fontFamily: 'ui-serif, Georgia, Cambria, "Times New Roman", Times, serif' }}>
+                  <h2 className="report-letterhead-title" style={{ fontSize: '18px', fontWeight: 800, margin: '0 0 4px 0', textTransform: 'uppercase', letterSpacing: '0.5px', fontFamily: 'ui-serif, Georgia, Cambria, "Times New Roman", Times, serif' }}>
                     STIKOM Yos Sudarso Purwokerto
                   </h2>
-                  <p style={{ fontSize: '11px', color: '#64748b', margin: '0 0 4px 0' }}>
+                  <p className="report-letterhead-sub1" style={{ fontSize: '11px', color: '#64748b', margin: '0 0 4px 0' }}>
                     Jl. SMP5 No. 1, Windusara, Karangklesem, Purwokerto Selatan, Banyumas
                   </p>
-                  <p style={{ fontSize: '10px', color: '#94a3b8', margin: 0, fontStyle: 'italic' }}>
+                  <p className="report-letterhead-sub2" style={{ fontSize: '10px', color: '#94a3b8', margin: 0, fontStyle: 'italic' }}>
                     Telp: (0281) 6840952 · Email: info@stikomyos.ac.id · Website: www.stikomyos.ac.id
                   </p>
                 </div>
               </div>
 
               {/* Document Title */}
-              <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+              <div className="report-doc-title" style={{ textAlign: 'center', marginBottom: '24px' }}>
                 <h3 style={{ fontSize: '15px', fontWeight: 800, textTransform: 'uppercase', textDecoration: 'underline', margin: '0 0 4px 0' }}>
                   Rencana Studi Mahasiswa Rekognisi Pembelajaran Lampau (RPL)
                 </h3>
@@ -299,7 +470,7 @@ export default function ReportPrintPage() {
               </div>
 
               {/* Applicant Metadata */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: '24px', fontSize: '12.5px', background: '#f8fafc', padding: '14px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+              <div className="report-metadata-box" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: '24px', fontSize: '12.5px', background: '#f8fafc', padding: '14px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
                 <div>
                   <table style={{ width: '100%' }}>
                     <tbody>
@@ -331,11 +502,11 @@ export default function ReportPrintPage() {
               </div>
 
               {/* Section 1: Recognized Courses */}
-              <div style={{ marginBottom: '28px' }}>
-                <h4 style={{ fontSize: '13px', fontWeight: 700, textTransform: 'uppercase', borderBottom: '1px solid #cbd5e1', paddingBottom: '4px', marginBottom: '10px', color: '#4f46e5' }}>
+              <div className="report-section-block" style={{ marginBottom: '28px' }}>
+                <h4 className="report-section-title" style={{ fontSize: '13px', fontWeight: 700, textTransform: 'uppercase', borderBottom: '1px solid #cbd5e1', paddingBottom: '4px', marginBottom: '10px', color: '#4f46e5' }}>
                   I. Daftar Mata Kuliah yang Direkognisi / Diakui
                 </h4>
-                <table style={{ width: '100%', fontSize: '12px', borderCollapse: 'collapse' }}>
+                <table className="report-rec-table" style={{ width: '100%', fontSize: '12px', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ background: '#f1f5f9' }}>
                       <th style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'left', width: '35%' }}>Mata Kuliah Asal (Transkrip)</th>
@@ -383,23 +554,23 @@ export default function ReportPrintPage() {
           <div className="print-page section-page-break" style={{ marginBottom: '28px' }}>
             <div className="print-content">
               {/* Section 2: Distribution of Remaining Courses across 4 Semesters */}
-              <div style={{ marginBottom: '28px' }}>
-                <h4 style={{ fontSize: '13px', fontWeight: 700, textTransform: 'uppercase', borderBottom: '1px solid #cbd5e1', paddingBottom: '4px', marginBottom: '10px', color: '#4f46e5' }}>
+              <div className="report-section-block" style={{ marginBottom: '28px' }}>
+                <h4 className="report-section-title" style={{ fontSize: '13px', fontWeight: 700, textTransform: 'uppercase', borderBottom: '1px solid #cbd5e1', paddingBottom: '4px', marginBottom: '10px', color: '#4f46e5' }}>
                   II. Distribusi Rencana Studi Sisa Mata Kuliah
                 </h4>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '12px' }}>
+                <div className="report-semester-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '12px' }}>
                   {[1, 2, 3, 4].map(sem => {
                     const semCourses = rStudi.filter(c => (c.semester || 1) === sem)
                     const semSks = semCourses.reduce((sum, c) => sum + c.sks, 0)
 
                     return (
-                      <div key={sem} style={{ border: '1px solid #cbd5e1', borderRadius: '4px', padding: '10px', background: '#f8fafc' }}>
+                      <div key={sem} className="report-semester-card" style={{ border: '1px solid #cbd5e1', borderRadius: '4px', padding: '10px', background: '#f8fafc' }}>
                         <h5 style={{ fontSize: '11px', fontWeight: 700, textTransform: 'uppercase', marginBottom: '6px', color: '#1e293b', borderBottom: '1px solid #e2e8f0', paddingBottom: '4px', display: 'flex', justifyContent: 'space-between' }}>
                           <span>SEMESTER {sem}</span>
                           <span style={{ color: '#4f46e5' }}>{semSks} SKS</span>
                         </h5>
-                        <table style={{ width: '100%', fontSize: '10.5px', borderCollapse: 'collapse' }}>
+                        <table className="report-semester-table" style={{ width: '100%', fontSize: '10.5px', borderCollapse: 'collapse' }}>
                           <thead>
                             <tr style={{ background: '#f1f5f9' }}>
                               <th style={{ border: '1px solid #cbd5e1', padding: '4px', textAlign: 'left' }}>Mata Kuliah</th>
@@ -430,7 +601,7 @@ export default function ReportPrintPage() {
                   })}
                 </div>
 
-                <div style={{ fontSize: '11.5px', marginTop: '10px', textAlign: 'right', fontWeight: 700 }}>
+                <div className="report-total-sisa" style={{ fontSize: '11.5px', marginTop: '10px', textAlign: 'right', fontWeight: 700 }}>
                   Total SKS Sisa yang Harus Ditempuh: {penetapan.total_sks_sisa} SKS
                 </div>
               </div>
@@ -447,11 +618,11 @@ export default function ReportPrintPage() {
           <div className="print-page section-page-break">
             <div className="print-content">
               {/* Section 3: Financial Summary */}
-              <div style={{ marginBottom: '28px' }}>
-                <h4 style={{ fontSize: '13px', fontWeight: 700, textTransform: 'uppercase', borderBottom: '1px solid #cbd5e1', paddingBottom: '4px', marginBottom: '10px', color: '#4f46e5' }}>
+              <div className="report-section-block" style={{ marginBottom: '28px' }}>
+                <h4 className="report-section-title" style={{ fontSize: '13px', fontWeight: 700, textTransform: 'uppercase', borderBottom: '1px solid #cbd5e1', paddingBottom: '4px', marginBottom: '10px', color: '#4f46e5' }}>
                   III. Rincian Pembiayaan Studi per Semester
                 </h4>
-                <table style={{ width: '100%', fontSize: '11px', borderCollapse: 'collapse', marginBottom: '16px' }}>
+                <table className="report-finance-table" style={{ width: '100%', fontSize: '11px', borderCollapse: 'collapse', marginBottom: '16px' }}>
                   <thead>
                     <tr style={{ background: '#f1f5f9' }}>
                       <th style={{ border: '1px solid #cbd5e1', padding: '8px', textAlign: 'center', width: '32%' }}>Komponen Biaya</th>
@@ -465,7 +636,7 @@ export default function ReportPrintPage() {
                     <tr>
                       <td style={{ border: '1px solid #cbd5e1', padding: '8px', fontWeight: 600, color: '#334155' }}>
                         1. Uang Kuliah Paket (UKP)
-                        <div style={{ fontSize: '9px', color: '#64748b', fontWeight: 400, marginTop: '2px' }}>
+                        <div className="report-finance-subdesc" style={{ fontSize: '9px', color: '#64748b', fontWeight: 400, marginTop: '2px' }}>
                           Rp{sem1.savedUkp.toLocaleString('id-ID')} / Semester (Flat)
                         </div>
                       </td>
@@ -477,7 +648,7 @@ export default function ReportPrintPage() {
                     <tr>
                       <td style={{ border: '1px solid #cbd5e1', padding: '8px', fontWeight: 600, color: '#334155' }}>
                         2. Biaya Rekognisi SKS
-                        <div style={{ fontSize: '9px', color: '#64748b', fontWeight: 400, marginTop: '2px' }}>
+                        <div className="report-finance-subdesc" style={{ fontSize: '9px', color: '#64748b', fontWeight: 400, marginTop: '2px' }}>
                           Rp{sem1.savedRekognisi.toLocaleString('id-ID')} / SKS ({penetapan.total_sks_diakui || 0} SKS diakui)
                         </div>
                       </td>
@@ -489,7 +660,7 @@ export default function ReportPrintPage() {
                     <tr>
                       <td style={{ border: '1px solid #cbd5e1', padding: '8px', fontWeight: 600, color: '#334155' }}>
                         3. Biaya Kelas MOOCs (Asinkron)
-                        <div style={{ fontSize: '9px', color: '#64748b', fontWeight: 400, marginTop: '2px' }}>
+                        <div className="report-finance-subdesc" style={{ fontSize: '9px', color: '#64748b', fontWeight: 400, marginTop: '2px' }}>
                           Rp{sem1.savedMoocs.toLocaleString('id-ID')} / Mata Kuliah Asinkron
                         </div>
                       </td>
@@ -509,7 +680,7 @@ export default function ReportPrintPage() {
                     <tr>
                       <td style={{ border: '1px solid #cbd5e1', padding: '8px', fontWeight: 600, color: '#334155' }}>
                         5. Biaya Pendukung
-                        <div style={{ fontSize: '9px', color: '#64748b', fontWeight: 400, marginTop: '2px' }}>
+                        <div className="report-finance-subdesc" style={{ fontSize: '9px', color: '#64748b', fontWeight: 400, marginTop: '2px' }}>
                           Rp{sem1.savedPendukung.toLocaleString('id-ID')} (Sekali Bayar)
                         </div>
                       </td>
@@ -521,7 +692,7 @@ export default function ReportPrintPage() {
                     <tr style={{ color: (penetapan.potongan_biaya || 0) > 0 ? '#ef4444' : 'inherit' }}>
                       <td style={{ border: '1px solid #cbd5e1', padding: '8px', fontWeight: 600 }}>
                         4. Potongan Biaya Khusus (Diskon UKP)
-                        <div style={{ fontSize: '9px', color: (penetapan.potongan_biaya || 0) > 0 ? '#e11d48' : '#64748b', fontWeight: 400, marginTop: '2px' }}>
+                        <div className="report-finance-subdesc" style={{ fontSize: '9px', color: (penetapan.potongan_biaya || 0) > 0 ? '#e11d48' : '#64748b', fontWeight: 400, marginTop: '2px' }}>
                           Catatan: {penetapan.catatan_potongan || '-'} (per semester)
                         </div>
                       </td>
@@ -541,7 +712,7 @@ export default function ReportPrintPage() {
                     <tr style={{ color: (penetapan.potongan_biaya_pendukung || 0) > 0 ? '#ef4444' : 'inherit' }}>
                       <td style={{ border: '1px solid #cbd5e1', padding: '8px', fontWeight: 600 }}>
                         6. Potongan Biaya Pendukung (Diskon Penunjang)
-                        <div style={{ fontSize: '9px', color: (penetapan.potongan_biaya_pendukung || 0) > 0 ? '#e11d48' : '#64748b', fontWeight: 400, marginTop: '2px' }}>
+                        <div className="report-finance-subdesc" style={{ fontSize: '9px', color: (penetapan.potongan_biaya_pendukung || 0) > 0 ? '#e11d48' : '#64748b', fontWeight: 400, marginTop: '2px' }}>
                           Catatan: {penetapan.catatan_potongan_pendukung || '-'}
                         </div>
                       </td>
@@ -573,7 +744,7 @@ export default function ReportPrintPage() {
                 </table>
 
                 {isMonthly && (
-                  <table style={{ width: '100%', fontSize: '11px', borderCollapse: 'collapse', marginBottom: '16px', background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
+                  <table className="report-monthly-table" style={{ width: '100%', fontSize: '11px', borderCollapse: 'collapse', marginBottom: '16px', background: '#f0fdf4', border: '1px solid #bbf7d0' }}>
                     <tbody>
                       <tr style={{ fontWeight: 700, color: '#166534' }}>
                         <td style={{ border: '1px solid #bbf7d0', padding: '8px', width: '32%' }}>
@@ -601,27 +772,27 @@ export default function ReportPrintPage() {
                 )}
 
                 {/* Note for PKKMB and graduation fees */}
-                <div style={{ fontSize: '10.5px', color: '#475569', background: '#f8fafc', border: '1px solid #cbd5e1', padding: '8px 12px', borderRadius: '4px', display: 'flex', gap: '6px', alignItems: 'center', marginBottom: '20px' }}>
+                <div className="report-info-note" style={{ fontSize: '10.5px', color: '#475569', background: '#f8fafc', border: '1px solid #cbd5e1', padding: '8px 12px', borderRadius: '4px', display: 'flex', gap: '6px', alignItems: 'center', marginBottom: '20px' }}>
                   <span style={{ fontSize: '13px' }}>ℹ️</span>
                   <span>
-                    <strong>Informasi Tambahan:</strong> Biaya di atas <strong>belum termasuk</strong> biaya <strong>PKKMB</strong> and <strong>Wisuda</strong>. Harap menghubungi bagian Keuangan Sekolah Tinggi untuk informasi lebih lanjut mengenai ketentuan pembayarannya.
+                    <strong>Informasi Tambahan:</strong> Biaya di atas <strong>belum termasuk</strong> biaya <strong>PKKMB</strong> dan <strong>Wisuda</strong>. Harap menghubungi bagian Keuangan Sekolah Tinggi untuk informasi lebih lanjut mengenai ketentuan pembayarannya.
                   </span>
                 </div>
               </div>
 
               {/* Date Line (above the columns) */}
-              <div style={{ textAlign: 'right', fontSize: '12px', marginBottom: '16px', paddingRight: '50px' }}>
+              <div className="report-signature-date" style={{ textAlign: 'right', fontSize: '12px', marginBottom: '16px', paddingRight: '50px' }}>
                 Purwokerto, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
               </div>
 
               {/* Signature Area */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '40px', textAlign: 'center', fontSize: '12px', pageBreakInside: 'avoid' }}>
+              <div className="report-signature-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '40px', textAlign: 'center', fontSize: '12px', pageBreakInside: 'avoid' }}>
                 <div>
-                  <p style={{ margin: '0 0 70px 0', lineHeight: 1.6 }}>Mengetahui,<br /><strong>Wakil Ketua Bidang Akademik</strong></p>
+                  <p className="report-signature-space" style={{ margin: '0 0 70px 0', lineHeight: 1.6 }}>Mengetahui,<br /><strong>Wakil Ketua Bidang Akademik</strong></p>
                   <p style={{ margin: 0, textDecoration: 'underline', fontWeight: 700 }}>Dr. Adhi Wibowo, S.Kom., M.M., M.T.I.</p>
                 </div>
                 <div>
-                  <p style={{ margin: '0 0 70px 0', lineHeight: 1.6 }}>Menyetujui,<br /><strong>Ketua Sekolah Tinggi</strong></p>
+                  <p className="report-signature-space" style={{ margin: '0 0 70px 0', lineHeight: 1.6 }}>Menyetujui,<br /><strong>Ketua Sekolah Tinggi</strong></p>
                   <p style={{ margin: 0, textDecoration: 'underline', fontWeight: 700 }}>Romanus Edy Prabowo, S.Si., M.Sc., Ph.D.</p>
                 </div>
               </div>
