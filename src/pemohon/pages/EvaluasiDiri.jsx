@@ -1,12 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Link, Navigate, useSearchParams } from 'react-router-dom'
-import { Save } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { usePemohon } from '../PemohonData'
 import * as api from '../api'
 import { PROFISIENSI } from '../konstanta'
-import { evaluasiLengkap, mkPerolehan } from '../kelengkapan'
-import { Bidang, Halaman, IkonStatusLangkah, Kartu, Kerangka, Pemberitahuan, Segmen, Tombol } from '../ui'
+import { evaluasiLengkap, hitungKelengkapan, mkPerolehan } from '../kelengkapan'
+import { BarTahap, Bidang, GerbangTahap, Halaman, IkonStatusLangkah, Kartu, Kerangka, LencanaModeBaca, Pemberitahuan, Segmen, TombolLanjut } from '../ui'
 
 const PERNYATAAN = [
   'Semua informasi yang saya tuliskan sepenuhnya benar dan saya bertanggung jawab atas seluruh data dalam formulir ini. Apabila di kemudian hari informasi tersebut tidak benar, saya bersedia menerima sanksi sesuai ketentuan yang berlaku.',
@@ -20,8 +19,9 @@ function daftarSubCpmk(mk) {
   return [{ kode: 'CPMK', deskripsi: mk.cpmk || 'Capaian pembelajaran mata kuliah ini (program studi belum merinci sub-CPMK).' }]
 }
 
-function Editor({ mk, evaluasi }) {
-  const { data, pengajuan, bisaDiubah, ubah } = usePemohon()
+function Editor({ mk, evaluasi, daftar, ro }) {
+  const { data, pengajuan, ubah } = usePemohon()
+  const bisaDiubah = !ro
   const sub = useMemo(() => daftarSubCpmk(mk), [mk])
   const awalButir = useMemo(() => sub.map((s) => {
     const ada = (evaluasi?.butir || []).find((b) => b.sub_cpmk === s.kode)
@@ -30,17 +30,16 @@ function Editor({ mk, evaluasi }) {
   const [butir, setButir] = useState(awalButir)
   const [setuju, setSetuju] = useState(!!evaluasi?.pernyataan_setuju)
   const [tempat, setTempat] = useState(evaluasi?.tempat_pernyataan || '')
-  const [sibuk, setSibuk] = useState(false)
   useEffect(() => { setButir(awalButir); setSetuju(!!evaluasi?.pernyataan_setuju); setTempat(evaluasi?.tempat_pernyataan || '') }, [awalButir, evaluasi])
 
   const ubahButir = (i, nilai) => setButir((s) => s.map((b, j) => (j === i ? { ...b, ...nilai } : b)))
   const terisi = butir.filter((b) => b.profisiensi).length
   const tanpaBukti = butir.filter((b) => b.profisiensi && b.profisiensi !== 'tidak_pernah' && !b.bukti.length).length
 
-  const simpan = async () => {
-    if (setuju && terisi < butir.length) { toast.error('Isi tingkat profisiensi untuk semua butir sebelum menyetujui pernyataan'); return }
-    setSibuk(true)
-    try {
+  daftar(async () => {
+    if (terisi < butir.length) { toast.error('Isi tingkat profisiensi untuk semua butir'); return false }
+    if (!setuju) { toast.error('Centang persetujuan pernyataan calon'); return false }
+    {
       const hasil = await api.simpanEvaluasi({
         pengajuanId: pengajuan.id, mkId: mk.id, tempat,
         butir: butir.map((b) => ({ ...b, bukti: b.profisiensi === 'tidak_pernah' ? [] : b.bukti })),
@@ -48,8 +47,9 @@ function Editor({ mk, evaluasi }) {
       })
       ubah((d) => ({ evaluasi: [...d.evaluasi.filter((e) => e.mk_id !== mk.id), hasil] }))
       toast.success(`Evaluasi diri ${mk.nama_mk} disimpan`)
-    } catch (e) { toast.error(e.message) } finally { setSibuk(false) }
-  }
+    }
+    return true
+  })
 
   return (
     <div className="pm-tumpuk-besar">
@@ -93,9 +93,7 @@ function Editor({ mk, evaluasi }) {
         </div> : null}
       </Kartu>
 
-      <Kartu judul="Pernyataan calon"
-        kaki={bisaDiubah ? <div className="pm-kaki-aksi"><span>Kolom V-A-T-M diisi asesor setelah pengajuan dikirim.</span>
-          <Tombol jenis="primary" ikon={Save} sibuk={sibuk} onClick={simpan}>Simpan evaluasi diri</Tombol></div> : null}>
+      <Kartu judul="Pernyataan calon" sub="Kolom V-A-T-M diisi asesor setelah pengajuan dikirim.">
         <ol className="pm-daftar-bernomor">{PERNYATAAN.map((p) => <li key={p}>{p}</li>)}</ol>
         <div className="pm-form-2" style={{ marginTop: 14 }}>
           <Bidang label="Tempat pernyataan"><input className="input" value={tempat} onChange={(e) => setTempat(e.target.value)} readOnly={!bisaDiubah} placeholder="Contoh: Purwokerto" /></Bidang>
@@ -110,8 +108,11 @@ function Editor({ mk, evaluasi }) {
 }
 
 export default function EvaluasiDiri() {
-  const { siap, data, pengajuan } = usePemohon()
+  const { siap, data, pengajuan, bisaDiubah } = usePemohon()
   const [params, setParams] = useSearchParams()
+  const navigate = useNavigate()
+  const simpanRef = useRef(null)
+  const [sibuk, setSibuk] = useState(false)
   if (!siap) return <Kerangka />
   if (!pengajuan) return <Navigate to="/pemohon" replace />
 
@@ -129,9 +130,27 @@ export default function EvaluasiDiri() {
   const aktifId = params.get('mk') && daftar.some((d) => d.mk_id === params.get('mk')) ? params.get('mk') : daftar[0].mk_id
   const aktif = daftar.find((d) => d.mk_id === aktifId)
   const ev = (id) => data.evaluasi.find((e) => e.mk_id === id)
+  const k = hitungKelengkapan(data)
+  const tahap = k.tahap('f03')
+  const terkunci = bisaDiubah && tahap && !tahap.terbuka
+  const ro = !bisaDiubah || terkunci
+  const idx = daftar.findIndex((d) => d.mk_id === aktifId)
+
+  const lanjut = async () => {
+    setSibuk(true)
+    try {
+      const ok = await simpanRef.current?.()
+      if (!ok) return
+      const berikut = [...daftar.slice(idx + 1), ...daftar.slice(0, idx)].find((d) => !evaluasiLengkap(ev(d.mk_id)))
+      if (berikut) setParams({ mk: berikut.mk_id })
+      else navigate('/pemohon/pengajuan/kirim')
+    } catch (e) { toast.error(e.message) } finally { setSibuk(false) }
+  }
 
   return (
-    <Halaman judul="Evaluasi diri (F03)" sub="Langkah 4. Nilai sendiri kemampuan Anda pada setiap butir capaian pembelajaran, lalu rujuk nomor bukti yang mendukungnya. Isilah dengan jujur.">
+    <Halaman judul="Evaluasi diri (F03)" sub="Tahap 4. Nilai sendiri kemampuan Anda pada setiap butir capaian pembelajaran, lalu rujuk nomor bukti yang mendukungnya. Isilah dengan jujur."
+      aksi={ro && bisaDiubah ? <LencanaModeBaca /> : null}>
+      <GerbangTahap tahap={bisaDiubah ? tahap : null} sebelum={k.sebelumBelum('f03')}>
       <div className="pm-dua-kolom">
         <nav className="card pm-daftar-mk" aria-label="Mata kuliah perolehan kredit">
           <div className="pm-daftar-mk-judul">Mata kuliah ({daftar.length})</div>
@@ -148,8 +167,9 @@ export default function EvaluasiDiri() {
             ))}
           </ul>
         </nav>
-        <Editor key={aktifId} mk={aktif.mk} evaluasi={ev(aktifId)} />
+        <Editor key={aktifId} mk={aktif.mk} evaluasi={ev(aktifId)} ro={ro} daftar={(fn) => { simpanRef.current = fn }} />
       </div>
+      </GerbangTahap>
       <Kartu judul="Tingkat profisiensi">
         <div className="pm-grid-3">
           <div><div className="pm-tebal">Sangat baik</div><p className="pm-kecil">Saya melakukan tugas ini atau menguasai bahan kajian ini dengan sangat baik, dan selalu menggunakannya dalam pekerjaan dengan tepat tanpa kesalahan.</p></div>
@@ -157,6 +177,12 @@ export default function EvaluasiDiri() {
           <div><div className="pm-tebal">Tidak pernah</div><p className="pm-kecil">Saya tidak pernah melakukan tugas ini, tidak menguasai bahan kajian ini, atau tidak memiliki keterampilan ini.</p></div>
         </div>
       </Kartu>
+      {bisaDiubah ? (
+        <BarTahap info={<>Tahap {tahap?.no} dari {k.langkah.length}: <b>Evaluasi diri</b> · mata kuliah {idx + 1} dari {daftar.length}</>}>
+          <button type="button" className="btn btn-secondary" onClick={() => navigate('/pemohon/pengajuan/bukti')}>Kembali</button>
+          <TombolLanjut sibuk={sibuk} disabled={terkunci} onClick={lanjut} />
+        </BarTahap>
+      ) : null}
     </Halaman>
   )
 }

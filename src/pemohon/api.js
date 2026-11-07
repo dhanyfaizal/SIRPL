@@ -12,7 +12,7 @@ function cek({ data, error }) {
 
 // ── Baca ────────────────────────────────────────────────────────
 export async function muatSemua(userId) {
-  const [prodi, periode, biodata, riwayat, butir, pengajuanList, jenisDok] = await Promise.all([
+  const [prodi, periode, biodata, riwayat, butir, pengajuanList, jenisDok, wilayah, pt] = await Promise.all([
     supabase.from('program_studi').select('*').eq('is_active', true).order('nama').then(cek),
     supabase.from('periode_rpl').select('*').eq('is_aktif', true).maybeSingle().then(cek),
     supabase.from('biodata_pemohon').select('*').eq('user_id', userId).maybeSingle().then(cek),
@@ -20,6 +20,8 @@ export async function muatSemua(userId) {
     supabase.from('riwayat_hidup_butir').select('*').eq('user_id', userId).order('kategori').order('urutan').then(cek),
     supabase.from('pengajuan_rpl').select('*').eq('user_id', userId).order('created_at', { ascending: false }).then(cek),
     supabase.from('jenis_dokumen').select('*').order('urutan').then(cek),
+    supabase.from('ref_wilayah').select('nama, provinsi').order('provinsi').order('nama').then((r) => r.data || []),
+    supabase.from('ref_perguruan_tinggi').select('nama, kota').order('nama').limit(6000).then((r) => r.data || []),
   ])
 
   const pengajuan = (pengajuanList || []).find((p) => p.status !== 'dibatalkan') || null
@@ -27,6 +29,7 @@ export async function muatSemua(userId) {
   const tarif = periode ? await supabase.from('tarif_biaya').select('*').eq('periode_id', periode.id).then(cek) : []
 
   return {
+    refWilayah: wilayah || [], refPt: pt || [],
     prodi: prodi || [], periode, tarif: tarif || [], jenisDokumen: jenisDok || [],
     biodata, riwayat, butirRiwayat: butir || [],
     pengajuan, riwayatPengajuan: pengajuanList || [],
@@ -108,10 +111,14 @@ export async function simpanButirRiwayat(userId, kategori, baris) {
 // ── Daftar MK diajukan (F02 bagian 2) ───────────────────────────
 export async function simpanMkDiajukan(pengajuanId, pilihan) {
   // pilihan: { [mk_id]: 'transfer' | 'perolehan' }
-  cek(await supabase.from('mk_diajukan').delete().eq('pengajuan_id', pengajuanId))
+  // Upsert lalu hapus yang tidak dipilih, agar simpan berulang tidak bentrok (409).
   const isi = Object.entries(pilihan).filter(([, m]) => m).map(([mk_id, mekanisme]) => ({ pengajuan_id: pengajuanId, mk_id, mekanisme }))
+  const dipilih = isi.map((r) => r.mk_id)
+  let hapus = supabase.from('mk_diajukan').delete().eq('pengajuan_id', pengajuanId)
+  if (dipilih.length) hapus = hapus.not('mk_id', 'in', `(${dipilih.join(',')})`)
+  cek(await hapus)
   if (!isi.length) return []
-  return cek(await supabase.from('mk_diajukan').insert(isi).select())
+  return cek(await supabase.from('mk_diajukan').upsert(isi, { onConflict: 'pengajuan_id,mk_id' }).select())
 }
 
 // ── Evaluasi diri (F03) ─────────────────────────────────────────

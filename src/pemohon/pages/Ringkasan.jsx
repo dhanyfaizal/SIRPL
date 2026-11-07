@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Link, Navigate } from 'react-router-dom'
+import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { Check, Send, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { usePemohon } from '../PemohonData'
 import * as api from '../api'
 import { JENIS_RPL, rupiah } from '../konstanta'
 import { hitungKelengkapan } from '../kelengkapan'
-import { Dialog, Halaman, Kartu, Kerangka, LencanaStatus, Pemberitahuan, Tombol } from '../ui'
+import { BarTahap, Dialog, GerbangTahap, Halaman, Kartu, Kerangka, LencanaModeBaca, LencanaStatus, Pemberitahuan, Tombol } from '../ui'
 
 // Kode syarat dari cek_syarat_pengajuan() -> halaman perbaikannya.
 const TAUTAN_SYARAT = {
@@ -30,6 +30,7 @@ export default function Ringkasan() {
   const [buka, setBuka] = useState(false)
   const [setuju, setSetuju] = useState(false)
   const [sibuk, setSibuk] = useState(false)
+  const navigate = useNavigate()
 
   const periksa = useCallback(async () => {
     if (!pengajuan) return
@@ -41,6 +42,9 @@ export default function Ringkasan() {
   if (!pengajuan) return <Navigate to="/pemohon" replace />
 
   const k = hitungKelengkapan(data)
+  const tahap = k.tahap('kirim')
+  const terkunci = bisaDiubah && !tahap.terbuka
+  const sebelum = k.langkah[k.langkah.findIndex((l) => l.id === 'kirim') - 1]
   const prodi = data.prodi.find((p) => p.id === pengajuan.prodi_pilihan_id)
   const mk = data.mkDiajukan.map((m) => ({ ...m, mk: data.mataKuliah.find((x) => x.id === m.mk_id) })).filter((m) => m.mk)
   const sksT = mk.filter((m) => m.mekanisme === 'transfer').reduce((n, m) => n + m.mk.sks, 0)
@@ -61,9 +65,9 @@ export default function Ringkasan() {
   }
 
   return (
-    <Halaman judul="Ringkasan dan kirim" sub="Langkah terakhir. Periksa ringkasan pengajuan, lalu kirim ke Sekretariat RPL."
-      aksi={bisaDiubah ? <Tombol jenis="primary" ikon={Send} disabled={!syarat || syarat.length > 0} onClick={() => { setSetuju(false); setBuka(true) }}>
-        {pengajuan.status === 'dikembalikan_sekretariat' ? 'Kirim ulang pengajuan' : 'Kirim pengajuan'}</Tombol> : null}>
+    <Halaman judul="Ringkasan dan kirim" sub={`Tahap ${tahap.no}, terakhir. Periksa ringkasan pengajuan, lalu kirim ke Sekretariat RPL.`}
+      aksi={terkunci ? <LencanaModeBaca /> : null}>
+      <GerbangTahap tahap={bisaDiubah ? tahap : null} sebelum={k.sebelumBelum('kirim')}>
 
       {!bisaDiubah ? (
         <Pemberitahuan jenis="green" judul="Pengajuan sudah dikirim">
@@ -108,16 +112,16 @@ export default function Ringkasan() {
       <Kartu judul="Mata kuliah yang diajukan" padat>
         {mk.length ? (
           <div className="table-wrap">
-            <table className="pm-tabel">
+            <table className="pm-tabel pm-tabel-responsif">
               <thead><tr><th style={{ width: 110 }}>Kode</th><th>Mata kuliah</th><th style={{ width: 60 }}>SKS</th><th style={{ width: 140 }}>Mekanisme</th><th style={{ width: 120 }}>F03</th></tr></thead>
               <tbody>
                 {mk.map((m) => {
                   const ev = data.evaluasi.find((e) => e.mk_id === m.mk_id)
                   return (
                     <tr key={m.mk_id}>
-                      <td className="pm-kecil">{m.mk.kode_mk}</td><td>{m.mk.nama_mk}</td><td>{m.mk.sks}</td>
-                      <td>{m.mekanisme === 'transfer' ? 'Transfer' : 'Perolehan'}</td>
-                      <td>{m.mekanisme === 'transfer' ? <span className="pm-kecil">Tidak perlu</span>
+                      <td className="pm-kecil" data-label="Kode">{m.mk.kode_mk}</td><td data-label="Mata kuliah">{m.mk.nama_mk}</td><td data-label="SKS">{m.mk.sks}</td>
+                      <td data-label="Mekanisme">{m.mekanisme === 'transfer' ? 'Transfer' : 'Perolehan'}</td>
+                      <td data-label="F03">{m.mekanisme === 'transfer' ? <span className="pm-kecil">Tidak perlu</span>
                         : ev?.pernyataan_setuju ? <span className="badge-pill badge-green">Lengkap</span> : <span className="badge-pill badge-amber">Belum</span>}</td>
                     </tr>
                   )
@@ -128,6 +132,14 @@ export default function Ringkasan() {
         ) : <p className="pm-kosong">Belum ada mata kuliah yang dipilih.</p>}
       </Kartu>
 
+      </GerbangTahap>
+      {bisaDiubah ? (
+        <BarTahap info={syarat && !syarat.length ? 'Semua syarat terpenuhi. Pengajuan siap dikirim.' : syarat ? `${syarat.length} syarat belum terpenuhi` : 'Memeriksa syarat...'}>
+          <button type="button" className="btn btn-secondary" onClick={() => navigate(sebelum.to)}>Kembali</button>
+          <Tombol jenis="primary" ikon={Send} disabled={terkunci || !syarat || syarat.length > 0} onClick={() => { setSetuju(false); setBuka(true) }}>
+            {pengajuan.status === 'dikembalikan_sekretariat' ? 'Kirim ulang pengajuan' : 'Kirim pengajuan'}</Tombol>
+        </BarTahap>
+      ) : null}
       <Dialog buka={buka} judul="Kirim pengajuan ke Sekretariat RPL" onTutup={() => setBuka(false)} lebar={560}
         kaki={<><Tombol onClick={() => setBuka(false)}>Batal</Tombol><Tombol jenis="primary" ikon={Send} sibuk={sibuk} disabled={!setuju} onClick={kirim}>Kirim pengajuan</Tombol></>}>
         <p>Setelah dikirim, data, berkas, dan Formulir Evaluasi Diri tidak dapat diubah lagi kecuali Sekretariat mengembalikannya. Dengan mengirim Formulir Aplikasi (F02) ini, saya menyatakan bahwa:</p>

@@ -1,208 +1,241 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Save } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Navigate, useNavigate } from 'react-router-dom'
+import { Check, Lock, Pencil } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../contexts/AuthContext'
 import { usePemohon } from '../PemohonData'
 import * as api from '../api'
-import { JENIS_RPL, STATUS_PDDIKTI } from '../konstanta'
-import { Bidang, BukaBerkas, Halaman, Kartu, Kerangka, Lencana, Pemberitahuan, PilihBerkas, Segmen, Tombol } from '../ui'
-import { Navigate } from 'react-router-dom'
+import { JENIS_RPL, STATUS_PDDIKTI, tanggal } from '../konstanta'
+import { BERKAS, hitungKelengkapan, perluTanggalKeluar } from '../kelengkapan'
+import {
+  BarTahap, Bidang, BukaBerkas, Combobox, Halaman, InputAngka, Kerangka, Lencana, LencanaModeBaca, Pemberitahuan,
+  PilihBerkas, PilihSegmen, PilihTahun, TombolLanjut, useLayarKecil,
+} from '../ui'
 
-function KartuProdi() {
-  const { data, pengajuan, bisaDiubah, muat } = usePemohon()
+const AGAMA = ['Islam', 'Kristen', 'Katolik', 'Hindu', 'Buddha', 'Khonghucu', 'Kepercayaan terhadap Tuhan YME']
+const NAMA_STIKOM = 'Sekolah Tinggi Ilmu Komputer Yos Sudarso'
+const kosongKeNull = (o) => Object.fromEntries(Object.entries(o).map(([k, v]) => [k, v === '' ? null : v]))
+const gagal = (pesan) => { toast.error(pesan); return false }
+
+// ── Bagian 1: program studi dan jenis RPL ───────────────────────
+function FormProdi({ daftar, ro }) {
+  const { data, pengajuan, muat } = usePemohon()
   const [prodi, setProdi] = useState(pengajuan.prodi_pilihan_id || '')
   const [jenis, setJenis] = useState(pengajuan.jenis_rpl || '')
-  const [sibuk, setSibuk] = useState(false)
-  const berubah = prodi !== pengajuan.prodi_pilihan_id || jenis !== pengajuan.jenis_rpl
   const p = data.prodi.find((x) => x.id === prodi)
 
-  const simpan = async () => {
-    setSibuk(true)
-    try {
-      // Mengganti prodi atau jenis RPL menghapus pilihan MK yang tidak lagi sesuai.
-      if (prodi !== pengajuan.prodi_pilihan_id) await api.simpanMkDiajukan(pengajuan.id, {})
-      else if (jenis !== 'gabungan') {
-        const sisa = Object.fromEntries(data.mkDiajukan.filter((m) => m.mekanisme === jenis).map((m) => [m.mk_id, m.mekanisme]))
-        await api.simpanMkDiajukan(pengajuan.id, sisa)
-      }
-      await api.ubahPengajuan(pengajuan.id, { prodi_pilihan_id: prodi, jenis_rpl: jenis })
-      await muat()
-      toast.success('Program studi dan jenis RPL disimpan')
-    } catch (e) { toast.error(e.message) } finally { setSibuk(false) }
-  }
+  daftar(async () => {
+    if (!prodi || !jenis) return gagal('Pilih program studi dan jenis RPL')
+    if (prodi === pengajuan.prodi_pilihan_id && jenis === pengajuan.jenis_rpl) return true
+    // Mengganti prodi atau jenis RPL menghapus pilihan MK yang tidak lagi sesuai.
+    if (prodi !== pengajuan.prodi_pilihan_id) await api.simpanMkDiajukan(pengajuan.id, {})
+    else if (jenis !== 'gabungan') {
+      await api.simpanMkDiajukan(pengajuan.id, Object.fromEntries(data.mkDiajukan.filter((m) => m.mekanisme === jenis).map((m) => [m.mk_id, m.mekanisme])))
+    }
+    await api.ubahPengajuan(pengajuan.id, { prodi_pilihan_id: prodi, jenis_rpl: jenis })
+    await muat()
+    return true
+  })
 
   return (
-    <Kartu judul="Program studi dan jenis RPL"
-      kaki={bisaDiubah ? <div className="pm-kaki-aksi"><span>Mengganti program studi akan mengosongkan daftar mata kuliah yang diajukan.</span>
-        <Tombol jenis="primary" ikon={Save} sibuk={sibuk} disabled={!berubah || !prodi || !jenis} onClick={simpan}>Simpan</Tombol></div> : null}>
+    <div className="pm-tumpuk-besar">
       <div className="pm-form-2">
         <Bidang label="Program studi tujuan" wajib>
-          <select className="input" value={prodi} disabled={!bisaDiubah} onChange={(e) => setProdi(e.target.value)}>
-            {data.prodi.filter((x) => x.is_penyelenggara_rpl || x.id === prodi).map((x) => <option key={x.id} value={x.id}>{x.nama}</option>)}
+          <select className="input" value={prodi} disabled={ro} onChange={(e) => setProdi(e.target.value)}>
+            {data.prodi.filter((x) => x.is_penyelenggara_rpl || x.id === prodi).map((x) => (
+              <option key={x.id} value={x.id}>{x.nama} ({x.jenjang || 'S1'}){x.akreditasi ? ` · ${x.akreditasi}` : ''}</option>
+            ))}
           </select>
         </Bidang>
-        <Bidang label="Akreditasi program studi">
-          <input className="input" value={p?.akreditasi || '-'} readOnly />
-        </Bidang>
       </div>
-      <fieldset className="pm-fieldset" style={{ marginTop: 16 }}>
-        <legend className="input-label">Jenis RPL</legend>
+      <fieldset className="pm-fieldset">
+        <legend className="input-label">Jenis RPL <span className="pm-wajib">*</span></legend>
         <div className="pm-grid-3">
           {Object.entries(JENIS_RPL).map(([v, j]) => {
             const terkunci = (v !== 'transfer' && p && !p.menerima_perolehan_kredit) || (v !== 'perolehan' && p && !p.menerima_transfer_kredit)
             return (
               <label key={v} className={`pm-choice${jenis === v ? ' is-on' : ''}${terkunci ? ' is-off' : ''}`}>
-                <input type="radio" name="jenis" value={v} checked={jenis === v} disabled={!bisaDiubah || terkunci} onChange={() => setJenis(v)} />
+                <input type="radio" name="jenis" value={v} checked={jenis === v} disabled={ro || terkunci} onChange={() => setJenis(v)} />
                 <span><span className="pm-choice-judul">{j.label}</span><span className="pm-choice-sub">{j.ket}</span></span>
               </label>
             )
           })}
         </div>
       </fieldset>
-    </Kartu>
+      {!ro && pengajuan.prodi_pilihan_id && prodi !== pengajuan.prodi_pilihan_id
+        ? <Pemberitahuan jenis="amber">Mengganti program studi akan mengosongkan daftar mata kuliah yang sudah dipilih.</Pemberitahuan> : null}
+    </div>
   )
 }
 
-function KartuBiodata() {
-  const { data, userId, bisaDiubah, ubah } = usePemohon()
+// ── Bagian 2: data pribadi (F02 bagian 1) ───────────────────────
+function FormPribadi({ daftar, ro }) {
+  const { data, userId, ubah } = usePemohon()
   const { profile } = useAuth()
-  const awal = data.biodata || {}
+  const a = data.biodata || {}
   const [f, setF] = useState(() => ({
-    tempat_lahir: awal.tempat_lahir || '', tanggal_lahir: awal.tanggal_lahir || '', jenis_kelamin: awal.jenis_kelamin || '',
-    status_perkawinan: awal.status_perkawinan || '', agama: awal.agama || '', kebangsaan: awal.kebangsaan || 'Indonesia',
-    alamat: awal.alamat || '', kode_pos: awal.kode_pos || '', telepon_rumah: awal.telepon_rumah || '', telepon_kantor: awal.telepon_kantor || '',
-    pendidikan_terakhir: awal.pendidikan_terakhir || '', nama_sekolah_pt: awal.nama_sekolah_pt || '',
-    prodi_pendidikan_terakhir: awal.prodi_pendidikan_terakhir || '', tahun_lulus: awal.tahun_lulus || '',
+    tempat_lahir: a.tempat_lahir || '', tanggal_lahir: a.tanggal_lahir || '', jenis_kelamin: a.jenis_kelamin || '',
+    status_perkawinan: a.status_perkawinan || '', agama: AGAMA.includes(a.agama) ? a.agama : '',
+    kewarganegaraan: a.kewarganegaraan || 'WNI', kebangsaan: a.kewarganegaraan === 'WNA' ? (a.kebangsaan || '') : '',
+    alamat: a.alamat || '', kode_pos: a.kode_pos || '', telepon_rumah: a.telepon_rumah || '', telepon_kantor: a.telepon_kantor || '',
+    pendidikan_terakhir: a.pendidikan_terakhir || '', nama_sekolah_pt: a.nama_sekolah_pt || '',
+    prodi_pendidikan_terakhir: a.prodi_pendidikan_terakhir || '', tahun_lulus: a.tahun_lulus ? String(a.tahun_lulus) : '',
   }))
-  const [sibuk, setSibuk] = useState(false)
-  const set = (k) => (e) => setF((s) => ({ ...s, [k]: e.target.value }))
+  const set = (k) => (v) => setF((s) => ({ ...s, [k]: v && v.target ? v.target.value : v }))
+  const opsiKota = useMemo(() => data.refWilayah.map((w) => ({ nilai: w.nama, label: w.nama, grup: w.provinsi })), [data.refWilayah])
+  const batasLahir = new Date(Date.now() - 15 * 365.25 * 864e5).toISOString().slice(0, 10)
+  const perguruanTinggi = ['D1', 'D2', 'D3', 'D4', 'S1'].includes(f.pendidikan_terakhir)
 
-  const simpan = async () => {
-    setSibuk(true)
-    try {
-      const isi = Object.fromEntries(Object.entries(f).map(([k, v]) => [k, v === '' ? null : v]))
-      if (isi.tahun_lulus) isi.tahun_lulus = Number(isi.tahun_lulus)
-      const hasil = await api.simpanBiodata(userId, isi)
-      ubah(() => ({ biodata: hasil }))
-      toast.success('Data pribadi disimpan')
-    } catch (e) { toast.error(e.message) } finally { setSibuk(false) }
-  }
+  daftar(async () => {
+    if (!f.tempat_lahir || !f.tanggal_lahir || !f.alamat.trim()) return gagal('Tempat lahir, tanggal lahir, dan alamat wajib diisi')
+    if (f.kode_pos && f.kode_pos.length !== 5) return gagal('Kode pos harus 5 angka')
+    if (f.kewarganegaraan === 'WNA' && !f.kebangsaan.trim()) return gagal('Isi negara asal untuk WNA')
+    const isi = kosongKeNull({ ...f, kebangsaan: f.kewarganegaraan === 'WNI' ? 'Indonesia' : f.kebangsaan.trim() })
+    isi.tahun_lulus = f.tahun_lulus ? Number(f.tahun_lulus) : null
+    const hasil = await api.simpanBiodata(userId, isi)
+    ubah(() => ({ biodata: hasil }))
+    return true
+  })
 
-  const ro = !bisaDiubah
   return (
-    <Kartu judul="Data pribadi" sub="Formulir Aplikasi (F02) bagian 1"
-      kaki={bisaDiubah ? <div className="pm-kaki-aksi"><span>Nama, email, dan nomor HP diubah di menu Profil.</span>
-        <Tombol jenis="primary" ikon={Save} sibuk={sibuk} onClick={simpan}>Simpan data pribadi</Tombol></div> : null}>
+    <div className="pm-tumpuk-besar">
       <div className="pm-form-2">
-        <Bidang label="Nama lengkap"><input className="input" value={profile?.nama_lengkap || ''} readOnly /></Bidang>
+        <Bidang label="Nama lengkap" hint="Diubah di menu Profil"><input className="input" value={profile?.nama_lengkap || ''} readOnly /></Bidang>
         <Bidang label="Email dan HP"><input className="input" value={[profile?.email, profile?.no_whatsapp].filter(Boolean).join(' · ')} readOnly /></Bidang>
-        <Bidang label="Tempat lahir" wajib><input className="input" value={f.tempat_lahir} onChange={set('tempat_lahir')} readOnly={ro} /></Bidang>
-        <Bidang label="Tanggal lahir" wajib><input className="input" type="date" value={f.tanggal_lahir} onChange={set('tanggal_lahir')} readOnly={ro} /></Bidang>
-        <Bidang label="Jenis kelamin">
-          <select className="input" value={f.jenis_kelamin} onChange={set('jenis_kelamin')} disabled={ro}>
-            <option value="">Pilih</option><option value="pria">Pria</option><option value="wanita">Wanita</option>
-          </select>
+        <div className="input-group">
+          <span className="input-label">Tempat lahir <span className="pm-wajib">*</span></span>
+          <Combobox nilai={f.tempat_lahir} onUbah={set('tempat_lahir')} opsi={opsiKota} bolehKetik nonaktif={ro}
+            label="Tempat lahir" placeholder="Cari kabupaten/kota" />
+          <span className="pm-hint">Ketik nama kabupaten/kota, lalu pilih dari daftar.</span>
+        </div>
+        <Bidang label="Tanggal lahir" wajib>
+          <input className="input" type="date" max={batasLahir} value={f.tanggal_lahir} onChange={set('tanggal_lahir')} readOnly={ro} />
         </Bidang>
+        <div className="input-group">
+          <span className="input-label">Jenis kelamin</span>
+          <PilihSegmen label="Jenis kelamin" nonaktif={ro} nilai={f.jenis_kelamin} onUbah={set('jenis_kelamin')}
+            pilihan={[{ v: 'pria', l: 'Pria' }, { v: 'wanita', l: 'Wanita' }]} />
+        </div>
         <Bidang label="Status perkawinan">
           <select className="input" value={f.status_perkawinan} onChange={set('status_perkawinan')} disabled={ro}>
-            <option value="">Pilih</option><option value="lajang">Lajang</option><option value="menikah">Menikah</option><option value="pernah_menikah">Pernah menikah</option>
+            <option value="">Pilih status</option><option value="lajang">Lajang</option><option value="menikah">Menikah</option><option value="pernah_menikah">Pernah menikah</option>
           </select>
         </Bidang>
-        <Bidang label="Agama"><input className="input" value={f.agama} onChange={set('agama')} readOnly={ro} /></Bidang>
-        <Bidang label="Kebangsaan"><input className="input" value={f.kebangsaan} onChange={set('kebangsaan')} readOnly={ro} /></Bidang>
-        <Bidang label="Alamat rumah" wajib lebar><textarea className="input" rows={2} value={f.alamat} onChange={set('alamat')} readOnly={ro} /></Bidang>
-        <Bidang label="Kode pos"><input className="input" inputMode="numeric" value={f.kode_pos} onChange={set('kode_pos')} readOnly={ro} /></Bidang>
-        <Bidang label="Telepon rumah"><input className="input" value={f.telepon_rumah} onChange={set('telepon_rumah')} readOnly={ro} /></Bidang>
-        <Bidang label="Telepon kantor"><input className="input" value={f.telepon_kantor} onChange={set('telepon_kantor')} readOnly={ro} /></Bidang>
+        <Bidang label="Agama">
+          <select className="input" value={f.agama} onChange={set('agama')} disabled={ro}>
+            <option value="">Pilih agama</option>
+            {AGAMA.map((x) => <option key={x} value={x}>{x}</option>)}
+          </select>
+        </Bidang>
+        <div className="input-group">
+          <span className="input-label">Kebangsaan</span>
+          <PilihSegmen label="Kebangsaan" nonaktif={ro} nilai={f.kewarganegaraan} onUbah={set('kewarganegaraan')}
+            pilihan={[{ v: 'WNI', l: 'WNI' }, { v: 'WNA', l: 'WNA' }]} />
+        </div>
+        {f.kewarganegaraan === 'WNA' ? (
+          <Bidang label="Negara asal" wajib><input className="input" value={f.kebangsaan} onChange={set('kebangsaan')} readOnly={ro} /></Bidang>
+        ) : null}
+        <Bidang label="Alamat rumah" wajib lebar>
+          <textarea className="input" rows={2} value={f.alamat} onChange={set('alamat')} readOnly={ro} />
+        </Bidang>
+        <Bidang label="Kode pos" hint="5 angka"><InputAngka nilai={f.kode_pos} onUbah={set('kode_pos')} panjang={5} nonaktif={ro} /></Bidang>
+        <Bidang label="Telepon rumah"><InputAngka nilai={f.telepon_rumah} onUbah={set('telepon_rumah')} panjang={15} nonaktif={ro} /></Bidang>
+        <Bidang label="Telepon kantor"><InputAngka nilai={f.telepon_kantor} onUbah={set('telepon_kantor')} panjang={15} nonaktif={ro} /></Bidang>
       </div>
       <h3 className="pm-subjudul">Pendidikan terakhir</h3>
       <div className="pm-form-2">
-        <Bidang label="Jenjang pendidikan terakhir">
+        <Bidang label="Jenjang">
           <select className="input" value={f.pendidikan_terakhir} onChange={set('pendidikan_terakhir')} disabled={ro}>
-            <option value="">Pilih</option>
+            <option value="">Pilih jenjang</option>
             {['SMA', 'SMK', 'MA', 'Paket C', 'D1', 'D2', 'D3', 'D4', 'S1'].map((j) => <option key={j} value={j}>{j}</option>)}
           </select>
         </Bidang>
-        <Bidang label="Nama sekolah / perguruan tinggi"><input className="input" value={f.nama_sekolah_pt} onChange={set('nama_sekolah_pt')} readOnly={ro} /></Bidang>
-        <Bidang label="Program studi" hint="Kosongkan untuk lulusan SMA atau sederajat"><input className="input" value={f.prodi_pendidikan_terakhir} onChange={set('prodi_pendidikan_terakhir')} readOnly={ro} /></Bidang>
-        <Bidang label="Tahun lulus"><input className="input" inputMode="numeric" value={f.tahun_lulus} onChange={set('tahun_lulus')} readOnly={ro} /></Bidang>
+        <div className="input-group">
+          <span className="input-label">{perguruanTinggi ? 'Nama perguruan tinggi' : 'Nama sekolah'}</span>
+          {perguruanTinggi ? (
+            <Combobox nilai={f.nama_sekolah_pt} onUbah={set('nama_sekolah_pt')} bolehKetik nonaktif={ro} label="Nama perguruan tinggi"
+              opsi={data.refPt.map((x) => ({ nilai: x.nama, label: x.nama }))} placeholder="Cari perguruan tinggi" />
+          ) : <input className="input" value={f.nama_sekolah_pt} onChange={set('nama_sekolah_pt')} readOnly={ro} />}
+        </div>
+        {perguruanTinggi ? (
+          <Bidang label="Program studi"><input className="input" value={f.prodi_pendidikan_terakhir} onChange={set('prodi_pendidikan_terakhir')} readOnly={ro} /></Bidang>
+        ) : null}
+        <Bidang label="Tahun lulus"><PilihTahun nilai={f.tahun_lulus} onUbah={set('tahun_lulus')} nonaktif={ro} label="Tahun lulus" /></Bidang>
       </div>
-    </Kartu>
+    </div>
   )
 }
 
-function KartuPtAsal() {
-  const { pengajuan, bisaDiubah, ubah } = usePemohon()
+// ── Bagian 3: perguruan tinggi asal (transfer kredit) ───────────
+function FormPt({ daftar, ro }) {
+  const { data, pengajuan, ubah } = usePemohon()
   const [f, setF] = useState({
     pt_asal: pengajuan.pt_asal || '', prodi_asal: pengajuan.prodi_asal || '',
     status_pddikti_asal: pengajuan.status_pddikti_asal || '', tanggal_mengundurkan_diri: pengajuan.tanggal_mengundurkan_diri || '',
-    pt_asal_stikom: !!pengajuan.pt_asal_stikom,
   })
-  const [sibuk, setSibuk] = useState(false)
-  const set = (k) => (e) => setF((s) => ({ ...s, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value }))
-  const perluTanggal = ['mengundurkan_diri', 'putus_studi', 'dikeluarkan'].includes(f.status_pddikti_asal)
-  const ditolak = f.pt_asal_stikom && ['putus_studi', 'dikeluarkan'].includes(f.status_pddikti_asal)
+  const set = (k) => (v) => setF((s) => ({ ...s, [k]: v && v.target ? v.target.value : v }))
+  const stikom = f.pt_asal.trim().toLowerCase() === NAMA_STIKOM.toLowerCase() || /stikom yos sudarso/i.test(f.pt_asal)
+  const perluTanggal = perluTanggalKeluar(f.status_pddikti_asal)
+  const ditolak = stikom && ['putus_studi', 'dikeluarkan'].includes(f.status_pddikti_asal)
 
-  const simpan = async () => {
-    setSibuk(true)
-    try {
-      const isi = { ...f, status_pddikti_asal: f.status_pddikti_asal || null, tanggal_mengundurkan_diri: perluTanggal ? (f.tanggal_mengundurkan_diri || null) : null,
-        pt_asal: f.pt_asal || null, prodi_asal: f.prodi_asal || null }
-      const p = await api.ubahPengajuan(pengajuan.id, isi)
-      ubah(() => ({ pengajuan: p }))
-      toast.success('Data perguruan tinggi asal disimpan')
-    } catch (e) { toast.error(e.message) } finally { setSibuk(false) }
-  }
+  daftar(async () => {
+    if (!f.pt_asal.trim() || !f.status_pddikti_asal) return gagal('Isi perguruan tinggi asal dan status di PDDikti')
+    if (perluTanggal && !f.tanggal_mengundurkan_diri) return gagal('Isi tanggal SK keluar atau pengunduran diri')
+    if (ditolak) return gagal('Pendaftar yang putus studi atau dikeluarkan hanya dapat melanjutkan melalui RPL di perguruan tinggi lain')
+    const p = await api.ubahPengajuan(pengajuan.id, {
+      pt_asal: f.pt_asal.trim(), prodi_asal: f.prodi_asal.trim() || null, status_pddikti_asal: f.status_pddikti_asal,
+      tanggal_mengundurkan_diri: perluTanggal ? f.tanggal_mengundurkan_diri : null, pt_asal_stikom: stikom,
+    })
+    ubah(() => ({ pengajuan: p }))
+    return true
+  })
 
   return (
-    <Kartu judul="Perguruan tinggi asal" sub="Wajib untuk transfer kredit. Status keluar diperiksa sesuai data PDDikti (Juknis Bab II.A)."
-      kaki={bisaDiubah ? <div className="pm-kaki-aksi"><span />
-        <Tombol jenis="primary" ikon={Save} sibuk={sibuk} onClick={simpan}>Simpan</Tombol></div> : null}>
+    <div className="pm-tumpuk-besar">
       <div className="pm-form-2">
-        <Bidang label="Nama perguruan tinggi asal"><input className="input" value={f.pt_asal} onChange={set('pt_asal')} readOnly={!bisaDiubah} /></Bidang>
-        <Bidang label="Program studi asal"><input className="input" value={f.prodi_asal} onChange={set('prodi_asal')} readOnly={!bisaDiubah} /></Bidang>
-        <Bidang label="Status di PDDikti">
-          <select className="input" value={f.status_pddikti_asal} onChange={set('status_pddikti_asal')} disabled={!bisaDiubah}>
+        <div className="input-group">
+          <span className="input-label">Perguruan tinggi asal <span className="pm-wajib">*</span></span>
+          <Combobox nilai={f.pt_asal} onUbah={set('pt_asal')} bolehKetik nonaktif={ro} label="Perguruan tinggi asal"
+            opsi={data.refPt.map((x) => ({ nilai: x.nama, label: x.nama }))} placeholder="Cari perguruan tinggi" />
+          <span className="pm-hint">Tidak ada di daftar? Ketik nama lengkapnya, lalu pilih "Gunakan".</span>
+        </div>
+        <Bidang label="Program studi asal"><input className="input" value={f.prodi_asal} onChange={set('prodi_asal')} readOnly={ro} /></Bidang>
+        <Bidang label="Status di PDDikti" wajib>
+          <select className="input" value={f.status_pddikti_asal} onChange={set('status_pddikti_asal')} disabled={ro}>
             <option value="">Pilih status</option>
             {Object.entries(STATUS_PDDIKTI).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
           </select>
         </Bidang>
         {perluTanggal ? (
-          <Bidang label="Tanggal SK keluar / pengunduran diri">
-            <input className="input" type="date" value={f.tanggal_mengundurkan_diri} onChange={set('tanggal_mengundurkan_diri')} readOnly={!bisaDiubah} />
+          <Bidang label="Tanggal SK keluar / pengunduran diri" wajib>
+            <input className="input" type="date" value={f.tanggal_mengundurkan_diri} onChange={set('tanggal_mengundurkan_diri')} readOnly={ro} />
           </Bidang>
-        ) : <div />}
-        <label className="pm-centang" style={{ gridColumn: '1 / -1' }}>
-          <input type="checkbox" checked={f.pt_asal_stikom} onChange={set('pt_asal_stikom')} disabled={!bisaDiubah} />
-          Perguruan tinggi asal saya adalah STIKOM Yos Sudarso
-        </label>
+        ) : null}
       </div>
       {ditolak ? (
-        <div style={{ marginTop: 12 }}>
-          <Pemberitahuan jenis="red" judul="Tidak dapat melanjutkan di STIKOM Yos Sudarso">
-            Pendaftar yang putus studi atau dikeluarkan hanya dapat melanjutkan melalui RPL di perguruan tinggi lain.
-          </Pemberitahuan>
-        </div>
+        <Pemberitahuan jenis="red" judul="Tidak dapat melanjutkan di STIKOM Yos Sudarso">
+          Pendaftar yang putus studi atau dikeluarkan hanya dapat melanjutkan melalui RPL di perguruan tinggi lain (Juknis Bab II.A).
+        </Pemberitahuan>
       ) : null}
-      {f.pt_asal_stikom && f.status_pddikti_asal === 'mengundurkan_diri' ? (
-        <div style={{ marginTop: 12 }}>
-          <Pemberitahuan jenis="amber">Pendaftar yang mengundurkan diri dapat kembali paling cepat 1 tahun akademik setelah SK pengunduran diri.</Pemberitahuan>
-        </div>
+      {stikom && f.status_pddikti_asal === 'mengundurkan_diri' ? (
+        <Pemberitahuan jenis="amber">Pendaftar yang mengundurkan diri dapat kembali ke STIKOM paling cepat 1 tahun akademik setelah SK pengunduran diri.</Pemberitahuan>
       ) : null}
-    </Kartu>
+    </div>
   )
 }
 
-const BERKAS = [
-  { kolom: 'file_ijazah_sma_url', label: 'Ijazah SMA/SMK/MA atau sederajat', wajibUntuk: ['perolehan', 'gabungan'] },
-  { kolom: 'file_transkrip_sma_url', label: 'Transkrip nilai SLTA', wajibUntuk: [] },
-  { kolom: 'file_ijazah_url', label: 'Ijazah perguruan tinggi asal', wajibUntuk: [] },
-  { kolom: 'file_transkrip_url', label: 'Transkrip nilai perguruan tinggi asal', wajibUntuk: ['transfer', 'gabungan'] },
-]
-
-function KartuBerkas() {
-  const { pengajuan, userId, bisaDiubah, ubah } = usePemohon()
+// ── Bagian 4: berkas wajib ──────────────────────────────────────
+function FormBerkas({ daftar, ro }) {
+  const { pengajuan, userId, ubah } = usePemohon()
   const [sibuk, setSibuk] = useState(null)
+  const wajib = BERKAS.filter((b) => b.wajibUntuk.includes(pengajuan.jenis_rpl))
+
+  daftar(async () => {
+    const kurang = wajib.filter((b) => !pengajuan[b.kolom])
+    if (kurang.length) return gagal(`Unggah dulu: ${kurang.map((b) => b.label).join(', ')}`)
+    return true
+  })
+
   const unggah = async (kolom, file) => {
     setSibuk(kolom)
     try {
@@ -213,103 +246,262 @@ function KartuBerkas() {
     } catch (e) { toast.error(e.message) } finally { setSibuk(null) }
   }
   return (
-    <Kartu judul="Berkas wajib" sub="PDF, JPG, atau PNG, maksimal 10 MB per berkas." padat>
-      <ul className="pm-checklist">
+    <div className="pm-tumpuk-besar">
+      <p className="pm-kecil">PDF, JPG, atau PNG, maksimal 10 MB per berkas.</p>
+      <ul className="pm-checklist pm-checklist-rapat">
         {BERKAS.map((b) => {
-          const wajib = b.wajibUntuk.includes(pengajuan.jenis_rpl)
+          const w = b.wajibUntuk.includes(pengajuan.jenis_rpl)
           const ada = !!pengajuan[b.kolom]
           return (
             <li key={b.kolom}>
-              <span className="pm-grow">
-                <span className="pm-tebal">{b.label}</span>
-                {wajib ? <span className="pm-kecil"> · wajib</span> : <span className="pm-kecil"> · bila ada</span>}
-              </span>
-              {ada ? <Lencana warna="green">Terunggah</Lencana> : wajib ? <Lencana warna="amber">Belum ada</Lencana> : null}
+              <span className="pm-grow"><span className="pm-tebal">{b.label}</span><span className="pm-kecil"> · {w ? 'wajib' : 'bila ada'}</span></span>
+              {ada ? <Lencana warna="green">Terunggah</Lencana> : w ? <Lencana warna="amber">Belum ada</Lencana> : null}
               <BukaBerkas path={pengajuan[b.kolom]} />
-              {bisaDiubah ? <PilihBerkas label={ada ? 'Ganti' : 'Unggah'} sibuk={sibuk === b.kolom} onPilih={(f) => unggah(b.kolom, f)} /> : null}
+              {!ro ? <PilihBerkas label={ada ? 'Ganti' : 'Unggah'} sibuk={sibuk === b.kolom} onPilih={(f) => unggah(b.kolom, f)} /> : null}
             </li>
           )
         })}
       </ul>
-    </Kartu>
+    </div>
   )
 }
 
-function KartuMataKuliah() {
-  const { data, pengajuan, bisaDiubah, muatDetail } = usePemohon()
+// ── Bagian 5: mata kuliah per tab semester ──────────────────────
+function FormMataKuliah({ daftar, ro, setInfo }) {
+  const { data, pengajuan, muatDetail } = usePemohon()
+  const kecil = useLayarKecil()
   const awal = useMemo(() => Object.fromEntries(data.mkDiajukan.map((m) => [m.mk_id, m.mekanisme])), [data.mkDiajukan])
   const [pilih, setPilih] = useState(awal)
-  const [sibuk, setSibuk] = useState(false)
+  const semester = useMemo(() => [...new Set(data.mataKuliah.map((m) => m.semester || 1))].sort((a, b) => a - b), [data.mataKuliah])
+  const [tab, setTab] = useState(semester[0] || 1)
+  const [cari, setCari] = useState('')
   useEffect(() => { setPilih(awal) }, [awal])
 
   const opsi = [{ v: '', l: 'Tidak' }]
   if (['transfer', 'gabungan'].includes(pengajuan.jenis_rpl)) opsi.push({ v: 'transfer', l: 'Transfer' })
   if (['perolehan', 'gabungan'].includes(pengajuan.jenis_rpl)) opsi.push({ v: 'perolehan', l: 'Perolehan' })
 
-  const total = Object.entries(pilih).filter(([, m]) => m).reduce((n, [id]) => n + (data.mataKuliah.find((k) => k.id === id)?.sks || 0), 0)
-  const batas = data.batasSks
-  const berubah = JSON.stringify(Object.entries(pilih).filter(([, m]) => m).sort()) !== JSON.stringify(Object.entries(awal).sort())
+  const tertutup = (mk) => mk.is_tugas_akhir || mk.rangkaian_ta || mk.dapat_rpl === false
+  const sks = (f) => Object.entries(pilih).filter(([, m]) => m && f(m)).reduce((n, [id]) => n + (data.mataKuliah.find((k) => k.id === id)?.sks || 0), 0)
+  const total = sks(() => true)
+  const batas = data.batasSks || 100
+  const jumlahDipilih = Object.values(pilih).filter(Boolean).length
 
-  const simpan = async () => {
-    setSibuk(true)
-    try {
-      await api.simpanMkDiajukan(pengajuan.id, pilih)
-      await muatDetail()
-      toast.success('Daftar mata kuliah disimpan')
-    } catch (e) { toast.error(e.message) } finally { setSibuk(false) }
-  }
+  useEffect(() => {
+    setInfo(
+      <div className="pm-ringkas-sks">
+        <span><b>{total}</b>SKS diajukan</span>
+        <span><b>{sks((m) => m === 'transfer')}</b>transfer</span>
+        <span><b>{sks((m) => m === 'perolehan')}</b>perolehan</span>
+        <span className="pm-meter" role="img" aria-label={`${total} dari ${batas} SKS`}><span style={{ width: `${Math.min(100, (total / batas) * 100)}%` }} className={total > batas ? 'lebih' : ''} /></span>
+        <span>sisa batas <b className="kecil">{Math.max(0, batas - total)}</b>dari {batas} SKS</span>
+      </div>,
+    )
+    return () => setInfo(null)
+  }, [pilih, total, batas]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (!pengajuan.jenis_rpl) return null
+  daftar(async () => {
+    if (!jumlahDipilih) return gagal('Pilih minimal satu mata kuliah')
+    const berubah = JSON.stringify(Object.entries(pilih).filter(([, m]) => m).sort()) !== JSON.stringify(Object.entries(awal).sort())
+    if (berubah) { await api.simpanMkDiajukan(pengajuan.id, pilih); await muatDetail() }
+    if (total > batas) toast(`Yang dapat diakui paling banyak ${batas} SKS. Sisanya tetap dinilai, tetapi tidak semuanya bisa diakui.`, { duration: 6000 })
+    return true
+  })
+
+  const q = cari.trim().toLowerCase()
+  const daftarMk = data.mataKuliah.filter((mk) => {
+    if (q) return mk.nama_mk.toLowerCase().includes(q) || mk.kode_mk.toLowerCase().includes(q)
+    if (tab === 'dipilih') return !!pilih[mk.id]
+    return (mk.semester || 1) === tab
+  })
+  const hitung = (s) => data.mataKuliah.filter((mk) => (mk.semester || 1) === s && pilih[mk.id]).length
+  const ubahSemua = (v) => setPilih((st) => {
+    const baru = { ...st }
+    data.mataKuliah.filter((mk) => (mk.semester || 1) === tab && !tertutup(mk)).forEach((mk) => { if (v) baru[mk.id] = v; else delete baru[mk.id] })
+    return baru
+  })
+  const mekTransfer = opsi.find((o) => o.v === 'transfer')
+
   return (
-    <Kartu judul="Mata kuliah yang diajukan" sub="Formulir Aplikasi (F02) bagian 2"
-      aksi={<span className={`pm-kecil${batas && total > batas ? ' pm-merah' : ''}`}>{total} SKS diajukan{batas ? ` · batas pengakuan ${batas} SKS` : ''}</span>}
-      padat
-      kaki={bisaDiubah ? <div className="pm-kaki-aksi"><span>Mata kuliah tugas akhir dan rangkaiannya tidak dapat diajukan.</span>
-        <Tombol jenis="primary" ikon={Save} sibuk={sibuk} disabled={!berubah} onClick={simpan}>Simpan daftar mata kuliah</Tombol></div> : null}>
-      {batas && total > batas ? (
-        <div className="card-body" style={{ paddingBottom: 0 }}>
-          <Pemberitahuan jenis="amber">SKS yang diajukan melebihi batas pengakuan. Pengajuan tetap boleh, tetapi yang dapat diakui paling banyak {batas} SKS.</Pemberitahuan>
+    <div className="pm-mk">
+      {kecil ? (
+        <div className="pm-mk-alat-kecil">
+          <select className="input" value={String(tab)} aria-label="Semester" onChange={(e) => { setCari(''); setTab(e.target.value === 'dipilih' ? 'dipilih' : Number(e.target.value)) }}>
+            {semester.map((s) => <option key={s} value={s}>Semester {s} ({hitung(s)} dipilih)</option>)}
+            <option value="dipilih">Semua yang dipilih ({jumlahDipilih})</option>
+          </select>
         </div>
-      ) : null}
-      <div className="table-wrap">
-        <table className="pm-tabel">
-          <thead><tr><th style={{ width: 70 }}>Smt</th><th style={{ width: 110 }}>Kode</th><th>Mata kuliah</th><th style={{ width: 60 }}>SKS</th><th style={{ width: 260 }}>Diajukan melalui</th></tr></thead>
-          <tbody>
-            {data.mataKuliah.map((mk) => {
-              const tertutup = mk.is_tugas_akhir || mk.rangkaian_ta || mk.dapat_rpl === false
-              return (
-                <tr key={mk.id} className={tertutup ? 'pm-redup' : ''}>
-                  <td>{mk.semester}</td>
+      ) : (
+        <div className="pm-tabs" role="tablist" aria-label="Semester">
+          {semester.map((s) => (
+            <button key={s} type="button" role="tab" aria-selected={!q && tab === s} className={!q && tab === s ? 'is-on' : ''}
+              onClick={() => { setCari(''); setTab(s) }}>Smt {s}<span className="pm-hit">{hitung(s)}</span></button>
+          ))}
+          <span className="pm-tabs-pisah" aria-hidden="true" />
+          <button type="button" role="tab" aria-selected={!q && tab === 'dipilih'} className={!q && tab === 'dipilih' ? 'is-on' : ''}
+            onClick={() => { setCari(''); setTab('dipilih') }}>Dipilih<span className="pm-hit">{jumlahDipilih}</span></button>
+        </div>
+      )}
+      <div className="pm-mk-alat">
+        <div className="pm-input-ikon pm-cari">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
+          <input className="input" type="search" value={cari} onChange={(e) => setCari(e.target.value)} placeholder="Cari nama atau kode mata kuliah di semua semester" aria-label="Cari mata kuliah" />
+        </div>
+        {!ro && !q && tab !== 'dipilih' ? (
+          <div className="pm-baris-aksi">
+            <span className="pm-kecil">Semua di semester {tab}:</span>
+            {mekTransfer ? <button type="button" className="btn btn-secondary btn-sm" onClick={() => ubahSemua('transfer')}>Ajukan sebagai transfer</button> : null}
+            {!mekTransfer ? <button type="button" className="btn btn-secondary btn-sm" onClick={() => ubahSemua('perolehan')}>Ajukan sebagai perolehan</button> : null}
+            <button type="button" className="btn btn-ghost btn-sm" onClick={() => ubahSemua('')}>Kosongkan</button>
+          </div>
+        ) : q ? <span className="pm-kecil">{daftarMk.length} hasil untuk "{cari}"</span> : null}
+      </div>
+
+      {!daftarMk.length ? <p className="pm-kosong">{tab === 'dipilih' && !q ? 'Belum ada mata kuliah yang dipilih.' : 'Tidak ada mata kuliah.'}</p> : kecil ? (
+        <div className="pm-mk-kartu-daftar">
+          {daftarMk.map((mk) => (
+            <div key={mk.id} className={`pm-mk-kartu${pilih[mk.id] ? ' is-on' : ''}${tertutup(mk) ? ' is-off' : ''}`}>
+              <div className="pm-kecil">{mk.kode_mk} · {mk.sks} SKS · Smt {mk.semester}</div>
+              <div className="pm-tebal">{mk.nama_mk}</div>
+              {tertutup(mk) ? <span className="badge-pill badge-slate"><Lock size={11} /> Rangkaian tugas akhir, tidak dibuka</span> : (
+                <PilihSegmen penuh label={`Mekanisme ${mk.nama_mk}`} pilihan={opsi} nilai={pilih[mk.id] || ''} nonaktif={ro}
+                  onUbah={(v) => setPilih((s) => ({ ...s, [mk.id]: v }))} />
+              )}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="table-wrap">
+          <table className="pm-tabel">
+            <thead><tr><th style={{ width: 130 }}>Kode</th><th>Mata kuliah</th><th style={{ width: 60 }}>SKS</th>
+              {q || tab === 'dipilih' ? <th style={{ width: 70 }}>Smt</th> : null}<th style={{ width: 280 }}>Diajukan melalui</th></tr></thead>
+            <tbody>
+              {daftarMk.map((mk) => (
+                <tr key={mk.id} className={tertutup(mk) ? 'pm-redup' : ''}>
                   <td className="pm-kecil">{mk.kode_mk}</td>
-                  <td>{mk.nama_mk}{tertutup ? <span className="pm-kecil"> · tidak dibuka untuk RPL</span> : null}</td>
+                  <td>{mk.nama_mk}{tertutup(mk) ? <div className="pm-kecil">Tugas akhir atau rangkaiannya, tidak dapat direkognisi</div> : null}</td>
                   <td>{mk.sks}</td>
-                  <td>{tertutup ? <span className="pm-kecil">-</span> : (
-                    <Segmen label={`Mekanisme ${mk.nama_mk}`} pilihan={opsi} nilai={pilih[mk.id] || ''} nonaktif={!bisaDiubah}
+                  {q || tab === 'dipilih' ? <td className="pm-kecil">{mk.semester}</td> : null}
+                  <td>{tertutup(mk) ? <span className="badge-pill badge-slate"><Lock size={11} /> Tidak dibuka</span> : (
+                    <PilihSegmen label={`Mekanisme ${mk.nama_mk}`} pilihan={opsi} nilai={pilih[mk.id] || ''} nonaktif={ro}
                       onUbah={(v) => setPilih((s) => ({ ...s, [mk.id]: v }))} />
                   )}</td>
                 </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
-    </Kartu>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
   )
 }
 
+// ── Halaman ─────────────────────────────────────────────────────
+const FORM = { prodi: FormProdi, pribadi: FormPribadi, pt: FormPt, berkas: FormBerkas, mk: FormMataKuliah }
+
+function ringkasan(id, data) {
+  const p = data.pengajuan
+  const b = data.biodata || {}
+  if (id === 'prodi') return [data.prodi.find((x) => x.id === p.prodi_pilihan_id)?.nama, JENIS_RPL[p.jenis_rpl]?.label].filter(Boolean).join(' · ')
+  if (id === 'pribadi') return [b.tempat_lahir, b.tanggal_lahir && tanggal(b.tanggal_lahir)].filter(Boolean).join(', ')
+  if (id === 'pt') return [p.pt_asal, STATUS_PDDIKTI[p.status_pddikti_asal]].filter(Boolean).join(' · ')
+  if (id === 'berkas') return `${BERKAS.filter((x) => p[x.kolom]).length} berkas terunggah`
+  if (id === 'mk') {
+    const sks = data.mkDiajukan.reduce((n, m) => n + (data.mataKuliah.find((k) => k.id === m.mk_id)?.sks || 0), 0)
+    return `${data.mkDiajukan.length} mata kuliah · ${sks} SKS`
+  }
+  return ''
+}
+
 export default function Persyaratan() {
-  const { siap, pengajuan, bisaDiubah } = usePemohon()
+  const { siap, data, pengajuan, bisaDiubah } = usePemohon()
+  const navigate = useNavigate()
+  const simpanRef = useRef(null)
+  const [aktif, setAktif] = useState(undefined)
+  const [sibuk, setSibuk] = useState(false)
+  const [info, setInfo] = useState(null)
+
+  const bagian = useMemo(() => (siap && pengajuan ? hitungKelengkapan(data).bagian : []), [siap, pengajuan, data])
+  useEffect(() => {
+    if (aktif !== undefined || !bagian.length) return
+    setAktif(bisaDiubah ? (bagian.find((x) => !x.selesai)?.id ?? null) : null)
+  }, [bagian, aktif, bisaDiubah])
+
   if (!siap) return <Kerangka />
   if (!pengajuan) return <Navigate to="/pemohon" replace />
-  const transfer = ['transfer', 'gabungan'].includes(pengajuan.jenis_rpl)
+
+  const idxAktif = bagian.findIndex((x) => x.id === aktif)
+  const pertamaBelum = bagian.findIndex((x) => !x.selesai)
+  const daftar = (fn) => { simpanRef.current = fn }
+
+  const lanjut = async () => {
+    if (aktif === null) { navigate('/pemohon/pengajuan/riwayat-hidup'); return }
+    setSibuk(true)
+    try {
+      const ok = await simpanRef.current?.()
+      if (!ok) return
+      toast.success(`${bagian[idxAktif].judul} disimpan`)
+      const berikut = bagian[idxAktif + 1]
+      if (berikut) { setAktif(berikut.id); return }
+      const belum = bagian.find((x, i) => i < idxAktif && !x.selesai)
+      if (belum) { setAktif(belum.id); toast.error(`Lengkapi dulu bagian ${belum.judul}`); return }
+      setAktif(null)
+      navigate('/pemohon/pengajuan/riwayat-hidup')
+    } catch (e) { toast.error(e.message) } finally { setSibuk(false) }
+  }
+
+  const selesaiSemua = bagian.every((x) => x.selesai)
   return (
-    <Halaman judul="Data dan persyaratan" sub="Langkah 1. Data ini dipakai Sekretariat untuk memeriksa persyaratan sesuai Juknis RPL Tipe A.">
+    <Halaman judul="Data dan persyaratan"
+      sub={bisaDiubah ? `Tahap 1. Isi bagian secara berurutan; bagian berikutnya terbuka setelah bagian ini disimpan.` : 'Tahap 1. Data yang dipakai Sekretariat untuk memeriksa persyaratan sesuai Juknis RPL Tipe A.'}
+      aksi={bisaDiubah ? (
+        <div className="pm-prog-wrap">
+          <div className="pm-prog" aria-label="Kemajuan tahap 1">{bagian.map((x) => <span key={x.id} className={x.selesai ? 'done' : x.id === aktif ? 'now' : ''} />)}</div>
+          <div className="pm-kecil">{bagian.filter((x) => x.selesai).length} dari {bagian.length} bagian selesai</div>
+        </div>
+      ) : <LencanaModeBaca />}>
       {!bisaDiubah ? <Pemberitahuan>Pengajuan sudah dikirim, data hanya dapat dilihat.</Pemberitahuan> : null}
-      <KartuProdi key={`prodi-${pengajuan.prodi_pilihan_id}-${pengajuan.jenis_rpl}`} />
-      <KartuBiodata />
-      {transfer ? <KartuPtAsal /> : null}
-      <KartuBerkas />
-      <KartuMataKuliah />
+
+      {bagian.map((b, i) => {
+        const terbuka = !bisaDiubah || pertamaBelum === -1 || i <= pertamaBelum
+        const now = bisaDiubah && b.id === aktif
+        const kunci = bisaDiubah && !terbuka && !now
+        const Form = FORM[b.id]
+        const tampil = now || !bisaDiubah
+        return (
+          <section key={b.id} className={`pm-bagian${now ? ' is-now' : kunci ? ' is-lock' : b.selesai ? ' is-done' : ''}`} aria-label={b.judul}>
+            <div className="pm-bagian-kepala">
+              <span className="pm-bagian-no">{b.selesai && !now && !kunci ? <Check size={13} /> : i + 1}</span>
+              <div className="pm-grow">
+                <div className="pm-bagian-judul">{b.judul}</div>
+                <div className="pm-bagian-ringkas">{now ? 'Lengkapi isian di bawah' : kunci ? 'Terbuka setelah bagian sebelumnya disimpan' : b.selesai ? ringkasan(b.id, data) : 'Belum diisi'}</div>
+              </div>
+              {kunci ? <span className="badge-pill badge-slate"><Lock size={11} /> Terkunci</span> : null}
+              {now ? <span className="badge-pill badge-indigo">Sedang diisi</span> : null}
+              {bisaDiubah && !now && !kunci ? (
+                <>
+                  {b.selesai ? <span className="badge-pill badge-green pm-hide-kecil">Selesai</span> : null}
+                  <button type="button" className="btn btn-ghost btn-sm" onClick={() => setAktif(b.id)}><Pencil size={13} /> {b.selesai ? 'Ubah' : 'Isi'}</button>
+                </>
+              ) : null}
+            </div>
+            {tampil ? (
+              <div className={`pm-bagian-isi${b.id === 'mk' ? ' pm-bagian-isi-penuh' : ''}`}>
+                <Form key={`${b.id}-${pengajuan.prodi_pilihan_id}-${pengajuan.jenis_rpl}`} daftar={now ? daftar : () => {}} ro={!bisaDiubah} setInfo={now ? setInfo : () => {}} />
+              </div>
+            ) : null}
+          </section>
+        )
+      })}
+
+      {bisaDiubah ? (
+        <BarTahap info={aktif === 'mk' && info ? info : aktif ? <>Bagian {idxAktif + 1} dari {bagian.length}: <b>{bagian[idxAktif]?.judul}</b></> : selesaiSemua ? 'Semua bagian tahap 1 sudah lengkap.' : 'Pilih bagian yang ingin diisi.'}>
+          {idxAktif > 0 ? <button type="button" className="btn btn-secondary" onClick={() => setAktif(bagian[idxAktif - 1].id)}>Kembali</button> : null}
+          {aktif ? (
+            <TombolLanjut sibuk={sibuk} onClick={lanjut}>{idxAktif === bagian.length - 1 ? 'Simpan dan lanjut ke tahap 2' : 'Simpan dan lanjutkan'}</TombolLanjut>
+          ) : selesaiSemua ? <TombolLanjut onClick={lanjut}>Lanjut ke tahap 2</TombolLanjut> : null}
+        </BarTahap>
+      ) : null}
     </Halaman>
   )
 }

@@ -87,18 +87,18 @@ export default function Hasil() {
       <Kartu judul="Rincian per mata kuliah" padat
         aksi={<div className="pm-baris-aksi">{suratHasil ? <BukaBerkas path={suratHasil.file_path} label="Surat hasil" /> : null}{sk ? <BukaBerkas path={sk.file_path} label="SK Ketua" /> : null}</div>}>
         <div className="table-wrap">
-          <table className="pm-tabel">
+          <table className="pm-tabel pm-tabel-responsif">
             <thead><tr><th style={{ width: 110 }}>Kode</th><th>Mata kuliah</th><th style={{ width: 60 }}>SKS</th><th style={{ width: 110 }}>Mekanisme</th><th style={{ width: 150 }}>Keputusan</th><th style={{ width: 70 }}>Nilai</th><th>Catatan asesor</th></tr></thead>
             <tbody>
               {baris.map((b) => (
                 <tr key={b.id}>
-                  <td className="pm-kecil">{b.mk.kode_mk}</td>
-                  <td>{b.mk.nama_mk}</td>
-                  <td>{b.mk.sks}</td>
-                  <td>{b.mekanisme === 'transfer' ? 'Transfer' : 'Perolehan'}</td>
-                  <td><Lencana warna={KEPUTUSAN[b.keputusan]?.warna}>{KEPUTUSAN[b.keputusan]?.label || b.keputusan}</Lencana></td>
-                  <td className="pm-tebal">{b.keputusan === 'diakui' ? b.nilai_huruf : '-'}</td>
-                  <td className="pm-kecil">{b.catatan || '-'}</td>
+                  <td className="pm-kecil" data-label="Kode">{b.mk.kode_mk}</td>
+                  <td data-label="Mata kuliah">{b.mk.nama_mk}</td>
+                  <td data-label="SKS">{b.mk.sks}</td>
+                  <td data-label="Mekanisme">{b.mekanisme === 'transfer' ? 'Transfer' : 'Perolehan'}</td>
+                  <td data-label="Keputusan"><Lencana warna={KEPUTUSAN[b.keputusan]?.warna}>{KEPUTUSAN[b.keputusan]?.label || b.keputusan}</Lencana></td>
+                  <td className="pm-tebal" data-label="Nilai">{b.keputusan === 'diakui' ? b.nilai_huruf : '-'}</td>
+                  <td className="pm-kecil" data-label="Catatan asesor">{b.catatan || '-'}</td>
                 </tr>
               ))}
             </tbody>

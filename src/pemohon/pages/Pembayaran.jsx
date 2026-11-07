@@ -44,7 +44,7 @@ export default function Pembayaran() {
     <Halaman judul="Pembayaran" sub="Biaya mengikuti Bab IV Pedoman RPL STIKOM Yos Sudarso. Biaya yang sudah dibayar tidak dapat ditarik kembali.">
       <Kartu judul="Tagihan" padat>
         <div className="table-wrap">
-          <table className="pm-tabel">
+          <table className="pm-tabel pm-tabel-responsif">
             <thead><tr><th>Komponen</th><th style={{ width: 160 }}>Jumlah</th><th style={{ width: 170 }}>Status</th><th style={{ width: 170 }}><span className="pm-sr">Aksi</span></th></tr></thead>
             <tbody>
               {tagihan.map((g) => {
@@ -52,10 +52,10 @@ export default function Pembayaran() {
                 const [l, w] = bayar ? STATUS_B[bayar.status] : ['Belum dibayar', 'slate']
                 return (
                   <tr key={g.komponen}>
-                    <td><div className="pm-tebal">{g.label}</div><div className="pm-kecil">{g.rinci}</div></td>
-                    <td className="pm-tebal">{rupiah(g.jumlah)}</td>
-                    <td><Lencana warna={w}>{l}</Lencana></td>
-                    <td className="pm-kanan">
+                    <td data-label="Komponen"><div className="pm-tebal">{g.label}</div><div className="pm-kecil">{g.rinci}</div></td>
+                    <td className="pm-tebal" data-label="Jumlah">{rupiah(g.jumlah)}</td>
+                    <td data-label="Status"><Lencana warna={w}>{l}</Lencana></td>
+                    <td className="pm-kanan" data-label="">
                       {bayar ? <BukaBerkas path={bayar.bukti_bayar_url} label="Bukti" />
                         : g.jumlah > 0 ? <Tombol onClick={() => { setFile(null); setBuka(g) }}>Kirim bukti bayar</Tombol> : null}
                     </td>
@@ -70,15 +70,15 @@ export default function Pembayaran() {
       {data.pembayaran.length ? (
         <Kartu judul="Riwayat pembayaran" padat>
           <div className="table-wrap">
-            <table className="pm-tabel">
+            <table className="pm-tabel pm-tabel-responsif">
               <thead><tr><th style={{ width: 150 }}>Tanggal</th><th>Komponen</th><th style={{ width: 150 }}>Jumlah</th><th style={{ width: 170 }}>Status</th></tr></thead>
               <tbody>
                 {data.pembayaran.map((b) => (
                   <tr key={b.id}>
-                    <td className="pm-kecil">{tanggal(b.created_at)}</td>
-                    <td>{b.komponen === 'asesmen' ? 'Biaya asesmen' : b.komponen === 'pendaftaran' ? 'Biaya pendaftaran' : 'Lainnya'}</td>
-                    <td>{rupiah(b.jumlah)}</td>
-                    <td><Lencana warna={STATUS_B[b.status]?.[1]}>{STATUS_B[b.status]?.[0]}</Lencana></td>
+                    <td className="pm-kecil" data-label="Tanggal">{tanggal(b.created_at)}</td>
+                    <td data-label="Komponen">{b.komponen === 'asesmen' ? 'Biaya asesmen' : b.komponen === 'pendaftaran' ? 'Biaya pendaftaran' : 'Lainnya'}</td>
+                    <td data-label="Jumlah">{rupiah(b.jumlah)}</td>
+                    <td data-label="Status"><Lencana warna={STATUS_B[b.status]?.[1]}>{STATUS_B[b.status]?.[0]}</Lencana></td>
                   </tr>
                 ))}
               </tbody>

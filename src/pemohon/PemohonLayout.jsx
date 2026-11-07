@@ -2,13 +2,14 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Outlet, useNavigate } from 'react-router-dom'
 import {
   BadgeCheck, Bell, CalendarDays, ChevronDown, ClipboardList, Contact, CreditCard, FileCheck,
-  Files, FolderOpen, House, LogOut, Moon, RefreshCw, Sun, UserRound,
+  Files, FolderOpen, House, Lock, LogOut, Moon, RefreshCw, Sun, UserRound,
 } from 'lucide-react'
 import { AppShell } from '../shell/AppShell'
 import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../contexts/ThemeContext'
 import { PemohonDataProvider, usePemohon } from './PemohonData'
 import { BISA_DIUBAH } from './konstanta'
+import { hitungKelengkapan } from './kelengkapan'
 import './pemohon.css'
 
 const BRAND = { name: 'SIRPL', sub: 'STIKOM Yos Sudarso', logo: '/logo-sys.png' }
@@ -16,26 +17,21 @@ const BRAND = { name: 'SIRPL', sub: 'STIKOM Yos Sudarso', logo: '/logo-sys.png' 
 function useNav() {
   const { data, pengajuan } = usePemohon()
   return useMemo(() => {
-    const evaluasi = data?.evaluasi || []
-    const mkPerolehan = (data?.mkDiajukan || []).filter((m) => m.mekanisme === 'perolehan')
-    const fedLengkap = mkPerolehan.filter((m) => evaluasi.some((e) => e.mk_id === m.mk_id && e.pernyataan_setuju)).length
+    const ikon = { data: ClipboardList, f07: Contact, bukti: Files, f03: FileCheck, kirim: BadgeCheck }
+    const k = data ? hitungKelengkapan(data) : null
+    const anak = k && pengajuan ? k.langkah.map((l) => ({
+      to: l.to,
+      label: `${l.no} · ${l.label}`,
+      icon: l.terbuka ? ikon[l.id] : Lock,
+      badge: l.terbuka && l.info ? l.info : null,
+    })) : [
+      { to: '/pemohon/pengajuan/data', label: '1 · Data dan persyaratan', icon: ClipboardList },
+    ]
     return [
       { section: 'Beranda' },
       { id: 'beranda', label: 'Beranda', icon: House, to: '/pemohon' },
       { section: 'Pengajuan' },
-      {
-        id: 'pengajuan', label: 'Pengajuan RPL', icon: FolderOpen,
-        children: [
-          { section: 'Langkah pengajuan' },
-          { to: '/pemohon/pengajuan/data', label: 'Data dan persyaratan', icon: ClipboardList },
-          { to: '/pemohon/pengajuan/riwayat-hidup', label: 'Riwayat hidup (F07)', icon: Contact },
-          { to: '/pemohon/pengajuan/bukti', label: 'Bukti portofolio', icon: Files,
-            badge: data?.bukti?.length ? String(data.bukti.length) : null },
-          { to: '/pemohon/pengajuan/evaluasi-diri', label: 'Evaluasi diri (F03)', icon: FileCheck,
-            badge: mkPerolehan.length ? `${fedLengkap}/${mkPerolehan.length}` : null },
-          { to: '/pemohon/pengajuan/kirim', label: 'Ringkasan dan kirim', icon: BadgeCheck },
-        ],
-      },
+      { id: 'pengajuan', label: 'Pengajuan RPL', icon: FolderOpen, children: [{ section: 'Langkah pengajuan' }, ...anak] },
       { id: 'pembayaran', label: 'Pembayaran', icon: CreditCard, to: '/pemohon/pembayaran' },
       { id: 'jadwal', label: 'Jadwal asesmen', icon: CalendarDays, to: '/pemohon/jadwal',
         badge: (data?.jadwal || []).filter((j) => j.status === 'dijadwalkan').length || null },
@@ -44,7 +40,7 @@ function useNav() {
       { section: 'Akun' },
       { id: 'profil', label: 'Profil', icon: UserRound, to: '/pemohon/profil' },
     ]
-  }, [data, pengajuan?.status])
+  }, [data, pengajuan])
 }
 
 function MenuAkun() {
