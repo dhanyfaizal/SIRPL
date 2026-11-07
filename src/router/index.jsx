@@ -18,6 +18,19 @@ import FeedbackPage from '../pages/dashboard/FeedbackPage'
 // Print page
 import ReportPrintPage from '../pages/public/ReportPrintPage'
 
+// Modul Pemohon (alur Juknis RPL Tipe A)
+import PemohonLayout from '../pemohon/PemohonLayout'
+import PemohonBeranda from '../pemohon/pages/Beranda'
+import PemohonPersyaratan from '../pemohon/pages/Persyaratan'
+import PemohonRiwayatHidup from '../pemohon/pages/RiwayatHidup'
+import PemohonBukti from '../pemohon/pages/Bukti'
+import PemohonEvaluasiDiri from '../pemohon/pages/EvaluasiDiri'
+import PemohonRingkasan from '../pemohon/pages/Ringkasan'
+import PemohonHasil from '../pemohon/pages/Hasil'
+import PemohonJadwal from '../pemohon/pages/Jadwal'
+import PemohonPembayaran from '../pemohon/pages/Pembayaran'
+import PemohonCetakF07 from '../pemohon/pages/CetakF07'
+
 // Protected Route Wrapper
 function ProtectedRoute({ children, allowedRoles }) {
   const { user, role, profile, loading } = useAuth()
@@ -126,6 +139,22 @@ export default function AppRouter() {
           <Route path="/feedback" element={<ProtectedRoute allowedRoles={['admin', 'baak', 'pmb', 'eksekutif']}><FeedbackPage /></ProtectedRoute>} />
           <Route path="/settings/ai" element={<ProtectedRoute allowedRoles={['admin']}><PlaceholderPage title="Pengaturan AI Key" /></ProtectedRoute>} />
         </Route>
+
+        {/* Modul Pemohon: shell sendiri (AppShell bersama BAAKSYS & SIRENA) */}
+        <Route path="/pemohon" element={<ProtectedRoute allowedRoles={['calon_rpl']}><PemohonLayout /></ProtectedRoute>}>
+          <Route index element={<PemohonBeranda />} />
+          <Route path="pengajuan" element={<Navigate to="/pemohon/pengajuan/data" replace />} />
+          <Route path="pengajuan/data" element={<PemohonPersyaratan />} />
+          <Route path="pengajuan/riwayat-hidup" element={<PemohonRiwayatHidup />} />
+          <Route path="pengajuan/bukti" element={<PemohonBukti />} />
+          <Route path="pengajuan/evaluasi-diri" element={<PemohonEvaluasiDiri />} />
+          <Route path="pengajuan/kirim" element={<PemohonRingkasan />} />
+          <Route path="pembayaran" element={<PemohonPembayaran />} />
+          <Route path="jadwal" element={<PemohonJadwal />} />
+          <Route path="hasil" element={<PemohonHasil />} />
+          <Route path="profil" element={<ProfilePage />} />
+        </Route>
+        <Route path="/pemohon/cetak/f07" element={<ProtectedRoute allowedRoles={['calon_rpl']}><PemohonCetakF07 /></ProtectedRoute>} />
 
         {/* Standalone Print Route */}
         <Route path="/report/:id/print" element={<ProtectedRoute><ReportPrintPage /></ProtectedRoute>} />
