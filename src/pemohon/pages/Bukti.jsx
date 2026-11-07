@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
-import { Pencil, Plus, Trash2 } from 'lucide-react'
+import { Pencil, Plus, Send, Trash2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { usePemohon } from '../PemohonData'
 import * as api from '../api'
@@ -92,7 +92,7 @@ function FormBukti({ awal, onTutup }) {
 }
 
 export default function Bukti() {
-  const { siap, data, pengajuan, bisaDiubah, muatDetail } = usePemohon()
+  const { siap, data, pengajuan, bisaDiubah, muatDetail, muat } = usePemohon()
   const [form, setForm] = useState(null)
   const [hapus, setHapus] = useState(null)
   const [sibuk, setSibuk] = useState(false)
@@ -106,6 +106,15 @@ export default function Bukti() {
   const bolehUbah = bisaDiubah && !terkunci
   const bolehTambah = bolehUbah || ['menunggu_bukti_tambahan', 'klarifikasi'].includes(pengajuan.status)
   const dirujuk = (no) => data.evaluasi.some((e) => (e.butir || []).some((b) => (b.bukti || []).includes(no)))
+
+  const kirimTambahan = async () => {
+    setSibuk(true)
+    try {
+      await api.kirimBuktiTambahan(pengajuan.id)
+      await muat()
+      toast.success('Bukti tambahan dikirim ke asesor')
+    } catch (e) { toast.error(e.message) } finally { setSibuk(false) }
+  }
 
   const konfirmasiHapus = async () => {
     setSibuk(true)
@@ -123,7 +132,11 @@ export default function Bukti() {
       aksi={bolehTambah ? <Tombol jenis="primary" ikon={Plus} onClick={() => setForm('baru')}>Tambah bukti</Tombol> : terkunci ? <LencanaModeBaca /> : null}>
       <GerbangTahap tahap={bisaDiubah ? tahap : null} sebelum={k.sebelumBelum('bukti')}>
       {pengajuan.status === 'menunggu_bukti_tambahan' ? (
-        <Pemberitahuan jenis="amber" judul="Asesor meminta bukti tambahan">{pengajuan.catatan_revisi || 'Tambahkan bukti yang diminta, lalu beri tahu asesor melalui Sekretariat.'}</Pemberitahuan>
+        <Pemberitahuan jenis="amber" judul="Asesor meminta bukti tambahan"
+          aksi={<Tombol jenis="primary" ikon={Send} sibuk={sibuk} onClick={kirimTambahan}>Kirim ke asesor</Tombol>}>
+          <div style={{ whiteSpace: 'pre-line' }}>{pengajuan.catatan_revisi || 'Tambahkan bukti yang diminta.'}</div>
+          <div className="pm-kecil" style={{ marginTop: 6 }}>Tambahkan bukti dengan tombol "Tambah bukti", lalu tekan "Kirim ke asesor".</div>
+        </Pemberitahuan>
       ) : null}
       <Kartu padat>
         {data.bukti.length ? (

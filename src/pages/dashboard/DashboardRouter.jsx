@@ -1,4 +1,4 @@
-import { Navigate } from 'react-router-dom'
+import { Navigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import BaakDashboard from './BaakDashboard'
 import KaprodiDashboard from './KaprodiDashboard'
@@ -9,6 +9,8 @@ import ExecutiveDashboard from './ExecutiveDashboard'
 
 export default function DashboardRouter() {
   const { role, loading } = useAuth()
+  const [param] = useSearchParams()
+  const lama = param.get('lama') === '1'
 
   if (loading) {
     return (
@@ -25,7 +27,8 @@ export default function DashboardRouter() {
   if (role === 'pmb') return <PmbDashboard />
   if (role === 'baak') return <BaakDashboard />
   if (role?.startsWith('kaprodi_')) return <KaprodiDashboard />
-  if (role === 'asessor') return <AsessorDashboard />
+  // Asesor memakai modul penilaian baru; dasbor lama untuk pengajuan alur versi 1.
+  if (role === 'asessor') return lama ? <AsessorDashboard /> : <Navigate to="/asesor" replace />
   if (role === 'admin') return <AdminDashboard />
   if (role === 'eksekutif') return <ExecutiveDashboard />
 

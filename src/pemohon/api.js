@@ -187,3 +187,8 @@ export async function kirimBuktiBayar({ pengajuanId, komponen, jumlah, path }) {
     .insert({ pengajuan_id: pengajuanId, komponen, jumlah, bukti_bayar_url: path, status: 'menunggu' })
     .select().single())
 }
+
+// Bukti tambahan yang diminta asesor sudah diunggah: kembalikan ke asesor.
+export async function kirimBuktiTambahan(pengajuanId) {
+  return cek(await supabase.rpc('kirim_bukti_tambahan', { p_pengajuan: pengajuanId }))
+}

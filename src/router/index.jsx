@@ -19,6 +19,13 @@ import TimDaftar from '../tim/pages/Daftar'
 import TimDetail from '../tim/pages/Detail'
 import TimJadwal from '../tim/pages/Jadwal'
 import TimPembayaran from '../tim/pages/Pembayaran'
+import TimPleno from '../tim/pages/Pleno'
+import TimPlenoDetail from '../tim/pages/PlenoDetail'
+import AsesorLayout from '../asesor/AsesorLayout'
+import AsesorBeranda from '../asesor/pages/Beranda'
+import AsesorDaftar from '../asesor/pages/Daftar'
+import AsesorPenilaian from '../asesor/pages/Penilaian'
+import AsesorJadwal from '../asesor/pages/Jadwal'
 import ProfilePage from '../pages/dashboard/ProfilePage'
 import FeedbackPage from '../pages/dashboard/FeedbackPage'
 
@@ -164,6 +171,16 @@ export default function AppRouter() {
         </Route>
         <Route path="/pemohon/cetak/f07" element={<ProtectedRoute allowedRoles={['calon_rpl']}><PemohonCetakF07 /></ProtectedRoute>} />
 
+        {/* Modul Asesor (Tim Penilai RPL) */}
+        <Route path="/asesor" element={<ProtectedRoute allowedRoles={['admin', 'asessor', 'ketua_tim', 'kaprodi_si', 'kaprodi_ti', 'kaprodi_dkv', 'kaprodi_ka']}><AsesorLayout /></ProtectedRoute>}>
+          <Route index element={<AsesorBeranda />} />
+          <Route path="tugas" element={<Navigate to="/asesor/tugas/dinilai" replace />} />
+          <Route path="tugas/:kelompok" element={<AsesorDaftar />} />
+          <Route path="tugas/:kelompok/:id" element={<AsesorPenilaian />} />
+          <Route path="jadwal" element={<AsesorJadwal />} />
+          <Route path="profil" element={<ProfilePage />} />
+        </Route>
+
         {/* Modul Tim Pengelola RPL: Sekretariat, Sekretaris, Ketua Tim */}
         <Route path="/tim" element={<ProtectedRoute allowedRoles={['admin', 'ketua_tim', 'sekretaris']}><TimLayout /></ProtectedRoute>}>
           <Route index element={<TimBeranda />} />
@@ -171,6 +188,8 @@ export default function AppRouter() {
           <Route path="antrean/:kelompok" element={<TimDaftar />} />
           <Route path="antrean/:kelompok/:id" element={<TimDetail />} />
           <Route path="jadwal" element={<TimJadwal />} />
+          <Route path="pleno" element={<TimPleno />} />
+          <Route path="pleno/:id" element={<TimPlenoDetail />} />
           <Route path="pembayaran" element={<TimPembayaran />} />
           <Route path="profil" element={<ProfilePage />} />
         </Route>

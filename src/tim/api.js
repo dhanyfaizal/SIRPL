@@ -12,7 +12,7 @@ export const PERAN_ASESOR = ['asessor', 'kaprodi_si', 'kaprodi_ti', 'kaprodi_dkv
 
 // ── Muat ringkas untuk daftar dan beranda ───────────────────────
 export async function muatRingkas() {
-  let [pengajuan, prodi, periode, mk, penugasan, jadwal, bayar, staf] = await Promise.all([
+  let [pengajuan, prodi, periode, mk, penugasan, jadwal, bayar, staf, pleno, pesertaPleno, plenoPengajuan, penilaian] = await Promise.all([
     supabase.from('pengajuan_rpl').select('*').neq('status', 'draft')
       .order('submitted_at', { ascending: true, nullsFirst: false }).then(cek),
     supabase.from('program_studi').select('*').order('nama').then(cek),
@@ -23,6 +23,10 @@ export async function muatRingkas() {
     supabase.from('pembayaran_rpl').select('*').order('created_at', { ascending: false }).then(cek),
     supabase.from('profiles').select('id, nama_lengkap, email, role, prodi_id, no_whatsapp')
       .in('role', [...PERAN_ASESOR, 'sekretaris', 'admin', 'komite', 'eksekutif', 'lpmp']).then(cek),
+    supabase.from('pleno_rpl').select('*').order('tanggal', { ascending: false }).then(cek),
+    supabase.from('peserta_pleno').select('*').order('urutan').then(cek),
+    supabase.from('pleno_pengajuan').select('*').then(cek),
+    supabase.from('penilaian_mk').select('pengajuan_id, mk_id, mekanisme, keputusan, nilai_huruf').then(cek),
   ])
   pengajuan = (pengajuan || []).filter((p) => p.alur_versi !== 1)
   const userIds = [...new Set(pengajuan.map((p) => p.user_id))]
@@ -33,6 +37,7 @@ export async function muatRingkas() {
     pengajuan: pengajuan || [], prodi: prodi || [], periode: periode || [], mkDiajukan: mk || [],
     penugasan: penugasan || [], jadwal: jadwal || [], pembayaran: bayar || [],
     staf: staf || [], pemohon: pemohon || [],
+    pleno: pleno || [], pesertaPleno: pesertaPleno || [], plenoPengajuan: plenoPengajuan || [], penilaian: penilaian || [],
   }
 }
 
@@ -92,4 +97,36 @@ export async function simpanJadwal(nilai) {
 
 export async function ubahPembayaran(id, nilai) {
   return cek(await supabase.from('pembayaran_rpl').update(nilai).eq('id', id).select().single())
+}
+
+// ── Pleno (dicatat Sekretaris, ditetapkan Ketua Tim) ────────────
+export async function buatPleno(nilai) {
+  return cek(await supabase.from('pleno_rpl').insert(nilai).select().single())
+}
+export async function ubahPleno(id, nilai) {
+  return cek(await supabase.from('pleno_rpl').update(nilai).eq('id', id).select().single())
+}
+export async function hapusPleno(id) {
+  return cek(await supabase.from('pleno_rpl').delete().eq('id', id))
+}
+export async function tambahPeserta(nilai) {
+  return cek(await supabase.from('peserta_pleno').insert(nilai).select().single())
+}
+export async function ubahPeserta(plenoId, profileId, nilai) {
+  return cek(await supabase.from('peserta_pleno').update(nilai).eq('pleno_id', plenoId).eq('profile_id', profileId).select().single())
+}
+export async function hapusPeserta(plenoId, profileId) {
+  return cek(await supabase.from('peserta_pleno').delete().eq('pleno_id', plenoId).eq('profile_id', profileId))
+}
+export async function tambahPengajuanPleno(baris) {
+  return cek(await supabase.from('pleno_pengajuan').insert(baris).select())
+}
+export async function ubahKeputusanPleno(plenoId, pengajuanId, keputusan) {
+  return cek(await supabase.from('pleno_pengajuan').update({ keputusan }).eq('pleno_id', plenoId).eq('pengajuan_id', pengajuanId).select())
+}
+export async function hapusPengajuanPleno(plenoId, pengajuanId) {
+  return cek(await supabase.from('pleno_pengajuan').delete().eq('pleno_id', plenoId).eq('pengajuan_id', pengajuanId))
+}
+export async function tetapkanPleno(id) {
+  return cek(await supabase.rpc('tetapkan_pleno', { p_pleno: id }))
 }

@@ -85,3 +85,15 @@ a.tm-baris:hover { background: var(--gray-50); }
   .tm-c-mk { grid-area: mk; } .tm-c-tgl { grid-area: tgl; text-align: right; display: flex !important; gap: 6px; align-items: center; justify-content: flex-end; }
   .pm-tabel.tm-tabel .tm-c-jenis, .pm-tabel.tm-tabel .tm-c-asesor { display: none; }
 }
+
+/* Pleno */
+.pl-peserta { display: flex; flex-direction: column; gap: 8px; }
+.pl-peserta-baris { display: grid; grid-template-columns: minmax(0, 1fr) 220px 40px; gap: 8px; align-items: center; }
+.pl-calon { display: flex; align-items: flex-start; gap: 10px; padding: 12px 16px; border-top: 1px solid var(--gray-100); }
+.pl-calon:first-child { border-top: 0; }
+.pl-calon input[type=checkbox] { margin-top: 3px; }
+
+@media (max-width: 720px) {
+  .pl-peserta-baris { grid-template-columns: minmax(0, 1fr) 40px; }
+  .pl-peserta-baris > :nth-child(2) { grid-column: 1 / 2; }
+}

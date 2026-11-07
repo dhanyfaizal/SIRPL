@@ -1,0 +1,71 @@
+/* Modul Asesor dan Pleno */
+.as-kemajuan { height: 6px; border-radius: 999px; background: var(--gray-100); overflow: hidden; margin-bottom: 4px; max-width: 120px; }
+.as-kemajuan span { display: block; height: 100%; background: var(--indigo-600, #4f46e5); border-radius: inherit; }
+
+.as-dl { margin: 0; display: flex; flex-direction: column; gap: 10px; }
+.as-baris { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 12px; }
+.as-baris dt { font-size: 12px; color: var(--gray-500); font-weight: 600; }
+.as-baris dd { margin: 0; font-size: 13px; color: var(--gray-800); }
+.as-riwayat { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.as-ul { margin: 6px 0 0; padding-left: 18px; font-size: 13px; color: var(--gray-700); display: flex; flex-direction: column; gap: 3px; }
+
+/* Transfer kredit */
+.as-mk-daftar { list-style: none; margin: 0; padding: 0; }
+.as-mk-baris { display: grid; grid-template-columns: minmax(180px, 1.1fr) minmax(260px, 1.6fr) minmax(260px, 1.3fr); gap: 16px; padding: 16px 20px; border-top: 1px solid var(--gray-100); align-items: start; }
+.as-mk-baris:first-child { border-top: 0; }
+.as-mk-tujuan { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
+.as-asal-grid { display: grid; grid-template-columns: minmax(0, 1fr) 90px 70px 84px; gap: 6px; margin-top: 4px; }
+.as-mk-keputusan { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.as-mk-keputusan > .input { width: 100%; }
+.as-kep-baris { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 4px; }
+.as-nilai { width: 90px; }
+
+/* Perolehan kredit: V-A-T-M */
+.as-tabel-f03 td { vertical-align: top; }
+.as-bukti { display: flex; flex-wrap: wrap; gap: 4px; }
+.as-bukti-no { min-width: 30px; height: 28px; border: 1px solid var(--gray-200); background: #fff; border-radius: 6px; font-size: 12px; font-weight: 700; color: var(--indigo-700, #4338ca); cursor: pointer; }
+.as-bukti-no:hover:not(:disabled) { border-color: var(--indigo-300, #a5b4fc); background: var(--indigo-50, #eef2ff); }
+.as-bukti-no:disabled { color: var(--gray-400); cursor: not-allowed; }
+.as-vatm { display: inline-flex; gap: 4px; align-items: center; }
+.as-vatm button { width: 32px; height: 30px; border: 1px solid var(--gray-200); background: #fff; border-radius: 6px; font-weight: 700; font-size: 12px; color: var(--gray-500); cursor: pointer; }
+.as-vatm button.is-on { background: #dcfce7; border-color: #86efac; color: #15803d; }
+.as-vatm button:disabled { cursor: default; }
+.as-vatm .as-vatm-semua { width: 30px; display: inline-flex; align-items: center; justify-content: center; color: var(--gray-500); border-style: dashed; }
+
+/* F10 */
+.as-f10 { border: 1px solid var(--gray-200); border-radius: 8px; background: #fff; }
+.as-f10 > summary { display: flex; align-items: center; gap: 10px; padding: 12px 14px; cursor: pointer; list-style: none; }
+.as-f10 > summary::-webkit-details-marker { display: none; }
+.as-f10[open] > summary { border-bottom: 1px solid var(--gray-100); }
+.as-f10-isi { padding: 12px 14px; display: flex; flex-direction: column; gap: 12px; }
+.as-tabel-f10 td { vertical-align: top; }
+.as-tabel-f10 textarea { min-width: 160px; }
+
+.as-tautan { border: 0; background: none; padding: 0; color: var(--indigo-700, #4338ca); font: inherit; font-weight: 600; text-align: left; cursor: pointer; }
+.as-tautan:hover { text-decoration: underline; }
+.as-log .tm-baris { align-items: flex-start; }
+
+[data-theme="dark"] .as-bukti-no, [data-theme="dark"] .as-vatm button, [data-theme="dark"] .as-f10 { background: #0f172a; border-color: #334155; }
+[data-theme="dark"] .as-vatm button.is-on { background: #14532d; border-color: #166534; color: #bbf7d0; }
+
+@media (max-width: 1100px) {
+  .as-mk-baris { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .as-mk-tujuan { grid-column: 1 / -1; }
+}
+@media (max-width: 720px) {
+  .as-mk-baris { grid-template-columns: minmax(0, 1fr); padding: 14px; }
+  .as-asal-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .as-asal-grid > :first-child { grid-column: 1 / -1; }
+  .as-riwayat { grid-template-columns: minmax(0, 1fr); }
+  .as-baris { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+  .as-tabel-f03 thead, .as-tabel-f10 thead { display: none; }
+  .as-tabel-f03, .as-tabel-f03 tbody, .as-tabel-f03 tr, .as-tabel-f03 td,
+  .as-tabel-f10, .as-tabel-f10 tbody, .as-tabel-f10 tr, .as-tabel-f10 td { display: block; width: 100%; }
+  .as-tabel-f03, .as-tabel-f10 { min-width: 0 !important; table-layout: auto; }
+  .as-tabel-f03 td, .as-tabel-f10 td { white-space: normal; overflow-wrap: anywhere; }
+  .as-tabel-f03 tr, .as-tabel-f10 tr { padding: 10px 14px; border-bottom: 1px solid var(--gray-200); }
+  .as-tabel-f03 td, .as-tabel-f10 td { border: 0 !important; padding: 4px 0 !important; }
+  .as-tabel-f03 td[data-label]::before, .as-tabel-f10 td[data-label]:not([data-label=""])::before { content: attr(data-label); display: block; font-size: 11px; font-weight: 700; color: var(--gray-500); text-transform: uppercase; letter-spacing: .3px; margin-bottom: 2px; }
+}
+.as-tabel-f10 .pm-segmen { flex-wrap: nowrap; }
+.as-tabel-f10 .pm-segmen button { white-space: nowrap; padding-left: 10px; padding-right: 10px; }

@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard, FileText, PlusCircle, BookOpen,
-  LogOut, Shield, Award, Settings, GraduationCap, ClipboardCheck, Star, ListChecks, FolderOpen
+  LogOut, Shield, Award, Settings, GraduationCap, ClipboardCheck, Star, ListChecks, FolderOpen, Gavel
 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useSidebar } from './AppLayout'
@@ -99,6 +99,7 @@ export default function Sidebar() {
             <div className="sidebar-section-label">Ekstraksi & Rekognisi</div>
             <NavItem label="Evaluasi Transkrip" icon={Award} to="/dashboard" />
             <NavItem label="Status RPL Mata Kuliah" icon={ListChecks} to="/kurikulum-rpl" />
+            <NavItem label="Penilaian RPL (Juknis)" icon={Gavel} to="/asesor" />
           </>
         )}
 
@@ -106,7 +107,8 @@ export default function Sidebar() {
         {role === 'asessor' && (
           <>
             <div className="sidebar-section-label">Asesmen Akademik</div>
-            <NavItem label="Penilaian RPL" icon={GraduationCap} to="/dashboard" />
+            <NavItem label="Penilaian RPL (alur lama)" icon={GraduationCap} to="/dashboard?lama=1" />
+            <NavItem label="Penilaian RPL (Juknis)" icon={Gavel} to="/asesor" />
           </>
         )}
 
@@ -115,6 +117,7 @@ export default function Sidebar() {
           <>
             <div className="sidebar-section-label">Tim Pengelola RPL</div>
             <NavItem label="Sekretariat RPL" icon={FolderOpen} to="/tim" />
+            <NavItem label="Modul Asesor" icon={Gavel} to="/asesor" />
             <div className="sidebar-section-label">Studi & Keuangan</div>
             <NavItem label="Rencana Studi & Biaya" icon={BookOpen} to="/dashboard" />
             <div className="sidebar-section-label">Pengaturan Sistem</div>
