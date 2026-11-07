@@ -97,3 +97,5 @@ a.tm-baris:hover { background: var(--gray-50); }
   .pl-peserta-baris { grid-template-columns: minmax(0, 1fr) 40px; }
   .pl-peserta-baris > :nth-child(2) { grid-column: 1 / 2; }
 }
+.tm-hasil-sanggah { padding: 14px 20px; border-top: 1px solid var(--gray-100); }
+.tm-hasil-sanggah:first-child { border-top: 0; }

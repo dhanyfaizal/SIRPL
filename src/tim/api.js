@@ -44,7 +44,7 @@ export async function muatRingkas() {
 // ── Detail satu pengajuan ───────────────────────────────────────
 export async function muatDetail(p) {
   const q = (t) => supabase.from(t).select('*').eq('pengajuan_id', p.id)
-  const [biodata, riwayat, butir, mataKuliah, mkDiajukan, evaluasi, bukti, verBerkas, verPddikti, log] = await Promise.all([
+  const [biodata, riwayat, butir, mataKuliah, mkDiajukan, evaluasi, bukti, verBerkas, verPddikti, log, klarifikasi, komite, penilaian] = await Promise.all([
     supabase.from('biodata_pemohon').select('*').eq('user_id', p.user_id).maybeSingle().then(cek),
     supabase.from('riwayat_hidup').select('*').eq('user_id', p.user_id).maybeSingle().then(cek),
     supabase.from('riwayat_hidup_butir').select('*').eq('user_id', p.user_id).order('kategori').order('urutan').then(cek),
@@ -55,10 +55,14 @@ export async function muatDetail(p) {
     q('verifikasi_berkas').maybeSingle().then(cek),
     q('verifikasi_pddikti').maybeSingle().then(cek),
     q('log_aktivitas_rpl').order('created_at', { ascending: false }).limit(100).then(cek),
+    q('klarifikasi_rpl').order('created_at', { ascending: false }).then(cek),
+    q('persetujuan_komite').order('created_at', { ascending: false }).then(cek),
+    q('penilaian_mk').then(cek),
   ])
   return {
     biodata, riwayat, butirRiwayat: butir || [], mataKuliah: mataKuliah || [], mkDiajukan: mkDiajukan || [],
     evaluasi: evaluasi || [], bukti: bukti || [], verBerkas, verPddikti, log: log || [],
+    klarifikasi: klarifikasi || [], komite: komite || [], penilaianMk: penilaian || [],
   }
 }
 
@@ -129,4 +133,12 @@ export async function hapusPengajuanPleno(plenoId, pengajuanId) {
 }
 export async function tetapkanPleno(id) {
   return cek(await supabase.rpc('tetapkan_pleno', { p_pleno: id }))
+}
+
+// ── Sanggahan dan tindak lanjut Komite (Ketua Tim) ─────────────
+export async function tanggapiSanggahan(id, keputusan, tanggapan) {
+  return cek(await supabase.rpc('tanggapi_sanggahan', { p_klarifikasi: id, p_keputusan: keputusan, p_tanggapan: tanggapan }))
+}
+export async function tindakLanjutKomite(pengajuanId, tujuan, catatan) {
+  return cek(await supabase.rpc('tindak_lanjut_komite', { p_pengajuan: pengajuanId, p_tujuan: tujuan, p_catatan: catatan || null }))
 }

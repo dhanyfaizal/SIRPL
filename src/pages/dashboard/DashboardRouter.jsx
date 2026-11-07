@@ -24,6 +24,7 @@ export default function DashboardRouter() {
   // Pemohon memakai modul baru (alur Juknis RPL Tipe A).
   if (role === 'calon_rpl') return <Navigate to="/pemohon" replace />
   if (role === 'ketua_tim' || role === 'sekretaris') return <Navigate to="/tim" replace />
+  if (role === 'komite') return <Navigate to="/pimpinan" replace />
   if (role === 'pmb') return <PmbDashboard />
   if (role === 'baak') return <BaakDashboard />
   if (role?.startsWith('kaprodi_')) return <KaprodiDashboard />

@@ -88,6 +88,7 @@ function FormPribadi({ daftar, ro }) {
 
   daftar(async () => {
     if (!f.tempat_lahir || !f.tanggal_lahir || !f.alamat.trim()) return gagal('Tempat lahir, tanggal lahir, dan alamat wajib diisi')
+    if (f.tanggal_lahir > batasLahir || f.tanggal_lahir < '1940-01-01') return gagal('Tanggal lahir tidak valid. Periksa kembali tahun lahir Anda')
     if (f.kode_pos && f.kode_pos.length !== 5) return gagal('Kode pos harus 5 angka')
     if (f.kewarganegaraan === 'WNA' && !f.kebangsaan.trim()) return gagal('Isi negara asal untuk WNA')
     const isi = kosongKeNull({ ...f, kebangsaan: f.kewarganegaraan === 'WNI' ? 'Indonesia' : f.kebangsaan.trim() })

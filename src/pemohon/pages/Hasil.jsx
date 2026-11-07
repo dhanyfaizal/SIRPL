@@ -74,8 +74,18 @@ export default function Hasil() {
         <Pemberitahuan judul="Sanggahan sedang diproses" aksi={<Link className="btn btn-secondary btn-sm" to="/pemohon/pengajuan/bukti">Tambah bukti</Link>}>
           Tim Penilai meninjau sanggahan Anda. Hasil akan disampaikan kembali setelah pleno.
         </Pemberitahuan>
+      ) : pengajuan.status === 'selesai' && pengajuan.nim ? (
+        <Pemberitahuan jenis="green" judul={`Selamat, Anda resmi menjadi mahasiswa. NIM: ${pengajuan.nim}`}>
+          Hasil rekognisi sudah ditetapkan dengan SK Ketua STIKOM Yos Sudarso. Informasi registrasi dan perkuliahan disampaikan oleh BAAK.
+        </Pemberitahuan>
       ) : (
-        <Pemberitahuan jenis="green" judul="Hasil sudah Anda setujui"><LencanaStatus status={pengajuan.status} /></Pemberitahuan>
+        <Pemberitahuan jenis="green" judul="Hasil sudah Anda setujui">
+          <LencanaStatus status={pengajuan.status} />{' '}
+          {pengajuan.status === 'menunggu_komite' ? 'Menunggu persetujuan Komite RPL.'
+            : pengajuan.status === 'dikembalikan_komite' ? 'Komite RPL meminta Tim Pengelola meninjau ulang. Anda akan diberi tahu bila ada perubahan.'
+            : pengajuan.status === 'menunggu_sk' ? 'Disetujui Komite RPL, menunggu SK Ketua STIKOM Yos Sudarso.'
+            : pengajuan.status === 'sk_terbit' ? 'SK sudah terbit. BAAK sedang menetapkan NIM Anda.' : null}
+        </Pemberitahuan>
       )}
 
       <div className="pm-grid-3">

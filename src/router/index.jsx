@@ -22,6 +22,11 @@ import TimPembayaran from '../tim/pages/Pembayaran'
 import TimPleno from '../tim/pages/Pleno'
 import TimPlenoDetail from '../tim/pages/PlenoDetail'
 import AsesorLayout from '../asesor/AsesorLayout'
+import PimpinanLayout from '../pimpinan/PimpinanLayout'
+import PimpinanBeranda from '../pimpinan/pages/Beranda'
+import PimpinanKomite from '../pimpinan/pages/Komite'
+import PimpinanSk from '../pimpinan/pages/Sk'
+import PimpinanNim from '../pimpinan/pages/Nim'
 import AsesorBeranda from '../asesor/pages/Beranda'
 import AsesorDaftar from '../asesor/pages/Daftar'
 import AsesorPenilaian from '../asesor/pages/Penilaian'
@@ -170,6 +175,16 @@ export default function AppRouter() {
           <Route path="profil" element={<ProfilePage />} />
         </Route>
         <Route path="/pemohon/cetak/f07" element={<ProtectedRoute allowedRoles={['calon_rpl']}><PemohonCetakF07 /></ProtectedRoute>} />
+
+        {/* Modul Komite, Pimpinan, dan BAAK (tahap akhir) */}
+        <Route path="/pimpinan" element={<ProtectedRoute allowedRoles={['admin', 'komite', 'eksekutif', 'baak', 'ketua_tim', 'sekretaris']}><PimpinanLayout /></ProtectedRoute>}>
+          <Route index element={<PimpinanBeranda />} />
+          <Route path="komite" element={<PimpinanKomite />} />
+          <Route path="komite/:id" element={<PimpinanKomite />} />
+          <Route path="sk" element={<PimpinanSk />} />
+          <Route path="nim" element={<PimpinanNim />} />
+          <Route path="profil" element={<ProfilePage />} />
+        </Route>
 
         {/* Modul Asesor (Tim Penilai RPL) */}
         <Route path="/asesor" element={<ProtectedRoute allowedRoles={['admin', 'asessor', 'ketua_tim', 'kaprodi_si', 'kaprodi_ti', 'kaprodi_dkv', 'kaprodi_ka']}><AsesorLayout /></ProtectedRoute>}>

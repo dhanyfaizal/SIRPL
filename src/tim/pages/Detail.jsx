@@ -10,12 +10,14 @@ import TabAsesor from './detail/TabAsesor'
 import TabJadwal from './detail/TabJadwal'
 import TabBayar from './detail/TabBayar'
 import TabRiwayat from './detail/TabRiwayat'
+import TabHasil, { STATUS_HASIL } from './detail/TabHasil'
 
 const TAB = [
   { id: 'berkas', label: 'Berkas dan verifikasi' },
   { id: 'asesor', label: 'Asesor' },
   { id: 'jadwal', label: 'Jadwal asesmen' },
   { id: 'bayar', label: 'Pembayaran' },
+  { id: 'hasil', label: 'Hasil dan sanggahan' },
   { id: 'riwayat', label: 'Riwayat' },
 ]
 
@@ -66,7 +68,7 @@ export default function Detail() {
 
       <section className="card tm-tab-kartu">
         <div className="pm-tabs" role="tablist" aria-label="Bagian pengajuan">
-          {TAB.map((t) => (
+          {TAB.filter((t) => t.id !== 'hasil' || STATUS_HASIL.includes(p.status) || (d?.klarifikasi || []).length).map((t) => (
             <button key={t.id} type="button" role="tab" aria-selected={tab === t.id} className={tab === t.id ? 'is-on' : ''}
               onClick={() => setParam(t.id === 'berkas' ? {} : { tab: t.id })}>
               {t.label}{lencana[t.id] ? <span className="pm-hit">{lencana[t.id]}</span> : null}
@@ -81,6 +83,7 @@ export default function Detail() {
         : tab === 'asesor' ? <TabAsesor p={p} d={d} />
         : tab === 'jadwal' ? <TabJadwal p={p} d={d} />
         : tab === 'bayar' ? <TabBayar p={p} />
+        : tab === 'hasil' ? <TabHasil p={p} d={d} />
         : <TabRiwayat p={p} d={d} />}
     </Halaman>
   )
