@@ -8,6 +8,8 @@ import * as api from '../api'
 import { JENIS_RPL, STATUS, TAHAPAN, rupiah, tanggal } from '../konstanta'
 import { Bidang, Dialog, Halaman, IkonStatusLangkah, Kartu, Kerangka, LencanaStatus, Pemberitahuan, Tombol } from '../ui'
 import { hitungKelengkapan } from '../kelengkapan'
+import { KotakTtd } from '../../dokumen/PanelDokumen'
+import '../../tim/tim.css'
 
 function Tahapan({ status }) {
   const tahap = STATUS[status]?.tahap ?? 1
@@ -112,6 +114,7 @@ export default function Beranda() {
       sub={[pengajuan.nomor_pendaftaran, prodi?.nama, pengajuan.jenis_rpl && `Jenis RPL: ${JENIS_RPL[pengajuan.jenis_rpl]?.label.toLowerCase()}`].filter(Boolean).join(' · ')}
       aksi={k.langkahBerikut ? <Link className="btn btn-primary" to={k.langkahBerikut.to}>Lanjutkan pengajuan <ArrowRight size={14} /></Link> : null}
     >
+      <KotakTtd ringkas />
       {pengajuan.alur_versi === 1 ? (
         <Pemberitahuan judul="Pengajuan dari alur sebelumnya">
           Pengajuan ini dibuat sebelum sistem mengikuti Juknis RPL 2025 dan hanya dapat dilihat. Hubungi Sekretariat RPL bila ada pertanyaan.

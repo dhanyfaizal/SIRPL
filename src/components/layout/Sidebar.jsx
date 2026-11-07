@@ -120,6 +120,7 @@ export default function Sidebar() {
             <NavItem label="Sekretariat RPL" icon={FolderOpen} to="/tim" />
             <NavItem label="Modul Asesor" icon={Gavel} to="/asesor" />
             <NavItem label="Komite, SK, NIM" icon={Gavel} to="/pimpinan" />
+            <NavItem label="Pengaturan dokumen" icon={ClipboardCheck} to="/pengaturan-dokumen" />
             <div className="sidebar-section-label">Studi & Keuangan</div>
             <NavItem label="Rencana Studi & Biaya" icon={BookOpen} to="/dashboard" />
             <div className="sidebar-section-label">Pengaturan Sistem</div>
@@ -136,6 +137,7 @@ export default function Sidebar() {
             <div className="sidebar-section-label">Laporan Pimpinan</div>
             <NavItem label="Ringkasan Eksekutif" icon={ClipboardCheck} to="/dashboard" />
             <NavItem label="Komite dan SK RPL" icon={Gavel} to="/pimpinan" />
+            <NavItem label="Tanda tangan dokumen" icon={ClipboardCheck} to="/tanda-tangan" />
             <NavItem label="Ulasan & Kepuasan" icon={Star} to="/feedback" />
           </>
         )}

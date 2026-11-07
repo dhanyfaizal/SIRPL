@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Outlet, useNavigate } from 'react-router-dom'
 import {
-  CalendarDays, ChevronDown, CreditCard, FileBadge, FolderOpen, Gavel, House, LayoutDashboard, ListChecks, LogOut, Moon, RefreshCw, Sun, UserRound,
+  CalendarDays, ChevronDown, CreditCard, FileBadge, FileCog, FolderOpen, Gavel, House, PenLine, LayoutDashboard, ListChecks, LogOut, Moon, RefreshCw, Sun, UserRound,
 } from 'lucide-react'
 import { AppShell } from '../shell/AppShell'
 import { useAuth } from '../contexts/AuthContext'
@@ -34,6 +34,9 @@ function useNav() {
       { id: 'pleno', label: 'Pleno', icon: Gavel, to: '/tim/pleno', badge: hit(['pleno_awal', 'pleno']) },
       { id: 'pembayaran', label: 'Pembayaran', icon: CreditCard, to: '/tim/pembayaran', badge: bayar },
       { id: 'akhir', label: 'Komite, SK, dan NIM', icon: FileBadge, to: '/pimpinan' },
+      { section: 'Dokumen' },
+      { id: 'ttd', label: 'Tanda tangan', icon: PenLine, to: '/tanda-tangan' },
+      { id: 'atur-dok', label: 'Pengaturan dokumen', icon: FileCog, to: '/pengaturan-dokumen' },
       { section: 'Akun' },
       { id: 'profil', label: 'Profil', icon: UserRound, to: '/tim/profil' },
     ]

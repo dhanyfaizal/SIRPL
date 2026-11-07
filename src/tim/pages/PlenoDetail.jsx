@@ -9,6 +9,7 @@ import { kelompokDari } from '../aturan'
 import { JENIS_RPL, tanggal } from '../../pemohon/konstanta'
 import { BarTahap, Bidang, Dialog, Halaman, Kartu, Kerangka, Lencana, Pemberitahuan, Tombol } from '../../pemohon/ui'
 import { JENIS_PLENO } from './Pleno'
+import { PanelDokumenPleno } from '../../dokumen/PanelDokumen'
 
 const LABEL_PERAN = { admin: 'Admin', ketua_tim: 'Ketua Tim', sekretaris: 'Sekretaris', asessor: 'Asesor', komite: 'Komite', eksekutif: 'Pimpinan', lpmp: 'LPMP', kaprodi_si: 'Ka. Prodi SI', kaprodi_ti: 'Ka. Prodi TI', kaprodi_dkv: 'Ka. Prodi DKV', kaprodi_ka: 'Ka. Prodi KA' }
 
@@ -180,6 +181,8 @@ export default function PlenoDetail() {
           ) : <p className="pm-kosong">Tidak ada pengajuan lain yang menunggu pleno ini.</p>}
         </Kartu>
       ) : null}
+
+      {!draf ? <PanelDokumenPleno pleno={pleno} boleh={['admin', 'ketua_tim', 'sekretaris'].includes(role)} /> : null}
 
       {draf ? (
         <BarTahap info={kurang.length ? `Lengkapi ${kurang.join(', ')} sebelum penetapan` : bolehTetapkan ? 'Siap ditetapkan' : 'Menunggu penetapan Ketua Tim Pengelola RPL'}>

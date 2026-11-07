@@ -1,0 +1,56 @@
+/* Mesin dokumen: halaman cetak, tanda tangan ber-QR, verifikasi publik */
+.dk-alat { flex-wrap: wrap; }
+.dk-halaman { position: relative; }
+.dk-halaman h3.dk-sub { font-size: 12px; font-weight: 700; margin: 10px 0 4px; }
+.dk-kecil { font-size: 11px; margin: 4px 0 6px; }
+.dk-tengah { text-align: center !important; }
+.dk-gap { margin-top: 12px; }
+.dk-blok { break-inside: avoid-page; }
+.dk-ol { margin: 0 0 0 18px; padding: 0; }
+.dk-ttd { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px 40px; margin-top: 28px; break-inside: avoid; }
+.dk-ttd-banyak { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px 24px; }
+.dk-ttd-blok { display: flex; flex-direction: column; align-items: flex-start; }
+.dk-ttd > .dk-ttd-blok:only-child { grid-column: 2; }
+.dk-ttd-ruang { min-height: 96px; display: flex; align-items: center; margin: 6px 0; }
+.dk-ttd-tunggu { font-size: 10px; color: #9a6b00; border: 1px dashed #c9a43a; padding: 6px 8px; border-radius: 4px; }
+.dk-ttd-nama { font-weight: 700; text-decoration: underline; }
+.dk-ttd-kode { font-size: 9px; color: #555; letter-spacing: .5px; }
+.dk-kaki { margin-top: 28px; padding-top: 8px; border-top: 1px solid #ccc; font-size: 9px; color: #555; }
+.dk-dicabut::after { content: 'DICABUT'; position: absolute; top: 38%; left: 50%; transform: translate(-50%, -50%) rotate(-24deg); font-size: 96px; font-weight: 800; color: rgba(220, 38, 38, .14); letter-spacing: 8px; pointer-events: none; }
+
+.dk-verif-latar { min-height: 100vh; background: var(--gray-50, #f8fafc); padding: 32px 16px; }
+.dk-verif, .dk-mandiri { max-width: 720px; margin: 0 auto; background: var(--surface, #fff); border: 1px solid var(--gray-200); border-radius: 14px; padding: 24px; }
+.dk-mandiri { max-width: 960px; background: transparent; border: 0; padding: 0; }
+.dk-verif-kop { display: flex; gap: 12px; align-items: center; padding-bottom: 16px; border-bottom: 1px solid var(--gray-200); margin-bottom: 16px; }
+.dk-verif-cari { display: flex; gap: 8px; margin-bottom: 16px; }
+.dk-verif-cari .input { flex: 1; text-transform: uppercase; letter-spacing: 1px; }
+.dk-verif-hasil { display: flex; gap: 14px; align-items: flex-start; padding: 16px; border-radius: 12px; margin-bottom: 16px; }
+.dk-verif-hasil p { margin: 4px 0 0; font-size: 13px; }
+.dk-verif-hasil.is-sah { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
+.dk-verif-hasil.is-galat { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+.dk-verif-dl { display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 8px 16px; margin: 0; font-size: 13px; }
+.dk-verif-dl dt { color: var(--gray-500); font-weight: 600; }
+.dk-verif-dl dd { margin: 0; }
+.dk-mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; word-break: break-all; }
+.dk-verif-ttd { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.dk-verif-ttd li { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--gray-200); border-radius: 10px; }
+[data-theme="dark"] .dk-verif-hasil.is-sah { background: #052e16; color: #bbf7d0; border-color: #14532d; }
+[data-theme="dark"] .dk-verif-hasil.is-galat { background: #450a0a; color: #fecaca; border-color: #7f1d1d; }
+
+@media (max-width: 600px) {
+  .dk-verif { padding: 16px; }
+  .dk-verif-dl { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+  .dk-verif-dl dd { margin-bottom: 8px; }
+  .dk-verif-cari { flex-direction: column; }
+}
+@media print {
+  .no-print { display: none !important; }
+  .dk-kaki { position: static; }
+}
+
+/* Tabel cetak tidak mewarisi gaya tabel aplikasi */
+.cetak-halaman table th, .cetak-halaman table td { text-transform: none; letter-spacing: 0; color: #111; background: transparent; }
+.cetak-halaman .cetak-tabel th { background: #f1f1f1; font-weight: 700; font-size: 11px; border: 1px solid #333 !important; }
+.cetak-halaman .cetak-tabel td { border: 1px solid #333 !important; }
+.cetak-halaman .cetak-identitas td { border: 0 !important; padding: 2px 4px; font-size: 12px; }
+.cetak-halaman .cetak-identitas tr:hover td, .cetak-halaman .cetak-tabel tr:hover td { background: transparent; }

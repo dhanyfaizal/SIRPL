@@ -11,6 +11,7 @@ import TabJadwal from './detail/TabJadwal'
 import TabBayar from './detail/TabBayar'
 import TabRiwayat from './detail/TabRiwayat'
 import TabHasil, { STATUS_HASIL } from './detail/TabHasil'
+import { PanelDokumenPengajuan } from '../../dokumen/PanelDokumen'
 
 const TAB = [
   { id: 'berkas', label: 'Berkas dan verifikasi' },
@@ -18,6 +19,7 @@ const TAB = [
   { id: 'jadwal', label: 'Jadwal asesmen' },
   { id: 'bayar', label: 'Pembayaran' },
   { id: 'hasil', label: 'Hasil dan sanggahan' },
+  { id: 'dokumen', label: 'Dokumen' },
   { id: 'riwayat', label: 'Riwayat' },
 ]
 
@@ -25,7 +27,7 @@ export default function Detail() {
   const { kelompok = 'semua', id } = useParams()
   const [param, setParam] = useSearchParams()
   const tab = TAB.some((t) => t.id === param.get('tab')) ? param.get('tab') : 'berkas'
-  const { siap, data, detail, muatDetail, peta } = useTim()
+  const { siap, data, detail, muatDetail, peta, role } = useTim()
   const p = data?.pengajuan.find((x) => x.id === id)
   const d = p ? detail[p.id] : null
 
@@ -84,6 +86,7 @@ export default function Detail() {
         : tab === 'jadwal' ? <TabJadwal p={p} d={d} />
         : tab === 'bayar' ? <TabBayar p={p} />
         : tab === 'hasil' ? <TabHasil p={p} d={d} />
+        : tab === 'dokumen' ? <PanelDokumenPengajuan pengajuan={p} bolehTerbit={['admin', 'ketua_tim', 'sekretaris'].includes(role)} />
         : <TabRiwayat p={p} d={d} />}
     </Halaman>
   )

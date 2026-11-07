@@ -1,6 +1,8 @@
 // SK Ketua STIKOM tentang penetapan hasil RPL (satu SK untuk banyak pemohon).
 import { useMemo, useState } from 'react'
-import { FileBadge } from 'lucide-react'
+import { FileBadge, FilePlus2 } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { terbitkanLampiranSk } from '../../dokumen/PanelDokumen'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../contexts/AuthContext'
 import { supabase } from '../../lib/supabase'
@@ -49,6 +51,16 @@ export default function Sk() {
     } catch (e) { toast.error(e.message) } finally { setSibuk(false) }
   }
   const jumlahSk = (id) => data.pengajuan.filter((p) => p.sk_id === id).length
+  const bolehF08 = ['admin', 'eksekutif', 'sekretaris', 'ketua_tim'].includes(role)
+  const lampiran = async (s) => {
+    const ids = data.pengajuan.filter((p) => p.sk_id === s.id).map((p) => p.id)
+    if (!ids.length) { toast.error('SK ini tidak memuat pemohon yang masih aktif di daftar'); return }
+    setSibuk(s.id)
+    try {
+      const n = await terbitkanLampiranSk(s, ids)
+      toast.success(`${n} lampiran SK (F08) diterbitkan dan menunggu tanda tangan Ketua STIKOM`)
+    } catch (e) { toast.error(e.message, { duration: 7000 }) } finally { setSibuk(false) }
+  }
 
   return (
     <Halaman judul="SK Rekognisi" sub="Hasil yang sudah disetujui Komite RPL ditetapkan dengan SK Ketua STIKOM Yos Sudarso. Satu SK dapat memuat banyak pemohon.">
@@ -91,11 +103,11 @@ export default function Sk() {
         ) : null}
       </Kartu>
 
-      <Kartu judul="SK yang sudah terbit" padat>
+      <Kartu judul="SK yang sudah terbit" sub="Lampiran SK (F08) per pemohon ditandatangani Ketua STIKOM secara elektronik." padat aksi={<Link to="/tanda-tangan" className="btn btn-ghost btn-sm">Tanda tangan dokumen</Link>}>
         {data.sk.length ? (
           <div className="table-wrap">
             <table className="pm-tabel pm-tabel-responsif">
-              <thead><tr><th style={{ width: 220 }}>Nomor SK</th><th>Perihal</th><th style={{ width: 130 }}>Tanggal</th><th style={{ width: 100 }}>Pemohon</th><th style={{ width: 130 }}><span className="pm-sr">Berkas</span></th></tr></thead>
+              <thead><tr><th style={{ width: 220 }}>Nomor SK</th><th>Perihal</th><th style={{ width: 130 }}>Tanggal</th><th style={{ width: 100 }}>Pemohon</th><th style={{ width: 130 }}><span className="pm-sr">Berkas</span></th>{bolehF08 ? <th style={{ width: 190 }}><span className="pm-sr">Lampiran</span></th> : null}</tr></thead>
               <tbody>
                 {data.sk.map((s) => (
                   <tr key={s.id}>
@@ -104,6 +116,7 @@ export default function Sk() {
                     <td data-label="Tanggal">{tanggal(s.tanggal_sk)}</td>
                     <td data-label="Pemohon">{jumlahSk(s.id)}</td>
                     <td data-label="">{s.file_sk_url ? <BukaBerkas path={s.file_sk_url} label="Buka" /> : <Lencana>Tanpa berkas</Lencana>}</td>
+                    {bolehF08 ? <td data-label=""><Tombol ikon={FilePlus2} sibuk={sibuk === s.id} onClick={() => lampiran(s)}>Terbitkan lampiran F08</Tombol></td> : null}
                   </tr>
                 ))}
               </tbody>

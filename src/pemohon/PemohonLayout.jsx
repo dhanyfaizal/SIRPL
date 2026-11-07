@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Outlet, useNavigate } from 'react-router-dom'
 import {
   BadgeCheck, Bell, CalendarDays, ChevronDown, ClipboardList, Contact, CreditCard, FileCheck,
-  Files, FolderOpen, House, Lock, LogOut, Moon, RefreshCw, Sun, UserRound,
+  FileText, Files, FolderOpen, House, Lock, LogOut, Moon, RefreshCw, Sun, UserRound,
 } from 'lucide-react'
 import { AppShell } from '../shell/AppShell'
 import { useAuth } from '../contexts/AuthContext'
@@ -37,6 +37,7 @@ function useNav() {
         badge: (data?.jadwal || []).filter((j) => j.status === 'dijadwalkan').length || null },
       { id: 'hasil', label: 'Hasil rekognisi', icon: BadgeCheck, to: '/pemohon/hasil',
         badge: pengajuan?.status === 'hasil_disampaikan' ? '1' : null },
+      { id: 'dokumen', label: 'Dokumen', icon: FileText, to: '/pemohon/dokumen' },
       { section: 'Akun' },
       { id: 'profil', label: 'Profil', icon: UserRound, to: '/pemohon/profil' },
     ]

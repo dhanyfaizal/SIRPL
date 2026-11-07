@@ -23,6 +23,11 @@ import TimPleno from '../tim/pages/Pleno'
 import TimPlenoDetail from '../tim/pages/PlenoDetail'
 import AsesorLayout from '../asesor/AsesorLayout'
 import PimpinanLayout from '../pimpinan/PimpinanLayout'
+import LihatDokumen from '../dokumen/pages/LihatDokumen'
+import VerifikasiDokumen from '../dokumen/pages/Verifikasi'
+import TandaTanganDokumen from '../dokumen/pages/TandaTangan'
+import PengaturanDokumen from '../dokumen/pages/Pengaturan'
+import PemohonDokumen from '../pemohon/pages/Dokumen'
 import PimpinanBeranda from '../pimpinan/pages/Beranda'
 import PimpinanKomite from '../pimpinan/pages/Komite'
 import PimpinanSk from '../pimpinan/pages/Sk'
@@ -141,6 +146,13 @@ export default function AppRouter() {
         {/* Public Routes */}
         <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <Login />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
+        <Route path="/verifikasi" element={<VerifikasiDokumen />} />
+        <Route path="/verifikasi/:kode" element={<VerifikasiDokumen />} />
+
+        {/* Dokumen RPL (cetak A4 dan tanda tangan elektronik) */}
+        <Route path="/dokumen/:id" element={<ProtectedRoute><LihatDokumen /></ProtectedRoute>} />
+        <Route path="/tanda-tangan" element={<ProtectedRoute><TandaTanganDokumen /></ProtectedRoute>} />
+        <Route path="/pengaturan-dokumen" element={<ProtectedRoute allowedRoles={['admin', 'ketua_tim', 'sekretaris']}><PengaturanDokumen /></ProtectedRoute>} />
 
         {/* Protected Application Routes */}
         <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
@@ -172,6 +184,7 @@ export default function AppRouter() {
           <Route path="pembayaran" element={<PemohonPembayaran />} />
           <Route path="jadwal" element={<PemohonJadwal />} />
           <Route path="hasil" element={<PemohonHasil />} />
+          <Route path="dokumen" element={<PemohonDokumen />} />
           <Route path="profil" element={<ProfilePage />} />
         </Route>
         <Route path="/pemohon/cetak/f07" element={<ProtectedRoute allowedRoles={['calon_rpl']}><PemohonCetakF07 /></ProtectedRoute>} />

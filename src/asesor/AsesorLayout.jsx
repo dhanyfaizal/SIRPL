@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Outlet, useNavigate } from 'react-router-dom'
 import {
-  CalendarDays, ChevronDown, ClipboardCheck, FolderOpen, History, House, LayoutDashboard, ListChecks, LogOut, Moon, RefreshCw, Sun, UserRound,
+  CalendarDays, ChevronDown, ClipboardCheck, FolderOpen, History, PenLine, House, LayoutDashboard, ListChecks, LogOut, Moon, RefreshCw, Sun, UserRound,
 } from 'lucide-react'
 import { AppShell } from '../shell/AppShell'
 import { useAuth } from '../contexts/AuthContext'
@@ -32,6 +32,7 @@ function useNav() {
         { to: '/asesor/tugas/semua', label: 'Semua', icon: FolderOpen },
       ] },
       { id: 'jadwal', label: 'Jadwal saya', icon: CalendarDays, to: '/asesor/jadwal', badge: jadwalDekat },
+      { id: 'ttd', label: 'Tanda tangan dokumen', icon: PenLine, to: '/tanda-tangan' },
       { section: 'Akun' },
       { id: 'profil', label: 'Profil', icon: UserRound, to: '/asesor/profil' },
       { id: 'lama', label: 'Dasbor alur lama', icon: History, to: '/dashboard?lama=1' },
