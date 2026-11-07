@@ -13,6 +13,12 @@ import DashboardRouter from '../pages/dashboard/DashboardRouter'
 import AdminUsersPage from '../pages/dashboard/AdminUsersPage'
 import AdminCurriculumPage from '../pages/dashboard/AdminCurriculumPage'
 import PengaturanMkRpl from '../kurikulum/PengaturanMkRpl'
+import TimLayout from '../tim/TimLayout'
+import TimBeranda from '../tim/pages/Beranda'
+import TimDaftar from '../tim/pages/Daftar'
+import TimDetail from '../tim/pages/Detail'
+import TimJadwal from '../tim/pages/Jadwal'
+import TimPembayaran from '../tim/pages/Pembayaran'
 import ProfilePage from '../pages/dashboard/ProfilePage'
 import FeedbackPage from '../pages/dashboard/FeedbackPage'
 
@@ -157,6 +163,17 @@ export default function AppRouter() {
           <Route path="profil" element={<ProfilePage />} />
         </Route>
         <Route path="/pemohon/cetak/f07" element={<ProtectedRoute allowedRoles={['calon_rpl']}><PemohonCetakF07 /></ProtectedRoute>} />
+
+        {/* Modul Tim Pengelola RPL: Sekretariat, Sekretaris, Ketua Tim */}
+        <Route path="/tim" element={<ProtectedRoute allowedRoles={['admin', 'ketua_tim', 'sekretaris']}><TimLayout /></ProtectedRoute>}>
+          <Route index element={<TimBeranda />} />
+          <Route path="antrean" element={<Navigate to="/tim/antrean/verifikasi" replace />} />
+          <Route path="antrean/:kelompok" element={<TimDaftar />} />
+          <Route path="antrean/:kelompok/:id" element={<TimDetail />} />
+          <Route path="jadwal" element={<TimJadwal />} />
+          <Route path="pembayaran" element={<TimPembayaran />} />
+          <Route path="profil" element={<ProfilePage />} />
+        </Route>
 
         {/* Standalone Print Route */}
         <Route path="/report/:id/print" element={<ProtectedRoute><ReportPrintPage /></ProtectedRoute>} />

@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard, FileText, PlusCircle, BookOpen,
-  LogOut, Shield, Award, Settings, GraduationCap, ClipboardCheck, Star, ListChecks
+  LogOut, Shield, Award, Settings, GraduationCap, ClipboardCheck, Star, ListChecks, FolderOpen
 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useSidebar } from './AppLayout'
@@ -113,6 +113,8 @@ export default function Sidebar() {
         {/* Menu Admin */}
         {role === 'admin' && (
           <>
+            <div className="sidebar-section-label">Tim Pengelola RPL</div>
+            <NavItem label="Sekretariat RPL" icon={FolderOpen} to="/tim" />
             <div className="sidebar-section-label">Studi & Keuangan</div>
             <NavItem label="Rencana Studi & Biaya" icon={BookOpen} to="/dashboard" />
             <div className="sidebar-section-label">Pengaturan Sistem</div>

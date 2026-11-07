@@ -78,7 +78,7 @@ export default function Pembayaran() {
                     <td className="pm-kecil" data-label="Tanggal">{tanggal(b.created_at)}</td>
                     <td data-label="Komponen">{b.komponen === 'asesmen' ? 'Biaya asesmen' : b.komponen === 'pendaftaran' ? 'Biaya pendaftaran' : 'Lainnya'}</td>
                     <td data-label="Jumlah">{rupiah(b.jumlah)}</td>
-                    <td data-label="Status"><Lencana warna={STATUS_B[b.status]?.[1]}>{STATUS_B[b.status]?.[0]}</Lencana></td>
+                    <td data-label="Status"><Lencana warna={STATUS_B[b.status]?.[1]}>{STATUS_B[b.status]?.[0]}</Lencana>{b.status === 'ditolak' && b.catatan ? <div className="pm-kecil pm-merah">{b.catatan}. Kirim ulang bukti bayar di tabel Tagihan.</div> : null}</td>
                   </tr>
                 ))}
               </tbody>

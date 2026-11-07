@@ -1,0 +1,87 @@
+/* Modul Tim Pengelola RPL (melengkapi pemohon.css) */
+.tm-stat { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.tm-stat-link { text-decoration: none; color: inherit; transition: border-color .15s; }
+.tm-stat-link:hover { border-color: var(--indigo-300, #a5b4fc); }
+.tm-dua { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+
+.tm-daftar { list-style: none; margin: 0; padding: 0; }
+.tm-daftar > li { border-bottom: 1px solid var(--gray-100); }
+.tm-daftar > li:last-child { border-bottom: 0; }
+.tm-baris { display: flex; align-items: center; gap: 12px; padding: 12px 20px; color: inherit; text-decoration: none; }
+a.tm-baris:hover { background: var(--gray-50); }
+.tm-tgl { width: 44px; flex-shrink: 0; text-align: center; border: 1px solid var(--gray-200); border-radius: 8px; padding: 3px 0; line-height: 1.1; }
+.tm-tgl b { display: block; font-size: 16px; }
+.tm-tgl span { font-size: 10.5px; color: var(--gray-500); text-transform: uppercase; }
+.tm-jam { width: 52px; flex-shrink: 0; font-weight: 700; font-variant-numeric: tabular-nums; }
+
+.pm-tabs a.tm-tab { padding: 11px 12px; font-size: 13px; font-weight: 500; color: var(--gray-600); border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; display: inline-flex; gap: 6px; align-items: center; text-decoration: none; }
+.pm-tabs a.tm-tab:hover { color: var(--gray-900); }
+.pm-tabs a.tm-tab.is-on { color: var(--indigo-700); border-bottom-color: var(--indigo-600); font-weight: 600; }
+.pm-tabs a.tm-tab.is-on .pm-hit { background: var(--indigo-50); color: var(--indigo-700); }
+.pm-baris-aksi .input.tm-saring { width: 190px; flex: 0 0 190px; }
+.tm-tabel tbody tr.tm-klik { cursor: pointer; }
+.tm-tabel tbody tr.tm-klik:hover td, .tm-tabel tbody tr.tm-klik:focus-visible td { background: var(--gray-50); }
+.tm-tabel td { vertical-align: middle; }
+.tm-nama { color: inherit; text-decoration: none; }
+.tm-nama:hover { text-decoration: underline; }
+
+.tm-kepala-info { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: -6px; }
+.tm-kontak { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; color: var(--gray-600); text-decoration: none; }
+.tm-kontak:hover { color: var(--indigo-700); }
+.tm-tab-kartu { overflow: hidden; }
+.tm-tab-kartu .pm-tabs { border-bottom: 0; }
+
+.tm-periksa { list-style: none; margin: 0; padding: 0; counter-reset: periksa; }
+.tm-periksa > li { display: flex; gap: 16px; align-items: flex-start; justify-content: space-between; padding: 14px 20px; border-bottom: 1px solid var(--gray-100); border-left: 3px solid transparent; }
+.tm-periksa > li.is-ok { border-left-color: #16a34a; }
+.tm-periksa > li.is-salah { border-left-color: #dc2626; background: #fef2f2; }
+.tm-periksa-isi { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.tm-periksa-judul { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.tm-periksa-judul::before { counter-increment: periksa; content: counter(periksa) "."; font-weight: 700; color: var(--gray-400); min-width: 18px; }
+.tm-periksa-berkas { margin-top: 2px; }
+.tm-periksa-berkas .btn { padding-left: 0; }
+.tm-periksa-catatan { margin-top: 6px; }
+.tm-periksa .pm-segmen { flex-shrink: 0; }
+.tm-periksa-kaki { padding: 14px 20px; }
+.tm-pre { white-space: pre-line; }
+
+.tm-dl { margin: 0; display: flex; flex-direction: column; gap: 8px; }
+.tm-dl-baris { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 12px; font-size: 13px; }
+.tm-dl dt { color: var(--gray-500); }
+.tm-dl dd { margin: 0; color: var(--gray-900); }
+
+.tm-centang-baris { display: flex; flex-direction: column; gap: 6px; padding-top: 4px; }
+.tm-mk-pilih { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 16px; max-height: 220px; overflow: auto; border: 1px solid var(--gray-200); border-radius: var(--radius-md); padding: 10px 12px; }
+
+.tm-jadwal { list-style: none; margin: 0; padding: 0; }
+.tm-jadwal > li { display: flex; gap: 14px; align-items: flex-start; padding: 14px 20px; border-bottom: 1px solid var(--gray-100); }
+.tm-jadwal > li:last-child { border-bottom: 0; }
+.tm-jadwal-judul { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 2px; }
+.tm-jadwal-aksi { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; max-width: 330px; }
+
+.tm-linimasa { list-style: none; margin: 0; padding: 8px 20px 16px; }
+.tm-linimasa > li { position: relative; padding: 8px 0 8px 22px; border-left: 2px solid var(--gray-200); margin-left: 6px; }
+.tm-linimasa > li::before { content: ""; position: absolute; left: -6px; top: 13px; width: 10px; height: 10px; border-radius: 50%; background: var(--surface, #fff); border: 2px solid var(--indigo-500, #6366f1); }
+
+[data-theme="dark"] .tm-periksa > li.is-salah { background: #2a1215; }
+[data-theme="dark"] a.tm-baris:hover, [data-theme="dark"] .tm-tabel tbody tr.tm-klik:hover td { background: #1e293b; }
+
+@media (max-width: 1100px) { .tm-stat { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 900px) { .tm-dua { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 720px) {
+  .tm-baris, .tm-jadwal > li, .tm-periksa > li { padding-left: 14px; padding-right: 14px; }
+  .tm-periksa > li { flex-direction: column; gap: 10px; }
+  .tm-jadwal > li { flex-wrap: wrap; }
+  .tm-jadwal-aksi { max-width: none; justify-content: flex-start; width: 100%; padding-left: 58px; }
+  .tm-dl-baris { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .tm-mk-pilih { grid-template-columns: minmax(0, 1fr); }
+  .pm-baris-aksi .input.tm-saring { width: 100%; flex: 1 1 100%; }
+  /* Daftar pengajuan sebagai kartu */
+  .tm-tabel thead { display: none; }
+  .pm-tabel.tm-tabel, .tm-tabel tbody { display: block; width: 100%; min-width: 0; }
+  .pm-tabel.tm-tabel tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "nama status" "prodi prodi" "mk tgl"; gap: 4px 10px; padding: 12px 14px; border-bottom: 1px solid var(--gray-200); }
+  .pm-tabel.tm-tabel td { display: block; padding: 0; border: 0; }
+  .tm-c-nama { grid-area: nama; } .tm-c-status { grid-area: status; } .tm-c-prodi { grid-area: prodi; font-size: 12.5px; color: var(--gray-600); }
+  .tm-c-mk { grid-area: mk; } .tm-c-tgl { grid-area: tgl; text-align: right; display: flex !important; gap: 6px; align-items: center; justify-content: flex-end; }
+  .pm-tabel.tm-tabel .tm-c-jenis, .pm-tabel.tm-tabel .tm-c-asesor { display: none; }
+}

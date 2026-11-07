@@ -13,6 +13,11 @@ const ROLES_LIST = [
   { value: 'kaprodi_dkv', label: 'Ka. Prodi DKV' },
   { value: 'kaprodi_ka', label: 'Ka. Prodi KA' },
   { value: 'asessor', label: 'Asessor' },
+  { value: 'ketua_tim', label: 'Ketua Tim RPL' },
+  { value: 'sekretaris', label: 'Sekretaris / Sekretariat RPL' },
+  { value: 'komite', label: 'Komite RPL' },
+  { value: 'eksekutif', label: 'Pimpinan' },
+  { value: 'lpmp', label: 'LPMP' },
   { value: 'admin', label: 'Admin SIRPL' }
 ]
 
@@ -115,6 +120,8 @@ export default function AdminUsersPage() {
   const kaprodiCount = users.filter(u => u.role?.startsWith('kaprodi_')).length
   const asessorCount = users.filter(u => u.role === 'asessor').length
   const adminCount = users.filter(u => u.role === 'admin').length
+  const PERAN_TIM = ['ketua_tim', 'sekretaris', 'komite', 'eksekutif', 'lpmp']
+  const timCount = users.filter(u => PERAN_TIM.includes(u.role)).length
 
   const tabUsers = users.filter(u => {
     if (activeTab === 'calon') return u.role === 'calon_rpl'
@@ -122,6 +129,7 @@ export default function AdminUsersPage() {
     if (activeTab === 'baak') return u.role === 'baak'
     if (activeTab === 'kaprodi') return u.role?.startsWith('kaprodi_')
     if (activeTab === 'asessor') return u.role === 'asessor'
+    if (activeTab === 'tim') return PERAN_TIM.includes(u.role)
     if (activeTab === 'admin') return u.role === 'admin'
     return false
   })
@@ -138,6 +146,7 @@ export default function AdminUsersPage() {
     { id: 'baak', label: 'BAAK', count: baakCount, icon: Shield },
     { id: 'kaprodi', label: 'Ka. Prodi', count: kaprodiCount, icon: GraduationCap },
     { id: 'asessor', label: 'Asessor', count: asessorCount, icon: Award },
+    { id: 'tim', label: 'Tim RPL & Pimpinan', count: timCount, icon: Users },
     { id: 'admin', label: 'Admin SIRPL', count: adminCount, icon: Settings }
   ]
 

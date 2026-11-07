@@ -119,7 +119,12 @@ export default function Beranda() {
       ) : null}
       {pengajuan.status === 'dikembalikan_sekretariat' ? (
         <Pemberitahuan jenis="red" judul="Pengajuan dikembalikan Sekretariat">
-          {pengajuan.catatan_revisi || 'Periksa kembali berkas Anda, lalu kirim ulang.'}
+          <div style={{ whiteSpace: 'pre-line' }}>{pengajuan.catatan_revisi || 'Periksa kembali berkas Anda, lalu kirim ulang.'}</div>
+        </Pemberitahuan>
+      ) : null}
+      {pengajuan.status === 'tidak_memenuhi_syarat' ? (
+        <Pemberitahuan jenis="red" judul="Pengajuan tidak memenuhi syarat">
+          <div style={{ whiteSpace: 'pre-line' }}>{pengajuan.catatan_revisi || 'Hubungi Sekretariat RPL untuk keterangan lebih lanjut.'}</div>
         </Pemberitahuan>
       ) : null}
       {pengajuan.status === 'hasil_disampaikan' ? (
