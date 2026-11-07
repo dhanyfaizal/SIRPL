@@ -6,7 +6,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { usePemohon } from '../PemohonData'
 import * as api from '../api'
 import { JENIS_RPL, STATUS_PDDIKTI, tanggal } from '../konstanta'
-import { BERKAS, hitungKelengkapan, perluTanggalKeluar } from '../kelengkapan'
+import { BERKAS, hitungKelengkapan, mkTertutup, perluTanggalKeluar } from '../kelengkapan'
 import {
   BarTahap, Bidang, BukaBerkas, Combobox, Halaman, InputAngka, Kerangka, Lencana, LencanaModeBaca, Pemberitahuan,
   PilihBerkas, PilihSegmen, PilihTahun, TombolLanjut, useLayarKecil,
@@ -281,7 +281,9 @@ function FormMataKuliah({ daftar, ro, setInfo }) {
   if (['transfer', 'gabungan'].includes(pengajuan.jenis_rpl)) opsi.push({ v: 'transfer', l: 'Transfer' })
   if (['perolehan', 'gabungan'].includes(pengajuan.jenis_rpl)) opsi.push({ v: 'perolehan', l: 'Perolehan' })
 
-  const tertutup = (mk) => mk.is_tugas_akhir || mk.rangkaian_ta || mk.dapat_rpl === false
+  const tertutup = mkTertutup
+  const alasanTutup = (mk) => mk.is_tugas_akhir ? 'Tugas akhir, tidak dapat direkognisi' : mk.rangkaian_ta ? 'Rangkaian tugas akhir, tidak dapat direkognisi' : `Tidak dibuka untuk RPL${mk.alasan_tidak_rpl ? `: ${mk.alasan_tidak_rpl}` : ''}`
+  const harusDiganti = data.mataKuliah.filter((mk) => tertutup(mk) && pilih[mk.id])
   const sks = (f) => Object.entries(pilih).filter(([, m]) => m && f(m)).reduce((n, [id]) => n + (data.mataKuliah.find((k) => k.id === id)?.sks || 0), 0)
   const total = sks(() => true)
   const batas = data.batasSks || 100
@@ -303,7 +305,9 @@ function FormMataKuliah({ daftar, ro, setInfo }) {
   daftar(async () => {
     if (!jumlahDipilih) return gagal('Pilih minimal satu mata kuliah')
     const berubah = JSON.stringify(Object.entries(pilih).filter(([, m]) => m).sort()) !== JSON.stringify(Object.entries(awal).sort())
-    if (berubah) { await api.simpanMkDiajukan(pengajuan.id, pilih); await muatDetail() }
+    const tutupIds = data.mataKuliah.filter(tertutup).map((mk) => mk.id)
+    if (berubah) { await api.simpanMkDiajukan(pengajuan.id, pilih, tutupIds); await muatDetail() }
+    if (harusDiganti.length) return gagal(`Mata kuliah berikut sudah ditutup untuk RPL, ubah ke "Tidak": ${harusDiganti.map((m) => m.nama_mk).join(', ')}`)
     if (total > batas) toast(`Yang dapat diakui paling banyak ${batas} SKS. Sisanya tetap dinilai, tetapi tidak semuanya bisa diakui.`, { duration: 6000 })
     return true
   })
@@ -342,6 +346,13 @@ function FormMataKuliah({ daftar, ro, setInfo }) {
             onClick={() => { setCari(''); setTab('dipilih') }}>Dipilih<span className="pm-hit">{jumlahDipilih}</span></button>
         </div>
       )}
+      {harusDiganti.length ? (
+        <div style={{ padding: '12px 20px 0' }}>
+          <Pemberitahuan jenis="red" judul={`${harusDiganti.length} mata kuliah yang Anda pilih sudah ditutup untuk RPL`}>
+            Ubah ke "Tidak" agar pengajuan dapat dikirim: {harusDiganti.map((m) => m.nama_mk).join(', ')}.
+          </Pemberitahuan>
+        </div>
+      ) : null}
       <div className="pm-mk-alat">
         <div className="pm-input-ikon pm-cari">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
@@ -363,7 +374,10 @@ function FormMataKuliah({ daftar, ro, setInfo }) {
             <div key={mk.id} className={`pm-mk-kartu${pilih[mk.id] ? ' is-on' : ''}${tertutup(mk) ? ' is-off' : ''}`}>
               <div className="pm-kecil">{mk.kode_mk} · {mk.sks} SKS · Smt {mk.semester}</div>
               <div className="pm-tebal">{mk.nama_mk}</div>
-              {tertutup(mk) ? <span className="badge-pill badge-slate"><Lock size={11} /> Rangkaian tugas akhir, tidak dibuka</span> : (
+              {tertutup(mk) && !pilih[mk.id] ? <span className="badge-pill badge-slate"><Lock size={11} /> {alasanTutup(mk)}</span> : tertutup(mk) ? (
+                <PilihSegmen penuh label={`Mekanisme ${mk.nama_mk}`} pilihan={[{ v: '', l: 'Tidak' }, opsi.find((o) => o.v === pilih[mk.id]) || { v: pilih[mk.id], l: 'Dipilih' }]} nilai={pilih[mk.id]} nonaktif={ro}
+                  onUbah={(v) => setPilih((s) => ({ ...s, [mk.id]: v }))} />
+              ) : (
                 <PilihSegmen penuh label={`Mekanisme ${mk.nama_mk}`} pilihan={opsi} nilai={pilih[mk.id] || ''} nonaktif={ro}
                   onUbah={(v) => setPilih((s) => ({ ...s, [mk.id]: v }))} />
               )}
@@ -377,12 +391,15 @@ function FormMataKuliah({ daftar, ro, setInfo }) {
               {q || tab === 'dipilih' ? <th style={{ width: 70 }}>Smt</th> : null}<th style={{ width: 280 }}>Diajukan melalui</th></tr></thead>
             <tbody>
               {daftarMk.map((mk) => (
-                <tr key={mk.id} className={tertutup(mk) ? 'pm-redup' : ''}>
+                <tr key={mk.id} className={tertutup(mk) && !pilih[mk.id] ? 'pm-redup' : ''}>
                   <td className="pm-kecil">{mk.kode_mk}</td>
-                  <td>{mk.nama_mk}{tertutup(mk) ? <div className="pm-kecil">Tugas akhir atau rangkaiannya, tidak dapat direkognisi</div> : null}</td>
+                  <td>{mk.nama_mk}{tertutup(mk) ? <div className={pilih[mk.id] ? 'pm-kecil pm-merah' : 'pm-kecil'}>{alasanTutup(mk)}{pilih[mk.id] ? '. Ubah ke "Tidak".' : ''}</div> : null}</td>
                   <td>{mk.sks}</td>
                   {q || tab === 'dipilih' ? <td className="pm-kecil">{mk.semester}</td> : null}
-                  <td>{tertutup(mk) ? <span className="badge-pill badge-slate"><Lock size={11} /> Tidak dibuka</span> : (
+                  <td>{tertutup(mk) && !pilih[mk.id] ? <span className="badge-pill badge-slate"><Lock size={11} /> Tidak dibuka</span> : tertutup(mk) ? (
+                    <PilihSegmen label={`Mekanisme ${mk.nama_mk}`} pilihan={[{ v: '', l: 'Tidak' }, opsi.find((o) => o.v === pilih[mk.id]) || { v: pilih[mk.id], l: 'Dipilih' }]} nilai={pilih[mk.id]} nonaktif={ro}
+                      onUbah={(v) => setPilih((s) => ({ ...s, [mk.id]: v }))} />
+                  ) : (
                     <PilihSegmen label={`Mekanisme ${mk.nama_mk}`} pilihan={opsi} nilai={pilih[mk.id] || ''} nonaktif={ro}
                       onUbah={(v) => setPilih((s) => ({ ...s, [mk.id]: v }))} />
                   )}</td>

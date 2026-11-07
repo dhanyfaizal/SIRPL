@@ -15,6 +15,8 @@ export function evaluasiLengkap(e) {
   return butir.length > 0 && butir.every((b) => b.profisiensi)
 }
 
+export const mkTertutup = (mk) => !mk || mk.is_tugas_akhir || mk.rangkaian_ta || mk.dapat_rpl === false
+
 export const perluTanggalKeluar = (status) => ['mengundurkan_diri', 'putus_studi', 'dikeluarkan'].includes(status)
 
 // Berkas wajib per jenis RPL
@@ -42,7 +44,8 @@ export function bagianData(data) {
   }
   daftar.push({ id: 'berkas', judul: 'Berkas wajib',
     selesai: BERKAS.filter((x) => x.wajibUntuk.includes(p?.jenis_rpl)).every((x) => ada(p?.[x.kolom])) })
-  daftar.push({ id: 'mk', judul: 'Mata kuliah yang diajukan', selesai: (data.mkDiajukan || []).length > 0 })
+  const tutup = (data.mkDiajukan || []).filter((m) => mkTertutup((data.mataKuliah || []).find((k) => k.id === m.mk_id)))
+  daftar.push({ id: 'mk', judul: 'Mata kuliah yang diajukan', selesai: (data.mkDiajukan || []).length > 0 && !tutup.length, adaTertutup: tutup.length })
   return daftar
 }
 

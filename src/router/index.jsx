@@ -12,6 +12,7 @@ import AuthCallback from '../pages/auth/AuthCallback'
 import DashboardRouter from '../pages/dashboard/DashboardRouter'
 import AdminUsersPage from '../pages/dashboard/AdminUsersPage'
 import AdminCurriculumPage from '../pages/dashboard/AdminCurriculumPage'
+import PengaturanMkRpl from '../kurikulum/PengaturanMkRpl'
 import ProfilePage from '../pages/dashboard/ProfilePage'
 import FeedbackPage from '../pages/dashboard/FeedbackPage'
 
@@ -133,6 +134,7 @@ export default function AppRouter() {
           {/* Manajemen Pengguna (Admin) */}
           <Route path="/users" element={<ProtectedRoute allowedRoles={['admin']}><AdminUsersPage /></ProtectedRoute>} />
           <Route path="/curriculum" element={<ProtectedRoute allowedRoles={['admin']}><AdminCurriculumPage /></ProtectedRoute>} />
+          <Route path="/kurikulum-rpl" element={<ProtectedRoute allowedRoles={['admin', 'kaprodi_ti', 'kaprodi_si', 'kaprodi_dkv', 'kaprodi_ka']}><PengaturanMkRpl /></ProtectedRoute>} />
           
           {/* Profile & Settings */}
           <Route path="/profile" element={<ProfilePage />} />

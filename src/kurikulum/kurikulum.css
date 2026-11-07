@@ -1,0 +1,45 @@
+/* Pengaturan status RPL mata kuliah */
+.km-halaman { display: flex; flex-direction: column; gap: 16px; }
+.km-stat { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.km-stat-klik { text-align: left; cursor: pointer; font: inherit; }
+.km-stat-klik:hover { border-color: var(--indigo-300, #a5b4fc); }
+.km-stat-klik.is-on { border-color: var(--indigo-600, #4f46e5); box-shadow: 0 0 0 1px var(--indigo-600, #4f46e5); }
+.km-massal { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 6px 10px; border-radius: 8px; background: var(--indigo-50, #eef2ff); }
+.km-massal b { font-size: 13px; margin-right: 4px; }
+tr.km-terpilih td { background: var(--indigo-50, #eef2ff); }
+.km-status { height: 32px; padding: 0 8px; font-size: 13px; font-weight: 600; }
+.km-status-dibuka { color: #15803d; }
+.km-status-tutup { color: var(--gray-600, #4b5563); }
+.km-status-ta, .km-status-rangkaian { color: #b45309; }
+.km-sub-kepala { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; margin: 18px 0 10px; }
+.km-sub-daftar { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.km-sub-daftar li { display: grid; grid-template-columns: 96px minmax(0, 1fr) auto; gap: 8px; align-items: start; }
+.km-sub-daftar .pm-chip { margin-top: 8px; text-align: center; }
+.km-sub-aksi { display: flex; gap: 2px; }
+@media (max-width: 960px) { .km-stat { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 600px) {
+  .km-sub-daftar li { grid-template-columns: minmax(0, 1fr); }
+  .km-sub-daftar .pm-chip { justify-self: start; margin-top: 0; }
+  .km-sub-aksi { justify-content: flex-end; }
+}
+.km-halaman .pm-kepala-aksi { flex-wrap: nowrap; align-items: center; }
+.km-tabel td { vertical-align: middle; }
+.km-meta { display: none; }
+@media (max-width: 720px) {
+  .km-halaman .pm-kepala-aksi { flex-wrap: wrap; }
+  .km-tabel thead, .km-tabel .km-c-desktop, .km-tabel .km-c-desktop-i { display: none; }
+  .km-meta { display: inline; }
+  .km-tabel div.km-meta { display: block; margin-top: 2px; }
+  .km-tabel, .km-tabel tbody { display: block; }
+  .km-tabel tr { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; grid-template-areas: "pilih nama aksi" ". status status" ". sub draf"; gap: 8px 8px; padding: 12px 14px; border-bottom: 1px solid var(--gray-200); }
+  .pm-tabel.km-tabel td { display: block; padding: 0; border: 0; background: none; }
+  .pm-tabel.km-tabel tr.km-terpilih { background: var(--indigo-50, #eef2ff); }
+  .pm-tabel.km-tabel .km-c-desktop, .pm-tabel.km-tabel .km-c-desktop-i { display: none; }
+  .km-c-pilih { grid-area: pilih; padding-top: 2px !important; }
+  .km-c-nama { grid-area: nama; }
+  .km-c-aksi { grid-area: aksi; }
+  .km-c-status { grid-area: status; }
+  .km-c-status .km-status { width: 100%; }
+  .km-c-sub { grid-area: sub; }
+  .km-c-draf { grid-area: draf; text-align: right; }
+}

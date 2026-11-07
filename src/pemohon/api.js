@@ -109,16 +109,20 @@ export async function simpanButirRiwayat(userId, kategori, baris) {
 }
 
 // ── Daftar MK diajukan (F02 bagian 2) ───────────────────────────
-export async function simpanMkDiajukan(pengajuanId, pilihan) {
+export async function simpanMkDiajukan(pengajuanId, pilihan, tertutupIds = []) {
   // pilihan: { [mk_id]: 'transfer' | 'perolehan' }
   // Upsert lalu hapus yang tidak dipilih, agar simpan berulang tidak bentrok (409).
+  // MK yang sudah ditutup admin tidak di-upsert ulang (ditolak database), tetapi
+  // tetap tersimpan selama masih dipilih agar tampil bertanda.
+  const tutup = new Set(tertutupIds)
   const isi = Object.entries(pilihan).filter(([, m]) => m).map(([mk_id, mekanisme]) => ({ pengajuan_id: pengajuanId, mk_id, mekanisme }))
   const dipilih = isi.map((r) => r.mk_id)
   let hapus = supabase.from('mk_diajukan').delete().eq('pengajuan_id', pengajuanId)
   if (dipilih.length) hapus = hapus.not('mk_id', 'in', `(${dipilih.join(',')})`)
   cek(await hapus)
-  if (!isi.length) return []
-  return cek(await supabase.from('mk_diajukan').upsert(isi, { onConflict: 'pengajuan_id,mk_id' }).select())
+  const baru = isi.filter((r) => !tutup.has(r.mk_id))
+  if (!baru.length) return []
+  return cek(await supabase.from('mk_diajukan').upsert(baru, { onConflict: 'pengajuan_id,mk_id' }).select())
 }
 
 // ── Evaluasi diri (F03) ─────────────────────────────────────────

@@ -13,7 +13,7 @@ const TAUTAN_SYARAT = {
   jenis_rpl: '/pemohon/pengajuan/data', prodi: '/pemohon/pengajuan/data', prodi_transfer: '/pemohon/pengajuan/data',
   prodi_perolehan: '/pemohon/pengajuan/data', pddikti_pt_asal: '/pemohon/pengajuan/data', pddikti_satu_tahun: '/pemohon/pengajuan/data',
   data_pt_asal: '/pemohon/pengajuan/data', berkas_transkrip: '/pemohon/pengajuan/data', berkas_ijazah_slta: '/pemohon/pengajuan/data',
-  f02_biodata: '/pemohon/pengajuan/data', mk_kosong: '/pemohon/pengajuan/data',
+  f02_biodata: '/pemohon/pengajuan/data', mk_kosong: '/pemohon/pengajuan/data', mk_ditutup: '/pemohon/pengajuan/data',
   f07: '/pemohon/pengajuan/riwayat-hidup', f07_atasan: '/pemohon/pengajuan/riwayat-hidup', f03: '/pemohon/pengajuan/evaluasi-diri',
 }
 
