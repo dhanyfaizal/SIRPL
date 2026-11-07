@@ -1,0 +1,29 @@
+/* Repositori pelaporan RPL */
+.rp-jelajah { overflow: hidden; }
+.rp-remah { display: flex; flex-wrap: wrap; align-items: center; gap: 2px; padding: 14px 20px; border-bottom: 1px solid var(--gray-100); font-size: 13px; }
+.rp-remah button { border: 0; background: none; padding: 4px 6px; border-radius: 6px; color: var(--indigo-700, #4338ca); font: inherit; font-weight: 600; cursor: pointer; }
+.rp-remah button:hover { background: var(--indigo-50, #eef2ff); }
+.rp-remah button.is-on { color: var(--gray-900); cursor: default; background: none; }
+.rp-remah-item { display: inline-flex; align-items: center; gap: 2px; color: var(--gray-400); }
+.rp-daftar { list-style: none; margin: 0; padding: 0; }
+.rp-baris { width: 100%; display: flex; align-items: center; gap: 12px; padding: 12px 20px; border: 0; border-top: 1px solid var(--gray-100); background: none; text-align: left; font: inherit; color: inherit; cursor: pointer; }
+.rp-daftar li:first-child .rp-baris { border-top: 0; }
+.rp-baris:hover { background: var(--gray-50, #f8fafc); }
+.rp-baris:disabled { opacity: .6; cursor: progress; }
+.rp-nama { font-weight: 600; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; overflow-wrap: anywhere; }
+.rp-nama-berkas { font-weight: 500; overflow-wrap: anywhere; }
+.rp-ikon-folder { color: #d97706; flex-shrink: 0; }
+.rp-ikon-dok { color: var(--indigo-600, #4f46e5); flex-shrink: 0; }
+.rp-ikon-berkas { color: var(--gray-500); flex-shrink: 0; }
+.rp-kop { border: 1px solid var(--gray-200); border-radius: 12px; padding: 14px 16px; background: var(--surface, #fff); margin-bottom: 0; }
+.rp-sandi { display: flex; gap: 14px; align-items: flex-start; padding: 20px; }
+.rp-pratinjau { position: fixed; inset: 0; z-index: 100; overflow-y: auto; background: rgba(15, 23, 42, .55); padding: 24px 16px; }
+.rp-pratinjau .cetak-alat { max-width: 794px; margin: 0 auto 12px; }
+@media (max-width: 600px) {
+  .rp-baris { padding: 12px 14px; flex-wrap: wrap; }
+  .rp-baris .pm-kecil { width: 100%; padding-left: 32px; }
+}
+@media print {
+  body:has(.rp-pratinjau) .dk-mandiri { display: none; }
+  .rp-pratinjau { position: static; background: #fff; padding: 0; overflow: visible; }
+}

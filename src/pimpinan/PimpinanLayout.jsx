@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Outlet, useNavigate } from 'react-router-dom'
 import {
-  ChevronDown, FileBadge, Gavel, PenLine, House, IdCard, LayoutDashboard, LogOut, Moon, RefreshCw, Sun, UserRound,
+  ChevronDown, FileBadge, FolderTree, Gavel, PenLine, House, IdCard, LayoutDashboard, LogOut, Moon, RefreshCw, Sun, UserRound,
 } from 'lucide-react'
 import { AppShell } from '../shell/AppShell'
 import { useAuth } from '../contexts/AuthContext'
@@ -28,6 +28,7 @@ function useNav() {
     if (bolehLihat(role, 'sk')) nav.push({ id: 'sk', label: 'SK Rekognisi', icon: FileBadge, to: '/pimpinan/sk', badge: hit(['menunggu_sk']) })
     if (bolehLihat(role, 'nim')) nav.push({ id: 'nim', label: 'Penetapan NIM', icon: IdCard, to: '/pimpinan/nim', badge: hit(['sk_terbit']) })
     nav.push({ id: 'ttd', label: 'Tanda tangan dokumen', icon: PenLine, to: '/tanda-tangan' })
+    nav.push({ id: 'repo', label: 'Repositori pelaporan', icon: FolderTree, to: '/repositori' })
     nav.push({ section: 'Akun' }, { id: 'profil', label: 'Profil', icon: UserRound, to: '/pimpinan/profil' })
     if (role !== 'komite') nav.push({ id: 'dasbor', label: role === 'ketua_tim' || role === 'sekretaris' ? 'Modul Tim Pengelola' : 'Dasbor utama', icon: LayoutDashboard, to: role === 'ketua_tim' || role === 'sekretaris' ? '/tim' : '/dashboard' })
     return nav

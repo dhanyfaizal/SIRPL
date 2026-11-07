@@ -38,6 +38,7 @@ function useNav() {
       { id: 'hasil', label: 'Hasil rekognisi', icon: BadgeCheck, to: '/pemohon/hasil',
         badge: pengajuan?.status === 'hasil_disampaikan' ? '1' : null },
       { id: 'dokumen', label: 'Dokumen', icon: FileText, to: '/pemohon/dokumen' },
+      { id: 'petunjuk', label: 'Petunjuk RPL (F01)', icon: Files, to: '/petunjuk' },
       { section: 'Akun' },
       { id: 'profil', label: 'Profil', icon: UserRound, to: '/pemohon/profil' },
     ]

@@ -90,6 +90,7 @@ export default function Sidebar() {
             <div className="sidebar-section-label">Validasi</div>
             <NavItem label="Berkas Masuk" icon={ClipboardCheck} to="/dashboard" />
             <NavItem label="Penetapan NIM RPL" icon={Gavel} to="/pimpinan/nim" />
+            <NavItem label="Repositori pelaporan" icon={FolderOpen} to="/repositori" />
             <NavItem label="Ulasan & Kepuasan" icon={Star} to="/feedback" />
           </>
         )}
@@ -101,6 +102,7 @@ export default function Sidebar() {
             <NavItem label="Evaluasi Transkrip" icon={Award} to="/dashboard" />
             <NavItem label="Status RPL Mata Kuliah" icon={ListChecks} to="/kurikulum-rpl" />
             <NavItem label="Penilaian RPL (Juknis)" icon={Gavel} to="/asesor" />
+            <NavItem label="Repositori pelaporan" icon={FolderOpen} to="/repositori" />
           </>
         )}
 
@@ -121,6 +123,7 @@ export default function Sidebar() {
             <NavItem label="Modul Asesor" icon={Gavel} to="/asesor" />
             <NavItem label="Komite, SK, NIM" icon={Gavel} to="/pimpinan" />
             <NavItem label="Pengaturan dokumen" icon={ClipboardCheck} to="/pengaturan-dokumen" />
+            <NavItem label="Repositori pelaporan" icon={FolderOpen} to="/repositori" />
             <div className="sidebar-section-label">Studi & Keuangan</div>
             <NavItem label="Rencana Studi & Biaya" icon={BookOpen} to="/dashboard" />
             <div className="sidebar-section-label">Pengaturan Sistem</div>
@@ -138,6 +141,7 @@ export default function Sidebar() {
             <NavItem label="Ringkasan Eksekutif" icon={ClipboardCheck} to="/dashboard" />
             <NavItem label="Komite dan SK RPL" icon={Gavel} to="/pimpinan" />
             <NavItem label="Tanda tangan dokumen" icon={ClipboardCheck} to="/tanda-tangan" />
+            <NavItem label="Repositori pelaporan" icon={FolderOpen} to="/repositori" />
             <NavItem label="Ulasan & Kepuasan" icon={Star} to="/feedback" />
           </>
         )}

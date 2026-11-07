@@ -80,7 +80,21 @@ function TabelMk({ mk, nilai, mekanisme = true }) {
   )
 }
 
+const Biodata = ({ dok, i }) => (
+  <>
+    <Kop dok={dok} judul={i.jenis === 'akademisi' ? 'BIODATA ASESOR AKADEMISI' : 'BIODATA ASESOR PRAKTISI/PROFESI'} />
+    <table className="cetak-tabel dk-gap">
+      <thead><tr><th style={{ width: 32 }}>No</th><th style={{ width: 260 }}>Identitas</th><th>Keterangan</th></tr></thead>
+      <tbody>{(i.baris || []).map(([k, v], x) => <tr key={k}><td>{x + 1}</td><td>{k}</td><td>{v || '-'}</td></tr>)}</tbody>
+    </table>
+    <p className="cetak-pernyataan">Biodata ini saya buat dengan sebenarnya untuk keperluan asesmen Rekognisi Pembelajaran Lampau di STIKOM Yos Sudarso.</p>
+    <BlokTtd dok={dok} />
+  </>
+)
+
 const T = {
+  F04: Biodata,
+  F05: Biodata,
   F02: ({ dok, i }) => (
     <>
       <Kop dok={dok} judul="FORMULIR APLIKASI RPL TIPE A" sub={`Nomor pendaftaran ${i.nomor_pendaftaran}`} />

@@ -28,6 +28,10 @@ import VerifikasiDokumen from '../dokumen/pages/Verifikasi'
 import TandaTanganDokumen from '../dokumen/pages/TandaTangan'
 import PengaturanDokumen from '../dokumen/pages/Pengaturan'
 import PemohonDokumen from '../pemohon/pages/Dokumen'
+import PetunjukF01 from '../dokumen/pages/Petunjuk'
+import Repositori from '../repositori/Repositori'
+import BerbagiRepositori from '../repositori/Berbagi'
+import AsesorBiodata from '../asesor/pages/Biodata'
 import PimpinanBeranda from '../pimpinan/pages/Beranda'
 import PimpinanKomite from '../pimpinan/pages/Komite'
 import PimpinanSk from '../pimpinan/pages/Sk'
@@ -148,6 +152,9 @@ export default function AppRouter() {
         <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="/verifikasi" element={<VerifikasiDokumen />} />
         <Route path="/verifikasi/:kode" element={<VerifikasiDokumen />} />
+        <Route path="/berbagi/:token" element={<BerbagiRepositori />} />
+        <Route path="/petunjuk" element={<ProtectedRoute><PetunjukF01 /></ProtectedRoute>} />
+        <Route path="/repositori" element={<ProtectedRoute allowedRoles={['admin', 'eksekutif', 'baak', 'ketua_tim', 'sekretaris', 'komite', 'lpmp', 'asessor', 'kaprodi_si', 'kaprodi_ti', 'kaprodi_dkv', 'kaprodi_ka']}><Repositori /></ProtectedRoute>} />
 
         {/* Dokumen RPL (cetak A4 dan tanda tangan elektronik) */}
         <Route path="/dokumen/:id" element={<ProtectedRoute><LihatDokumen /></ProtectedRoute>} />
@@ -206,6 +213,7 @@ export default function AppRouter() {
           <Route path="tugas/:kelompok" element={<AsesorDaftar />} />
           <Route path="tugas/:kelompok/:id" element={<AsesorPenilaian />} />
           <Route path="jadwal" element={<AsesorJadwal />} />
+          <Route path="biodata" element={<AsesorBiodata />} />
           <Route path="profil" element={<ProfilePage />} />
         </Route>
 

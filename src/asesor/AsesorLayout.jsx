@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Outlet, useNavigate } from 'react-router-dom'
 import {
-  CalendarDays, ChevronDown, ClipboardCheck, FolderOpen, History, PenLine, House, LayoutDashboard, ListChecks, LogOut, Moon, RefreshCw, Sun, UserRound,
+  CalendarDays, ChevronDown, ClipboardCheck, FolderOpen, FolderTree, History, IdCard, PenLine, House, LayoutDashboard, ListChecks, LogOut, Moon, RefreshCw, Sun, UserRound,
 } from 'lucide-react'
 import { AppShell } from '../shell/AppShell'
 import { useAuth } from '../contexts/AuthContext'
@@ -33,7 +33,9 @@ function useNav() {
       ] },
       { id: 'jadwal', label: 'Jadwal saya', icon: CalendarDays, to: '/asesor/jadwal', badge: jadwalDekat },
       { id: 'ttd', label: 'Tanda tangan dokumen', icon: PenLine, to: '/tanda-tangan' },
+      { id: 'repo', label: 'Repositori pelaporan', icon: FolderTree, to: '/repositori' },
       { section: 'Akun' },
+      { id: 'biodata', label: 'Biodata asesor (F04/F05)', icon: IdCard, to: '/asesor/biodata' },
       { id: 'profil', label: 'Profil', icon: UserRound, to: '/asesor/profil' },
       { id: 'lama', label: 'Dasbor alur lama', icon: History, to: '/dashboard?lama=1' },
     ]
