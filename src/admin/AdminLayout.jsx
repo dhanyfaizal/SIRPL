@@ -26,6 +26,7 @@ function useNav() {
       { id: 'pengajuan', label: 'Semua pengajuan', icon: FolderOpen, to: '/admin/pengajuan' },
       { id: 'pelaporan', label: 'Pelaporan', icon: Send, to: '/admin/pelaporan', badge: belumLapor },
       { id: 'repo', label: 'Repositori pelaporan', icon: FolderTree, to: '/repositori' },
+      { id: 'laporan', label: 'Laporan dan analitik', icon: History, to: '/pimpinan/laporan' },
       { section: 'Pengaturan' },
       { id: 'pengguna', label: 'Pengguna dan peran', icon: Users, to: '/admin/pengguna', badge: belumVerif },
       { id: 'periode', label: 'Periode dan tarif', icon: CalendarRange, to: '/admin/periode' },

@@ -27,11 +27,12 @@ export default function DashboardRouter() {
   if (role === 'komite') return <Navigate to="/pimpinan" replace />
   if (role === 'pmb') return lama ? <PmbDashboard /> : <Navigate to="/keuangan" replace />
   if (role === 'baak') return lama ? <BaakDashboard /> : <Navigate to="/tim" replace />
-  if (role?.startsWith('kaprodi_')) return <KaprodiDashboard />
+  if (role?.startsWith('kaprodi_')) return lama ? <KaprodiDashboard /> : <Navigate to="/asesor" replace />
   // Asesor memakai modul penilaian baru; dasbor lama untuk pengajuan alur versi 1.
   if (role === 'asessor') return lama ? <AsessorDashboard /> : <Navigate to="/asesor" replace />
   if (role === 'admin') return lama ? <AdminDashboard /> : <Navigate to="/admin" replace />
-  if (role === 'eksekutif') return <ExecutiveDashboard />
+  if (role === 'eksekutif') return lama ? <ExecutiveDashboard /> : <Navigate to="/pimpinan" replace />
+  if (role === 'lpmp') return <Navigate to="/pimpinan/laporan" replace />
 
   return (
     <div className="card">

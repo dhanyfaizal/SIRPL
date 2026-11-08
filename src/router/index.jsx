@@ -38,6 +38,7 @@ import KuTagihan from '../keuangan/pages/Tagihan'
 import KuTagihanDetail from '../keuangan/pages/TagihanDetail'
 import KuDiskon from '../keuangan/pages/Diskon'
 import KuSkema from '../keuangan/pages/Skema'
+import Laporan from '../laporan/Laporan'
 import AdminLayout from '../admin/AdminLayout'
 import { AdminDataProvider } from '../admin/AdminData'
 import AdminBeranda from '../admin/pages/Beranda'
@@ -223,12 +224,13 @@ export default function AppRouter() {
           <Route path="profil" element={<ProfilePage />} />
         </Route>
 
-        <Route path="/pimpinan" element={<ProtectedRoute allowedRoles={['admin', 'komite', 'eksekutif', 'baak', 'ketua_tim', 'sekretaris']}><PimpinanLayout /></ProtectedRoute>}>
+        <Route path="/pimpinan" element={<ProtectedRoute allowedRoles={['admin', 'komite', 'eksekutif', 'lpmp', 'baak', 'ketua_tim', 'sekretaris']}><PimpinanLayout /></ProtectedRoute>}>
           <Route index element={<PimpinanBeranda />} />
           <Route path="komite" element={<PimpinanKomite />} />
           <Route path="komite/:id" element={<PimpinanKomite />} />
           <Route path="sk" element={<PimpinanSk />} />
           <Route path="nim" element={<PimpinanNim />} />
+          <Route path="laporan" element={<Laporan />} />
           <Route path="profil" element={<ProfilePage />} />
         </Route>
 
@@ -240,6 +242,7 @@ export default function AppRouter() {
           <Route path="tugas/:kelompok/:id" element={<AsesorPenilaian />} />
           <Route path="jadwal" element={<AsesorJadwal />} />
           <Route path="biodata" element={<AsesorBiodata />} />
+          <Route path="rekap" element={<ProtectedRoute allowedRoles={['admin', 'kaprodi_si', 'kaprodi_ti', 'kaprodi_dkv', 'kaprodi_ka']}><Laporan /></ProtectedRoute>} />
           <Route path="profil" element={<ProfilePage />} />
         </Route>
 

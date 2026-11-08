@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Outlet, useNavigate } from 'react-router-dom'
 import {
-  CalendarDays, ChevronDown, ClipboardCheck, FolderOpen, FolderTree, History, IdCard, PenLine, House, LayoutDashboard, ListChecks, LogOut, Moon, RefreshCw, Sun, UserRound,
+  ChartColumn, BookOpen, CalendarDays, ChevronDown, ClipboardCheck, FolderOpen, FolderTree, History, IdCard, PenLine, House, LayoutDashboard, ListChecks, LogOut, Moon, RefreshCw, Sun, UserRound,
 } from 'lucide-react'
 import { AppShell } from '../shell/AppShell'
 import { useAuth } from '../contexts/AuthContext'
@@ -32,6 +32,12 @@ function useNav() {
         { to: '/asesor/tugas/semua', label: 'Semua', icon: FolderOpen },
       ] },
       { id: 'jadwal', label: 'Jadwal saya', icon: CalendarDays, to: '/asesor/jadwal', badge: jadwalDekat },
+      ...(role?.startsWith('kaprodi_') || role === 'admin' ? [
+        { section: 'Program studi' },
+        { id: 'rekap', label: 'Rekap RPL prodi', icon: ChartColumn, to: '/asesor/rekap' },
+        { id: 'mk-rpl', label: 'Mata kuliah RPL', icon: BookOpen, to: '/kurikulum-rpl' },
+      ] : []),
+      { section: 'Dokumen' },
       { id: 'ttd', label: 'Tanda tangan dokumen', icon: PenLine, to: '/tanda-tangan' },
       { id: 'repo', label: 'Repositori pelaporan', icon: FolderTree, to: '/repositori' },
       { section: 'Akun' },
@@ -39,7 +45,7 @@ function useNav() {
       { id: 'profil', label: 'Profil', icon: UserRound, to: '/asesor/profil' },
       { id: 'lama', label: 'Dasbor alur lama', icon: History, to: '/dashboard?lama=1' },
     ]
-    if (role === 'admin') nav.push({ id: 'admin', label: 'Dasbor admin', icon: LayoutDashboard, to: '/dashboard' })
+    if (role === 'admin') nav.push({ id: 'admin', label: 'Konsol Admin', icon: LayoutDashboard, to: '/admin' })
     return nav
   }, [data, role, userId])
 }
