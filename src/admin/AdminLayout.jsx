@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Outlet, useNavigate } from 'react-router-dom'
 import {
   BookOpen, CalendarRange, ChevronDown, FileCog, FolderOpen, FolderTree, GraduationCap, History, House, LayoutDashboard, ListChecks,
-  LogOut, MessageSquare, Moon, PenLine, RefreshCw, Send, Sun, UserRound, Users,
+  LogOut, MessageCircle, MessageSquare, Moon, PenLine, RefreshCw, Send, Sun, UserRound, Users,
 } from 'lucide-react'
 import { AppShell } from '../shell/AppShell'
 import { useAuth } from '../contexts/AuthContext'
@@ -36,6 +36,7 @@ function useNav() {
         { to: '/kurikulum-rpl', label: 'Mata kuliah RPL', icon: ListChecks },
       ] },
       { id: 'atur-dok', label: 'Pengaturan dokumen', icon: FileCog, to: '/pengaturan-dokumen' },
+      { id: 'notif', label: 'Notifikasi WhatsApp', icon: MessageCircle, to: '/admin/notifikasi' },
       { id: 'log', label: 'Log aktivitas', icon: History, to: '/admin/log' },
       { section: 'Modul lain' },
       { id: 'tim', label: 'Modul Tim Pengelola', icon: LayoutDashboard, to: '/tim' },

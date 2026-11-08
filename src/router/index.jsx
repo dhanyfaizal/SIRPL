@@ -48,6 +48,7 @@ import AdminPengguna from '../admin/pages/Pengguna'
 import AdminPeriode from '../admin/pages/Periode'
 import AdminProdi from '../admin/pages/Prodi'
 import AdminLog from '../admin/pages/Log'
+import AdminNotifikasi from '../admin/pages/Notifikasi'
 import PimpinanBeranda from '../pimpinan/pages/Beranda'
 import PimpinanKomite from '../pimpinan/pages/Komite'
 import PimpinanSk from '../pimpinan/pages/Sk'
@@ -221,6 +222,7 @@ export default function AppRouter() {
           <Route path="periode" element={<AdminPeriode />} />
           <Route path="prodi" element={<AdminProdi />} />
           <Route path="log" element={<AdminLog />} />
+          <Route path="notifikasi" element={<AdminNotifikasi />} />
           <Route path="profil" element={<ProfilePage />} />
         </Route>
 
