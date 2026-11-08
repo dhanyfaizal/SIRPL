@@ -150,8 +150,10 @@ export default function AdminDashboard() {
     setAiMappingLoading(true)
     const toastId = toast.loading('AI sedang menganalisis sisa mata kuliah...')
     try {
-      const apiKey = import.meta.env.VITE_SUMOPOD_API_KEY
-      const apiUrl = import.meta.env.VITE_SUMOPOD_API_URL || 'https://ai.sumopod.com/v1'
+      // Kunci AI tidak lagi dibaca di peramban (lihat Edge Function "aisys");
+      // dasbor lama memakai pemetaan aturan lokal.
+      const apiKey = null
+      const apiUrl = ''
 
       let mappings = []
 

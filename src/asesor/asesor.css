@@ -69,3 +69,6 @@
 }
 .as-tabel-f10 .pm-segmen { flex-wrap: nowrap; }
 .as-tabel-f10 .pm-segmen button { white-space: nowrap; padding-left: 10px; padding-right: 10px; }
+
+/* AISYS: menunggu hasil baca transkrip */
+.as-aisys-tunggu { display: flex; flex-direction: column; gap: 10px; padding: 24px 4px; }

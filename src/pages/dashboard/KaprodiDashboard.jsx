@@ -698,11 +698,12 @@ export default function KaprodiDashboard() {
 
   // API Call to Sumopod AI
   const callSumopodAI = async (prodiName, curriculumCourses, payload, selectedModel) => {
-    const apiKey = import.meta.env.VITE_SUMOPOD_API_KEY
-    const apiUrl = import.meta.env.VITE_SUMOPOD_API_URL || 'https://ai.sumopod.com/v1'
-
-    if (!apiKey || apiKey.includes('placeholder')) {
-      throw new Error('API Key tidak terkonfigurasi')
+    // Kunci AI tidak lagi dibaca di peramban. AISYS tersedia di modul Asesor
+    // melalui Edge Function "aisys".
+    const apiKey = null
+    const apiUrl = ''
+    if (!apiKey) {
+      throw new Error('AISYS kini tersedia di modul Asesor (tab Transfer kredit)')
     }
 
     const systemPrompt = 'Anda adalah koordinator akademik SI-RPL STIKOM Yos Sudarso. Bantu memetakan berkas calon mahasiswa (transkrip, sertifikat, pengalaman kerja) ke mata kuliah prodi. Respon HARUS berupa JSON objek.'

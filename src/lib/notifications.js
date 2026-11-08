@@ -1,5 +1,5 @@
 // Helper untuk mengirim notifikasi WhatsApp menggunakan gateway Fonnte
-// Jika VITE_FONNTE_TOKEN tidak terkonfigurasi di env, maka akan menggunakan mock logger.
+// Token tidak lagi dibaca di peramban; pesan hanya dicatat ke konsol.
 
 import { dbProfiles } from './db'
 
@@ -18,7 +18,9 @@ function formatWaNumber(num) {
  * @param {string} message - Isi pesan teks
  */
 async function postToFonnte(to, message) {
-  const token = import.meta.env.VITE_FONNTE_TOKEN
+  // Token Fonnte tidak boleh berada di peramban. Pengiriman WhatsApp dari
+  // dasbor lama dinonaktifkan; notifikasi baru akan dikirim dari server.
+  const token = ''
 
   // Normalisasi target (jika array, gabungkan dengan koma)
   const target = Array.isArray(to) 

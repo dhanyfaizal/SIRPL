@@ -1,11 +1,12 @@
 // Penilaian transfer kredit (Juknis II.D.2.b; dasar F09 Formulir Konversi MK).
-import { useMemo, useState } from 'react'
-import { Save } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { ScanText, Save } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAsesor } from '../../AsesorData'
 import * as api from '../../api'
+import { bacaTranskripAisys } from '../../aisys'
 import { KEPUTUSAN, NILAI_LULUS, SKALA_NILAI, nilaiLulus } from '../../aturan'
-import { BukaBerkas, BarTahap, Bidang, Kartu, Lencana, PilihSegmen, Tombol } from '../../../pemohon/ui'
+import { BukaBerkas, BarTahap, Bidang, Dialog, Kartu, Lencana, PilihSegmen, Tombol } from '../../../pemohon/ui'
 
 const KEP_TRANSFER = [{ v: 'diakui', l: 'Diakui' }, { v: 'tidak_diakui', l: 'Tidak diakui' }]
 const PDDIKTI = [{ v: true, l: 'Sesuai' }, { v: false, l: 'Tidak sesuai' }]
@@ -50,6 +51,57 @@ function KartuPddikti({ p, d, bolehNilai }) {
   )
 }
 
+// Usulan AISYS dari transkrip: asesor memilih baris mana yang dipakai mengisi formulir.
+function DialogAisys({ p, daftar, terisi, onPakai, onTutup }) {
+  const [kabar, setKabar] = useState('Menyiapkan')
+  const [hasil, setHasil] = useState(null)
+  const [galat, setGalat] = useState(null)
+  const [pilih, setPilih] = useState({})
+  const mulai = useRef(false)
+  useEffect(() => {
+    if (mulai.current) return
+    mulai.current = true
+    bacaTranskripAisys(p.id, p.file_transkrip_url, setKabar)
+      .then((h) => { setHasil(h); setPilih(Object.fromEntries((h.usulan || []).filter((u) => u.asal && !terisi.has(u.mk_id)).map((u) => [u.mk_id, true]))) })
+      .catch((e) => setGalat(e.message))
+  }, [p.id, p.file_transkrip_url])
+  const usulan = Object.fromEntries((hasil?.usulan || []).map((u) => [u.mk_id, u]))
+  const jumlah = Object.values(pilih).filter(Boolean).length
+  return (
+    <Dialog buka judul="Usulan AISYS dari transkrip" onTutup={onTutup} lebar={860}
+      kaki={<><Tombol onClick={onTutup}>Tutup</Tombol>{hasil ? <Tombol jenis="primary" disabled={!jumlah} onClick={() => onPakai(daftar.filter((m) => pilih[m.mk_id]).map((m) => ({ mk_id: m.mk_id, asal: usulan[m.mk_id].asal })))}>Isi {jumlah} mata kuliah</Tombol> : null}</>}>
+      {galat ? <p className="pm-merah">{galat}</p> : null}
+      {!hasil && !galat ? (
+        <div className="as-aisys-tunggu" role="status"><div className="sk" style={{ height: 12, width: '60%', borderRadius: 6 }} /><p className="pm-kecil">{kabar}</p></div>
+      ) : null}
+      {hasil ? (
+        <div className="ad-form">
+          <p className="pm-kecil">AISYS membaca {hasil.terbaca.length} mata kuliah pada transkrip. Usulan hanya mengisi kolom mata kuliah asal dan nilai; periksa kembali dengan transkrip asli sebelum menyimpan. Keputusan tetap pada asesor.</p>
+          <div className="table-wrap">
+            <table className="pm-tabel pm-tabel-responsif">
+              <thead><tr><th style={{ width: 44 }}><span className="sr-only">Pakai</span></th><th>Mata kuliah tujuan</th><th>Usulan mata kuliah asal</th><th style={{ width: 70 }}>SKS</th><th style={{ width: 70 }}>Nilai</th></tr></thead>
+              <tbody>
+                {daftar.map((m) => {
+                  const u = usulan[m.mk_id]
+                  return (
+                    <tr key={m.mk_id}>
+                      <td data-label="Pakai"><input type="checkbox" disabled={!u?.asal} checked={!!pilih[m.mk_id]} onChange={(e) => setPilih((s) => ({ ...s, [m.mk_id]: e.target.checked }))} aria-label={`Pakai usulan untuk ${m.mk.nama_mk}`} /></td>
+                      <td data-label="Tujuan"><div className="pm-tebal">{m.mk.nama_mk}</div><div className="pm-kecil">{m.mk.kode_mk} · {m.mk.sks} SKS{terisi.has(m.mk_id) ? ' · sudah terisi, centang untuk menimpa' : ''}</div></td>
+                      <td data-label="Usulan asal">{u?.asal ? <><div>{u.asal.nama}{u.asal.kode ? ` (${u.asal.kode})` : ''}</div>{u.alasan ? <div className="pm-kecil">{u.alasan}</div> : null}</> : <span className="pm-kecil">Tidak ditemukan padanan</span>}</td>
+                      <td data-label="SKS">{u?.asal?.sks ?? '-'}</td>
+                      <td data-label="Nilai">{u?.asal?.nilai ? <Lencana warna={nilaiLulus(u.asal.nilai) ? 'green' : 'red'}>{u.asal.nilai}</Lencana> : '-'}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : null}
+    </Dialog>
+  )
+}
+
 export default function TabTransfer({ p, d, bolehNilai }) {
   const { pasangPenilaian } = useAsesor()
   const daftar = useMemo(() => d.mkDiajukan.filter((m) => m.mekanisme === 'transfer')
@@ -57,6 +109,13 @@ export default function TabTransfer({ p, d, bolehNilai }) {
     .filter((m) => m.mk), [d])
   const [draf, setDraf] = useState(() => Object.fromEntries(daftar.map((m) => [m.mk_id, awalDraf(m.pn)])))
   const [sibuk, setSibuk] = useState(null)
+  const [aisys, setAisys] = useState(false)
+
+  const pakaiAisys = (baris) => {
+    for (const b of baris) ubah(b.mk_id, { nama: b.asal.nama, kode: b.asal.kode || '', sks: b.asal.sks ?? '', nilai: b.asal.nilai || '' })
+    setAisys(false)
+    toast.success(`${baris.length} mata kuliah terisi dari usulan AISYS. Periksa lalu simpan.`)
+  }
 
   const ubah = (id, nilai) => setDraf((s) => {
     const baru = { ...s[id], ...nilai }
@@ -95,7 +154,8 @@ export default function TabTransfer({ p, d, bolehNilai }) {
   return (
     <div className="pm-tumpuk-besar">
       <KartuPddikti p={p} d={d} bolehNilai={bolehNilai} />
-      <Kartu judul="Ekuivalensi mata kuliah" sub={`Bandingkan CP mata kuliah asal (transkrip, silabus/RPS) dengan mata kuliah tujuan. Nilai minimal yang dapat diakui: C. ${sksDiakui} SKS diakui.`} padat>
+      <Kartu judul="Ekuivalensi mata kuliah" sub={`Bandingkan CP mata kuliah asal (transkrip, silabus/RPS) dengan mata kuliah tujuan. Nilai minimal yang dapat diakui: C. ${sksDiakui} SKS diakui.`} padat
+        aksi={bolehNilai && p.file_transkrip_url && daftar.length ? <Tombol ikon={ScanText} onClick={() => setAisys(true)}>Baca transkrip dengan AISYS</Tombol> : null}>
         <ul className="as-mk-daftar">
           {daftar.map((m) => {
             const x = draf[m.mk_id]
@@ -139,6 +199,7 @@ export default function TabTransfer({ p, d, bolehNilai }) {
           })}
         </ul>
       </Kartu>
+      {aisys ? <DialogAisys p={p} daftar={daftar} terisi={new Set(daftar.filter((m) => draf[m.mk_id]?.nama).map((m) => m.mk_id))} onPakai={pakaiAisys} onTutup={() => setAisys(false)} /> : null}
       {bolehNilai ? (
         <BarTahap info={berubah.length ? `${berubah.length} perubahan belum disimpan` : `${daftar.filter((m) => m.pn && m.pn.keputusan !== 'belum_dinilai').length} dari ${daftar.length} mata kuliah transfer sudah dinilai`}>
           <Tombol jenis="primary" ikon={Save} sibuk={sibuk === 'semua'} disabled={!berubah.length} onClick={() => simpan(berubah)}>Simpan semua</Tombol>
