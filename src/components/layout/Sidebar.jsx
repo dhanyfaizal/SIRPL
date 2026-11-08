@@ -118,18 +118,19 @@ export default function Sidebar() {
         {/* Menu Admin */}
         {role === 'admin' && (
           <>
+            <NavItem label="Konsol Admin" icon={Shield} to="/admin" />
             <div className="sidebar-section-label">Tim Pengelola RPL</div>
             <NavItem label="Sekretariat RPL" icon={FolderOpen} to="/tim" />
             <NavItem label="Modul Asesor" icon={Gavel} to="/asesor" />
             <NavItem label="Komite, SK, NIM" icon={Gavel} to="/pimpinan" />
             <NavItem label="Pengaturan dokumen" icon={ClipboardCheck} to="/pengaturan-dokumen" />
             <NavItem label="Repositori pelaporan" icon={FolderOpen} to="/repositori" />
-            <div className="sidebar-section-label">Studi & Keuangan</div>
-            <NavItem label="Rencana Studi & Biaya" icon={BookOpen} to="/dashboard" />
+            <div className="sidebar-section-label">Alur lama</div>
+            <NavItem label="Pengajuan alur lama" icon={BookOpen} to="/dashboard?lama=1" />
             <div className="sidebar-section-label">Pengaturan Sistem</div>
             <NavItem label="Manajemen Kurikulum" icon={BookOpen} to="/curriculum" />
             <NavItem label="Status RPL Mata Kuliah" icon={ListChecks} to="/kurikulum-rpl" />
-            <NavItem label="Manajemen Pengguna" icon={Shield} to="/users" />
+            <NavItem label="Manajemen Pengguna" icon={Shield} to="/admin/pengguna" />
             <NavItem label="Ulasan & Kepuasan" icon={Star} to="/feedback" />
           </>
         )}

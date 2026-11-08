@@ -435,8 +435,6 @@ function isPlaceholderCourse(c) {
           if (defaultElective.nama_mk || defaultElective.nama) {
             activeTargetedNames.push(defaultElective.nama_mk || defaultElective.nama)
           }
-          setTargetedMkIds(activeTargetedIds)
-          setTargetedMkNames(activeTargetedNames)
         }
       }
 

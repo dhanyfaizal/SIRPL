@@ -1,0 +1,41 @@
+/* Konsol Admin */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+.ad-angka { font-weight: 700; font-variant-numeric: tabular-nums; min-width: 32px; text-align: right; }
+.ad-kanan { text-align: right; font-variant-numeric: tabular-nums; }
+.ad-aksi-kanan { justify-content: flex-end; flex-wrap: nowrap; }
+.ad-catatan { margin-top: 2px; color: var(--gray-600); }
+.ad-peringatan { color: var(--amber-700, #b45309); margin: 12px 0 0; }
+
+.ad-alur { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.ad-alur-btn { width: 100%; display: flex; align-items: center; gap: 10px; padding: 12px 14px; border: 1px solid var(--gray-200); border-radius: 10px; background: var(--surface, #fff); color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.ad-alur-btn:hover { border-color: var(--indigo-300, #a5b4fc); }
+.ad-alur-btn.is-on { border-color: var(--indigo-500, #6366f1); box-shadow: 0 0 0 1px var(--indigo-500, #6366f1) inset; }
+.ad-alur-btn .pm-grow { display: flex; flex-direction: column; min-width: 0; }
+.ad-alur-no { width: 26px; height: 26px; flex-shrink: 0; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 700; background: var(--gray-100); color: var(--gray-700); }
+.ad-alur-btn.is-on .ad-alur-no { background: var(--indigo-600, #4f46e5); color: #fff; }
+.ad-alur-label { font-weight: 600; font-size: 13px; }
+
+.ad-terpilih { background: var(--indigo-50, #eef2ff); }
+.ad-baris-btn { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; border: 0; background: none; padding: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; min-width: 0; }
+.ad-tarif .input { min-width: 0; }
+.ad-cek { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; }
+.ad-kaki-simpan { display: flex; align-items: center; justify-content: flex-end; gap: 12px; padding: 12px 20px; border-top: 1px solid var(--gray-100); }
+
+.ad-kisi { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.ad-dl { display: grid; grid-template-columns: auto 1fr; gap: 8px 16px; margin: 14px 0 0; font-size: 13px; }
+.ad-dl dt { color: var(--gray-500); }
+.ad-dl dd { margin: 0; font-weight: 500; }
+.ad-sakelar-daftar { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.ad-sakelar { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 1px solid var(--gray-200); border-radius: 10px; cursor: pointer; }
+.ad-sakelar > span { display: flex; flex-direction: column; gap: 2px; }
+.ad-sakelar input { margin-top: 3px; }
+
+[data-theme='dark'] .ad-terpilih { background: rgba(99, 102, 241, .12); }
+[data-theme='dark'] .ad-alur-no { background: rgba(255, 255, 255, .08); color: var(--gray-300); }
+
+@media (max-width: 1000px) { .ad-alur { grid-template-columns: repeat(2, minmax(0, 1fr)); } .ad-kisi { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 600px) {
+  .ad-alur, .ad-sakelar-daftar { grid-template-columns: minmax(0, 1fr); }
+  .ad-aksi-kanan { justify-content: flex-start; }
+  .ad-baris-btn .pm-kecil { white-space: normal; }
+}

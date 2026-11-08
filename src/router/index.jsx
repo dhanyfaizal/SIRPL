@@ -10,7 +10,6 @@ import AuthCallback from '../pages/auth/AuthCallback'
 
 // Dashboard Router
 import DashboardRouter from '../pages/dashboard/DashboardRouter'
-import AdminUsersPage from '../pages/dashboard/AdminUsersPage'
 import AdminCurriculumPage from '../pages/dashboard/AdminCurriculumPage'
 import PengaturanMkRpl from '../kurikulum/PengaturanMkRpl'
 import TimLayout from '../tim/TimLayout'
@@ -32,6 +31,14 @@ import PetunjukF01 from '../dokumen/pages/Petunjuk'
 import Repositori from '../repositori/Repositori'
 import BerbagiRepositori from '../repositori/Berbagi'
 import AsesorBiodata from '../asesor/pages/Biodata'
+import AdminLayout from '../admin/AdminLayout'
+import AdminBeranda from '../admin/pages/Beranda'
+import AdminPengajuan from '../admin/pages/Pengajuan'
+import AdminPelaporan from '../admin/pages/Pelaporan'
+import AdminPengguna from '../admin/pages/Pengguna'
+import AdminPeriode from '../admin/pages/Periode'
+import AdminProdi from '../admin/pages/Prodi'
+import AdminLog from '../admin/pages/Log'
 import PimpinanBeranda from '../pimpinan/pages/Beranda'
 import PimpinanKomite from '../pimpinan/pages/Komite'
 import PimpinanSk from '../pimpinan/pages/Sk'
@@ -59,6 +66,24 @@ import PemohonJadwal from '../pemohon/pages/Jadwal'
 import PemohonPembayaran from '../pemohon/pages/Pembayaran'
 import PemohonCetakF07 from '../pemohon/pages/CetakF07'
 
+function AkunMenunggu({ profile }) {
+  const { signOut } = useAuth()
+  return (
+    <div className="akun-tunggu">
+      <div className="card akun-tunggu-kartu">
+        <img src="/logo-sys.png" alt="" width="48" height="48" />
+        <h1>Akun menunggu verifikasi</h1>
+        <p>Anda masuk sebagai <b>{profile.email}</b>. Akun baru perlu diverifikasi oleh Admin SIRPL sebelum dapat dipakai.</p>
+        <p className="akun-tunggu-kecil">Hubungi Admin SIRPL STIKOM Yos Sudarso, lalu periksa kembali.</p>
+        <div className="akun-tunggu-aksi">
+          <button type="button" className="btn btn-secondary" onClick={() => signOut()}>Keluar</button>
+          <button type="button" className="btn btn-primary" onClick={() => window.location.reload()}>Periksa status</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // Protected Route Wrapper
 function ProtectedRoute({ children, allowedRoles }) {
   const { user, role, profile, loading } = useAuth()
@@ -75,35 +100,7 @@ function ProtectedRoute({ children, allowedRoles }) {
   if (!user) return <Navigate to="/login" replace />
 
   // Cek verifikasi pengguna oleh Admin
-  if (profile && profile.is_verified === false) {
-    return (
-      <div style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh',
-        backgroundColor: '#f1f5f9', padding: '0 16px',
-        fontFamily: "'Inter', system-ui, -apple-system, sans-serif"
-      }}>
-        <div className="card" style={{ width: '100%', maxWidth: 440, padding: 32, textAlign: 'center', borderTop: '4px solid var(--amber-500)' }}>
-          <div style={{ fontSize: 48, marginBottom: 16 }}>⏳</div>
-          <h2 style={{ fontSize: 18, fontWeight: 700, color: '#1e293b', marginBottom: 8 }}>Akun Menunggu Verifikasi</h2>
-          <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.5, marginBottom: 24 }}>
-            Akun Anda (<strong>{profile.email}</strong>) berhasil masuk via SSO, namun memerlukan verifikasi dari Admin sebelum dapat mengakses sistem SI-RPL.
-          </p>
-          <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <p style={{ fontSize: 12, color: '#94a3b8', margin: 0 }}>
-              Silakan hubungi Administrator Akademik untuk menyetujui akun Anda.
-            </p>
-            <button 
-              onClick={() => window.location.reload()} 
-              className="btn btn-primary"
-              style={{ width: '100%', justifyContent: 'center' }}
-            >
-              Periksa Status
-            </button>
-          </div>
-        </div>
-      </div>
-    )
-  }
+  if (profile && profile.is_verified === false) return <AkunMenunggu profile={profile} />
 
   if (allowedRoles && !allowedRoles.includes(role)) {
     return <Navigate to="/dashboard" replace />
@@ -169,7 +166,7 @@ export default function AppRouter() {
           <Route path="/pengajuan/baru" element={<Navigate to="/dashboard" replace />} />
           
           {/* Manajemen Pengguna (Admin) */}
-          <Route path="/users" element={<ProtectedRoute allowedRoles={['admin']}><AdminUsersPage /></ProtectedRoute>} />
+          <Route path="/users" element={<Navigate to="/admin/pengguna" replace />} />
           <Route path="/curriculum" element={<ProtectedRoute allowedRoles={['admin']}><AdminCurriculumPage /></ProtectedRoute>} />
           <Route path="/kurikulum-rpl" element={<ProtectedRoute allowedRoles={['admin', 'kaprodi_ti', 'kaprodi_si', 'kaprodi_dkv', 'kaprodi_ka']}><PengaturanMkRpl /></ProtectedRoute>} />
           
@@ -197,6 +194,17 @@ export default function AppRouter() {
         <Route path="/pemohon/cetak/f07" element={<ProtectedRoute allowedRoles={['calon_rpl']}><PemohonCetakF07 /></ProtectedRoute>} />
 
         {/* Modul Komite, Pimpinan, dan BAAK (tahap akhir) */}
+        <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin']}><AdminLayout /></ProtectedRoute>}>
+          <Route index element={<AdminBeranda />} />
+          <Route path="pengajuan" element={<AdminPengajuan />} />
+          <Route path="pelaporan" element={<AdminPelaporan />} />
+          <Route path="pengguna" element={<AdminPengguna />} />
+          <Route path="periode" element={<AdminPeriode />} />
+          <Route path="prodi" element={<AdminProdi />} />
+          <Route path="log" element={<AdminLog />} />
+          <Route path="profil" element={<ProfilePage />} />
+        </Route>
+
         <Route path="/pimpinan" element={<ProtectedRoute allowedRoles={['admin', 'komite', 'eksekutif', 'baak', 'ketua_tim', 'sekretaris']}><PimpinanLayout /></ProtectedRoute>}>
           <Route index element={<PimpinanBeranda />} />
           <Route path="komite" element={<PimpinanKomite />} />

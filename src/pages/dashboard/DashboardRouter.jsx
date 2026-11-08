@@ -30,14 +30,13 @@ export default function DashboardRouter() {
   if (role?.startsWith('kaprodi_')) return <KaprodiDashboard />
   // Asesor memakai modul penilaian baru; dasbor lama untuk pengajuan alur versi 1.
   if (role === 'asessor') return lama ? <AsessorDashboard /> : <Navigate to="/asesor" replace />
-  if (role === 'admin') return <AdminDashboard />
+  if (role === 'admin') return lama ? <AdminDashboard /> : <Navigate to="/admin" replace />
   if (role === 'eksekutif') return <ExecutiveDashboard />
 
   return (
     <div className="card">
       <div className="card-body" style={{ textAlign: 'center', padding: 40 }}>
-        <div style={{ fontSize: 48, marginBottom: 16 }}>🔒</div>
-        <h3>Peran Tidak Dikenal</h3>
+        <h3>Peran tidak dikenal</h3>
         <p style={{ color: 'var(--gray-500)', fontSize: 13, marginTop: 8 }}>
           Akun Anda tidak memiliki peran yang valid untuk mengakses sistem SI-RPL.
         </p>
