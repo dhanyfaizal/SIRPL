@@ -471,7 +471,7 @@ export default function Persyaratan() {
   const selesaiSemua = bagian.every((x) => x.selesai)
   return (
     <Halaman judul="Data dan persyaratan"
-      sub={bisaDiubah ? `Tahap 1. Isi bagian secara berurutan; bagian berikutnya terbuka setelah bagian ini disimpan.` : 'Tahap 1. Data yang dipakai Sekretariat untuk memeriksa persyaratan sesuai Juknis RPL Tipe A.'}
+      sub={bisaDiubah ? `Tahap 1. Isi bagian secara berurutan; bagian berikutnya terbuka setelah bagian ini disimpan.` : 'Tahap 1. Data yang dipakai BAAK untuk memeriksa persyaratan sesuai Juknis RPL Tipe A.'}
       aksi={bisaDiubah ? (
         <div className="pm-prog-wrap">
           <div className="pm-prog" aria-label="Kemajuan tahap 1">{bagian.map((x) => <span key={x.id} className={x.selesai ? 'done' : x.id === aktif ? 'now' : ''} />)}</div>

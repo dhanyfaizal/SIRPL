@@ -110,9 +110,9 @@ export function Dialog({ buka, judul, onTutup, children, kaki, lebar = 480 }) {
   )
 }
 
-export function Tombol({ jenis = 'secondary', sibuk, children, ikon: Ikon, ...rest }) {
+export function Tombol({ jenis = 'secondary', sibuk, children, ikon: Ikon, disabled, ...rest }) {
   return (
-    <button type="button" className={`btn btn-${jenis}`} disabled={sibuk || rest.disabled} {...rest}>
+    <button type="button" className={`btn btn-${jenis}`} {...rest} disabled={sibuk || disabled}>
       {sibuk ? <LoaderCircle size={14} className="pm-putar" aria-hidden="true" /> : Ikon ? <Ikon size={14} aria-hidden="true" /> : null}
       {children}
     </button>
@@ -297,9 +297,9 @@ export function BarTahap({ info, children }) {
   )
 }
 
-export function TombolLanjut({ sibuk, children = 'Simpan dan lanjutkan', ...rest }) {
+export function TombolLanjut({ sibuk, children = 'Simpan dan lanjutkan', disabled, ...rest }) {
   return (
-    <button type="button" className="btn btn-primary" disabled={sibuk || rest.disabled} {...rest}>
+    <button type="button" className="btn btn-primary" {...rest} disabled={sibuk || disabled}>
       {sibuk ? <LoaderCircle size={14} className="pm-putar" aria-hidden="true" /> : null}
       {children} {!sibuk ? <ArrowRight size={14} aria-hidden="true" /> : null}
     </button>

@@ -9,7 +9,9 @@ import * as api from './api'
 const Ctx = createContext(null)
 export const useTim = () => useContext(Ctx)
 
-export const BISA_VERIFIKASI = ['admin', 'ketua_tim', 'sekretaris']
+// Verifikasi kelengkapan berkas oleh BAAK (Ketua Tim sebagai cadangan).
+export const BISA_VERIFIKASI = ['admin', 'ketua_tim', 'baak']
+export const BISA_VERIFIKASI_BAYAR = ['admin', 'pmb']
 export const BISA_TUGASKAN = ['admin', 'ketua_tim']
 
 export function TimDataProvider({ children }) {
@@ -59,6 +61,7 @@ export function TimDataProvider({ children }) {
       siap: !!data, peta: { pemohon, staf, prodi },
       bisaVerifikasi: BISA_VERIFIKASI.includes(role),
       bisaTugaskan: BISA_TUGASKAN.includes(role),
+      bisaVerifikasiBayar: BISA_VERIFIKASI_BAYAR.includes(role),
     }
   }, [data, detail, galat, sinkron, muat, muatDetail, ubah, ubahDetail, gantiPengajuan, role])
 

@@ -182,9 +182,10 @@ export async function konfirmasiHadir(jadwalId) {
   return cek(await supabase.rpc('konfirmasi_hadir', { p_jadwal: jadwalId }))
 }
 
-export async function kirimBuktiBayar({ pengajuanId, komponen, jumlah, path }) {
+export async function kirimBuktiBayar({ pengajuanId, tagihanId, angsuranKe = 1, komponen, jumlah, path }) {
+  // Jumlah dan komponen dipastikan ulang oleh basis data sesuai tagihan.
   return cek(await supabase.from('pembayaran_rpl')
-    .insert({ pengajuan_id: pengajuanId, komponen, jumlah, bukti_bayar_url: path, status: 'menunggu' })
+    .insert({ pengajuan_id: pengajuanId, tagihan_id: tagihanId, angsuran_ke: angsuranKe, komponen, jumlah, bukti_bayar_url: path, status: 'menunggu' })
     .select().single())
 }
 

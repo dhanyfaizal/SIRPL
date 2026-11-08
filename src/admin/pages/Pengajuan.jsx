@@ -140,7 +140,7 @@ export default function Pengajuan() {
       <Dialog buka={!!batal} judul="Batalkan pengajuan" onTutup={() => setBatal(null)}
         kaki={<><Tombol onClick={() => setBatal(null)}>Kembali</Tombol><Tombol jenis="danger" ikon={Ban} sibuk={sibuk} disabled={alasan.trim().length < 10} onClick={kirimBatal}>Batalkan pengajuan</Tombol></>}>
         {batal ? (
-          <div className="pm-tumpuk">
+          <div className="ad-form">
             <p>Pengajuan <b>{batal.nomor_pendaftaran || 'draf'}</b> atas nama <b>{nama(batal)}</b> berstatus <b>{STATUS[batal.status]?.label}</b> akan dibatalkan. Tindakan ini tercatat di log dan tidak dapat diurungkan dari aplikasi.</p>
             <Bidang label="Alasan pembatalan" wajib hint="Minimal 10 karakter. Alasan tercatat pada riwayat pengajuan.">
               <textarea className="input" rows={3} value={alasan} onChange={(e) => setAlasan(e.target.value)} placeholder="mis. Pengajuan ganda, pemohon mengundurkan diri" />

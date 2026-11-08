@@ -22,7 +22,7 @@ export async function muatRingkas() {
     supabase.from('jadwal_asesmen').select('*').order('waktu').then(cek),
     supabase.from('pembayaran_rpl').select('*').order('created_at', { ascending: false }).then(cek),
     supabase.from('profiles').select('id, nama_lengkap, email, role, prodi_id, no_whatsapp')
-      .in('role', [...PERAN_ASESOR, 'sekretaris', 'admin', 'komite', 'eksekutif', 'lpmp']).then(cek),
+      .in('role', [...PERAN_ASESOR, 'sekretaris', 'admin', 'komite', 'eksekutif', 'lpmp', 'baak', 'pmb']).then(cek),
     supabase.from('pleno_rpl').select('*').order('tanggal', { ascending: false }).then(cek),
     supabase.from('peserta_pleno').select('*').order('urutan').then(cek),
     supabase.from('pleno_pengajuan').select('*').then(cek),

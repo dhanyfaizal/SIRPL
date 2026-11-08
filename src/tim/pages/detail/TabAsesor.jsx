@@ -60,7 +60,7 @@ export default function TabAsesor({ p }) {
 
   return (
     <>
-      {belumBoleh ? <Pemberitahuan jenis="indigo">Asesor ditugaskan setelah Sekretariat menyatakan berkas lengkap.</Pemberitahuan> : null}
+      {belumBoleh ? <Pemberitahuan jenis="indigo">Asesor ditugaskan setelah BAAK menyatakan berkas lengkap.</Pemberitahuan> : null}
       {!bisaTugaskan && !belumBoleh ? <Pemberitahuan jenis="indigo">Penugasan Tim Penilai dilakukan Ketua Tim Pengelola RPL (Pedoman 2.7). Anda dapat melihat susunan asesor di sini.</Pemberitahuan> : null}
 
       <Kartu judul="Tim penilai untuk pengajuan ini" sub={`${prodi?.nama || ''} · koordinator asesor memimpin penilaian dan pleno prodi`} padat>

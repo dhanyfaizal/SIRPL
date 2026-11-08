@@ -17,7 +17,7 @@ const BRAND = { name: 'SIRPL', sub: 'Konsol Admin', logo: '/logo-sys.png' }
 function useNav() {
   const { data } = useAdmin()
   return useMemo(() => {
-    const belumVerif = (data?.pengguna || []).filter((u) => !u.is_verified).length || null
+    const belumVerif = (data?.pengguna || []).filter((u) => !u.is_verified && u.role !== 'calon_rpl').length || null
     const belumLapor = (data?.pengajuan || []).filter((p) => ['sk_terbit', 'selesai'].includes(p.status) && p.status_pelaporan !== 'diinput_pddikti').length || null
     return [
       { section: 'Beranda' },
@@ -39,6 +39,7 @@ function useNav() {
       { section: 'Modul lain' },
       { id: 'tim', label: 'Modul Tim Pengelola', icon: LayoutDashboard, to: '/tim' },
       { id: 'pimpinan', label: 'Komite, SK, dan NIM', icon: LayoutDashboard, to: '/pimpinan' },
+      { id: 'keuangan', label: 'PMB dan keuangan', icon: LayoutDashboard, to: '/keuangan' },
       { id: 'ttd', label: 'Tanda tangan', icon: PenLine, to: '/tanda-tangan' },
       { id: 'umpan', label: 'Umpan balik layanan', icon: MessageSquare, to: '/feedback' },
       { section: 'Akun' },

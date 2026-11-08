@@ -1,0 +1,31 @@
+/* Modul PMB dan Keuangan */
+@import '../admin/admin.css';
+.ku-angka { font-variant-numeric: tabular-nums; }
+.ku-kanan { text-align: right; font-variant-numeric: tabular-nums; }
+.ku-coret { text-decoration: line-through; color: var(--gray-400); font-weight: 400; margin-right: 6px; }
+.ku-potong { color: var(--green-700, #15803d); }
+.ku-merah { color: var(--red-600, #dc2626); }
+.ku-tagihan { padding: 0; }
+.ku-tagihan + .ku-tagihan { border-top: 1px solid var(--gray-100); }
+.ku-tagihan-kepala { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 12px; padding: 16px 20px; }
+.ku-tagihan-kepala .pm-grow { min-width: 220px; }
+.ku-total { text-align: right; min-width: 150px; }
+.ku-total-angka { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.ku-angsuran { margin: 0 20px 16px; border: 1px solid var(--gray-100); border-radius: 10px; overflow: hidden; }
+.ku-editor { display: grid; grid-template-columns: 56px minmax(0, 1fr) minmax(0, 1fr) 40px; gap: 8px; align-items: center; }
+.ku-editor-kepala { font-size: 12px; color: var(--gray-500); font-weight: 600; }
+.ku-jumlah-cocok { font-size: 13px; padding: 8px 12px; border-radius: 8px; background: var(--gray-50, #f8fafc); display: flex; justify-content: space-between; gap: 8px; }
+.ku-jumlah-cocok.is-salah { background: var(--red-50, #fef2f2); color: var(--red-700, #b91c1c); }
+.ku-ringkas { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.ku-ringkas > div { border: 1px solid var(--gray-200); border-radius: 10px; padding: 12px 14px; background: var(--surface, #fff); }
+.ku-ringkas .pm-kecil { display: block; }
+.ku-ringkas b { font-size: 17px; font-variant-numeric: tabular-nums; }
+[data-theme='dark'] .ku-jumlah-cocok { background: rgba(255, 255, 255, .04); }
+[data-theme='dark'] .ku-jumlah-cocok.is-salah { background: rgba(220, 38, 38, .12); color: #fca5a5; }
+@media (max-width: 800px) { .ku-ringkas { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 600px) {
+  .ku-total { text-align: left; }
+  .ku-angsuran { margin: 0 14px 14px; }
+  .ku-editor { grid-template-columns: 40px minmax(0, 1fr) 40px; }
+  .ku-editor > .ku-tgl { grid-column: 2 / 3; }
+}

@@ -31,7 +31,15 @@ import PetunjukF01 from '../dokumen/pages/Petunjuk'
 import Repositori from '../repositori/Repositori'
 import BerbagiRepositori from '../repositori/Berbagi'
 import AsesorBiodata from '../asesor/pages/Biodata'
+import KeuanganLayout from '../keuangan/KeuanganLayout'
+import KuBeranda from '../keuangan/pages/Beranda'
+import KuVerifikasi from '../keuangan/pages/Verifikasi'
+import KuTagihan from '../keuangan/pages/Tagihan'
+import KuTagihanDetail from '../keuangan/pages/TagihanDetail'
+import KuDiskon from '../keuangan/pages/Diskon'
+import KuSkema from '../keuangan/pages/Skema'
 import AdminLayout from '../admin/AdminLayout'
+import { AdminDataProvider } from '../admin/AdminData'
 import AdminBeranda from '../admin/pages/Beranda'
 import AdminPengajuan from '../admin/pages/Pengajuan'
 import AdminPelaporan from '../admin/pages/Pelaporan'
@@ -72,8 +80,8 @@ function AkunMenunggu({ profile }) {
     <div className="akun-tunggu">
       <div className="card akun-tunggu-kartu">
         <img src="/logo-sys.png" alt="" width="48" height="48" />
-        <h1>Akun menunggu verifikasi</h1>
-        <p>Anda masuk sebagai <b>{profile.email}</b>. Akun baru perlu diverifikasi oleh Admin SIRPL sebelum dapat dipakai.</p>
+        <h1>Akun belum aktif</h1>
+        <p>Anda masuk sebagai <b>{profile.email}</b>. Akun staf ini belum diaktifkan atau sedang dinonaktifkan oleh Admin SIRPL.</p>
         <p className="akun-tunggu-kecil">Hubungi Admin SIRPL STIKOM Yos Sudarso, lalu periksa kembali.</p>
         <div className="akun-tunggu-aksi">
           <button type="button" className="btn btn-secondary" onClick={() => signOut()}>Keluar</button>
@@ -194,6 +202,16 @@ export default function AppRouter() {
         <Route path="/pemohon/cetak/f07" element={<ProtectedRoute allowedRoles={['calon_rpl']}><PemohonCetakF07 /></ProtectedRoute>} />
 
         {/* Modul Komite, Pimpinan, dan BAAK (tahap akhir) */}
+        <Route path="/keuangan" element={<ProtectedRoute allowedRoles={['admin', 'pmb']}><KeuanganLayout /></ProtectedRoute>}>
+          <Route index element={<KuBeranda />} />
+          <Route path="verifikasi" element={<KuVerifikasi />} />
+          <Route path="tagihan" element={<KuTagihan />} />
+          <Route path="tagihan/:id" element={<KuTagihanDetail />} />
+          <Route path="diskon" element={<KuDiskon />} />
+          <Route path="skema" element={<KuSkema />} />
+          <Route path="profil" element={<ProfilePage />} />
+        </Route>
+
         <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin']}><AdminLayout /></ProtectedRoute>}>
           <Route index element={<AdminBeranda />} />
           <Route path="pengajuan" element={<AdminPengajuan />} />
@@ -226,7 +244,7 @@ export default function AppRouter() {
         </Route>
 
         {/* Modul Tim Pengelola RPL: Sekretariat, Sekretaris, Ketua Tim */}
-        <Route path="/tim" element={<ProtectedRoute allowedRoles={['admin', 'ketua_tim', 'sekretaris']}><TimLayout /></ProtectedRoute>}>
+        <Route path="/tim" element={<ProtectedRoute allowedRoles={['admin', 'ketua_tim', 'sekretaris', 'baak']}><TimLayout /></ProtectedRoute>}>
           <Route index element={<TimBeranda />} />
           <Route path="antrean" element={<Navigate to="/tim/antrean/verifikasi" replace />} />
           <Route path="antrean/:kelompok" element={<TimDaftar />} />
@@ -235,6 +253,7 @@ export default function AppRouter() {
           <Route path="pleno" element={<TimPleno />} />
           <Route path="pleno/:id" element={<TimPlenoDetail />} />
           <Route path="pembayaran" element={<TimPembayaran />} />
+          <Route path="pelaporan" element={<AdminDataProvider><AdminPelaporan /></AdminDataProvider>} />
           <Route path="profil" element={<ProfilePage />} />
         </Route>
 

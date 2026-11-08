@@ -10,7 +10,7 @@ import { Bidang, BukaBerkas, Dialog, Kartu, Lencana, Tombol } from '../../../pem
 
 // Dipakai di detail pengajuan dan di halaman Pembayaran (dengan kolom pemohon).
 export function DaftarBayar({ baris, denganPemohon }) {
-  const { data, peta, bisaVerifikasi, ubah } = useTim()
+  const { data, peta, bisaVerifikasiBayar: bisaVerifikasi, ubah } = useTim()
   const [aksi, setAksi] = useState(null)
   const [alasan, setAlasan] = useState('')
   const [sibuk, setSibuk] = useState(false)

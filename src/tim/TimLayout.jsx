@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Outlet, useNavigate } from 'react-router-dom'
 import {
-  CalendarDays, ChevronDown, CreditCard, FileBadge, FileCog, FolderOpen, FolderTree, Gavel, House, PenLine, LayoutDashboard, ListChecks, LogOut, Moon, RefreshCw, Sun, UserRound,
+  CalendarDays, ChevronDown, CreditCard, FileBadge, FileCog, FolderOpen, FolderTree, Gavel, House, PenLine, LayoutDashboard, Send, ListChecks, LogOut, Moon, RefreshCw, Sun, UserRound,
 } from 'lucide-react'
 import { AppShell } from '../shell/AppShell'
 import { useAuth } from '../contexts/AuthContext'
@@ -12,7 +12,7 @@ import '../pemohon/pemohon.css'
 import './tim.css'
 
 const BRAND = { name: 'SIRPL', sub: 'Tim Pengelola RPL', logo: '/logo-sys.png' }
-const LABEL_PERAN = { admin: 'Admin', ketua_tim: 'Ketua Tim Pengelola', sekretaris: 'Sekretaris / Sekretariat' }
+const LABEL_PERAN = { admin: 'Admin', ketua_tim: 'Ketua Tim Pengelola', sekretaris: 'Sekretaris / Sekretariat', baak: 'BAAK' }
 
 function useNav() {
   const { data, role } = useTim()
@@ -41,7 +41,17 @@ function useNav() {
       { section: 'Akun' },
       { id: 'profil', label: 'Profil', icon: UserRound, to: '/tim/profil' },
     ]
-    if (role === 'admin') nav.push({ id: 'admin', label: 'Dasbor admin', icon: LayoutDashboard, to: '/dashboard' })
+    if (role === 'baak') {
+      // BAAK: verifikasi kelengkapan berkas, NIM, dan pelaporan.
+      const sembunyi = new Set(['jadwal', 'pleno', 'atur-dok', 'akhir'])
+      const i = nav.findIndex((n) => n.id === 'pembayaran')
+      const hasil = nav.filter((n) => !sembunyi.has(n.id))
+      hasil.splice(hasil.findIndex((n) => n.id === 'pembayaran') + 1, 0,
+        { id: 'nim', label: 'Penetapan NIM', icon: FileBadge, to: '/pimpinan/nim', badge: hit(['sk_terbit']) },
+        { id: 'pelaporan', label: 'Pelaporan', icon: Send, to: '/tim/pelaporan' })
+      return i >= 0 ? hasil : nav
+    }
+    if (role === 'admin') nav.push({ id: 'admin', label: 'Konsol Admin', icon: LayoutDashboard, to: '/admin' })
     return nav
   }, [data, role])
 }

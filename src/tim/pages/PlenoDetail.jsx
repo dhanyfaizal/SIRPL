@@ -11,7 +11,7 @@ import { BarTahap, Bidang, Dialog, Halaman, Kartu, Kerangka, Lencana, Pemberitah
 import { JENIS_PLENO } from './Pleno'
 import { PanelDokumenPleno } from '../../dokumen/PanelDokumen'
 
-const LABEL_PERAN = { admin: 'Admin', ketua_tim: 'Ketua Tim', sekretaris: 'Sekretaris', asessor: 'Asesor', komite: 'Komite', eksekutif: 'Pimpinan', lpmp: 'LPMP', kaprodi_si: 'Ka. Prodi SI', kaprodi_ti: 'Ka. Prodi TI', kaprodi_dkv: 'Ka. Prodi DKV', kaprodi_ka: 'Ka. Prodi KA' }
+const LABEL_PERAN = { admin: 'Admin', ketua_tim: 'Ketua Tim', sekretaris: 'Sekretaris', asessor: 'Asesor', komite: 'Komite', eksekutif: 'Pimpinan', lpmp: 'LPMP', baak: 'BAAK', pmb: 'PMB', kaprodi_si: 'Ka. Prodi SI', kaprodi_ti: 'Ka. Prodi TI', kaprodi_dkv: 'Ka. Prodi DKV', kaprodi_ka: 'Ka. Prodi KA' }
 
 export default function PlenoDetail() {
   const { id } = useParams()

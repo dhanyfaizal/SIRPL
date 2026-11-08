@@ -18,7 +18,9 @@ export default function Beranda() {
   const lama = data.pengajuan.filter((p) => p.alur_versi === 1 && !p.is_archived)
   const diPeriode = aktif ? baru.filter((p) => p.periode_id === aktif.id) : baru
   const berjalan = baru.filter((p) => STATUS_AKTIF.includes(p.status))
-  const belumVerif = data.pengguna.filter((u) => !u.is_verified)
+  const belumVerif = data.pengguna.filter((u) => !u.is_verified && u.role !== 'calon_rpl')
+  const punya = new Set(data.pengajuan.map((p) => p.user_id))
+  const akunBaru = data.pengguna.filter((u) => u.role === 'calon_rpl' && !punya.has(u.id) && Date.now() - new Date(u.created_at).getTime() < 14 * 86400000)
   const berSk = baru.filter((p) => ['sk_terbit', 'selesai'].includes(p.status))
   const belumLapor = berSk.filter((p) => p.status_pelaporan === 'belum')
   const tarifAktif = aktif ? data.tarif.filter((t) => t.periode_id === aktif.id) : []
@@ -30,6 +32,8 @@ export default function Beranda() {
     aktif && !tarifAktif.length && { judul: `Tarif periode ${aktif.nama} belum diisi`, isi: 'Biaya pendaftaran dan asesmen dipakai pada tagihan pemohon dan F01.', ke: '/admin/periode' },
     !prodiRpl.length && { judul: 'Belum ada program studi penyelenggara RPL', isi: 'Tandai program studi yang membuka RPL beserta batas SKS-nya.', ke: '/admin/prodi' },
     !data.pengguna.some((u) => u.role === 'ketua_tim' && u.is_verified) && { judul: 'Belum ada Ketua Tim Pengelola', isi: 'Ketua Tim menugaskan asesor, menetapkan pleno, dan menandatangani Surat Hasil.', ke: '/admin/pengguna' },
+    !data.pengguna.some((u) => u.role === 'baak' && u.is_verified) && { judul: 'Belum ada akun BAAK', isi: 'BAAK memverifikasi kelengkapan berkas pemohon dan menetapkan NIM.', ke: '/admin/pengguna' },
+    !data.pengguna.some((u) => u.role === 'pmb' && u.is_verified) && { judul: 'Belum ada akun PMB', isi: 'PMB memverifikasi pembayaran serta mengatur diskon dan skema bayar.', ke: '/admin/pengguna' },
     prodiRpl.some((x) => !x.maks_sks_rpl) && { judul: 'Batas SKS RPL belum diisi', isi: `${prodiRpl.filter((x) => !x.maks_sks_rpl).map((x) => x.nama).join(', ')}.`, ke: '/admin/prodi' },
   ].filter(Boolean)
 
@@ -69,7 +73,7 @@ export default function Beranda() {
           <div className="stat-card-sub">dari {berSk.length} pemohon ber-SK</div>
         </Link>
         <Link to="/admin/pengguna?saring=belum" className="stat-card tm-stat-link">
-          <div className="stat-card-label">Akun menunggu verifikasi</div>
+          <div className="stat-card-label">Akun staf belum aktif</div>
           <div className="stat-card-value">{belumVerif.length}</div>
           <div className="stat-card-sub">{data.pengguna.length} akun terdaftar</div>
         </Link>
@@ -115,15 +119,15 @@ export default function Beranda() {
         </Kartu>
       </div>
 
-      {belumVerif.length ? (
-        <Kartu judul="Akun menunggu verifikasi" sub="Akun baru yang masuk lewat Google perlu diverifikasi; akun staf juga perlu diberi peran" padat
-          aksi={<Link to="/admin/pengguna?saring=belum" className="btn btn-ghost btn-sm">Kelola <ArrowRight size={13} /></Link>}>
+      {akunBaru.length ? (
+        <Kartu judul="Akun baru tanpa pengajuan" sub="14 hari terakhir. Akun pemohon langsung aktif; bila ini akun staf, beri peran di Pengguna dan peran." padat
+          aksi={<Link to="/admin/pengguna?grup=pemohon" className="btn btn-ghost btn-sm">Kelola <ArrowRight size={13} /></Link>}>
           <ul className="tm-daftar">
-            {belumVerif.slice(0, 6).map((u) => (
+            {akunBaru.slice(0, 6).map((u) => (
               <li key={u.id}>
-                <Link to={`/admin/pengguna?saring=belum&cari=${encodeURIComponent(u.email)}`} className="tm-baris">
+                <Link to={`/admin/pengguna?grup=semua&cari=${encodeURIComponent(u.email)}`} className="tm-baris">
                   <div className="pm-grow"><div className="pm-tebal">{u.nama_lengkap || u.email}</div><div className="pm-kecil">{u.email} · daftar {tanggal(u.created_at)}</div></div>
-                  <Lencana warna="amber">{LABEL_PERAN[u.role] || u.role}</Lencana>
+                  <Lencana warna="slate">{LABEL_PERAN[u.role] || u.role}</Lencana>
                 </Link>
               </li>
             ))}

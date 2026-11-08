@@ -106,7 +106,7 @@ export default function Beranda() {
   const k = hitungKelengkapan(data)
   const tarifAsesmen = data.tarif.find((t) => t.komponen === 'asesmen_per_sks' && !t.is_internal)
   const tarifDaftar = data.tarif.find((t) => t.komponen === 'pendaftaran')
-  const bayarDaftar = data.pembayaran.find((b) => b.komponen === 'pendaftaran')
+  const bayarDaftar = data.pembayaran.find((b) => b.komponen === 'pendaftaran' && b.status !== 'ditolak') || data.pembayaran.find((b) => b.komponen === 'pendaftaran')
 
   return (
     <Halaman
@@ -121,7 +121,7 @@ export default function Beranda() {
         </Pemberitahuan>
       ) : null}
       {pengajuan.status === 'dikembalikan_sekretariat' ? (
-        <Pemberitahuan jenis="red" judul="Pengajuan dikembalikan Sekretariat">
+        <Pemberitahuan jenis="red" judul="Pengajuan dikembalikan untuk perbaikan">
           <div style={{ whiteSpace: 'pre-line' }}>{pengajuan.catatan_revisi || 'Periksa kembali berkas Anda, lalu kirim ulang.'}</div>
         </Pemberitahuan>
       ) : null}

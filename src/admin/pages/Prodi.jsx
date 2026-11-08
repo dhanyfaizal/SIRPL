@@ -98,7 +98,7 @@ export default function Prodi() {
       <Dialog buka={!!ubah} judul={ubah ? `Ubah ${ubah.nama}` : ''} onTutup={() => setUbah(null)} lebar={620}
         kaki={<><Tombol onClick={() => setUbah(null)}>Batal</Tombol><Tombol jenis="primary" ikon={Save} sibuk={sibuk} onClick={simpan}>Simpan</Tombol></>}>
         {ubah ? (
-          <div className="pm-tumpuk">
+          <div className="ad-form">
             <div className="pm-form-2">
               <Bidang label="Kode" wajib><input className="input" value={ubah.kode} onChange={set('kode')} /></Bidang>
               <Bidang label="Jenjang">

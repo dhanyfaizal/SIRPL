@@ -3,7 +3,7 @@
 export const STATUS = {
   draft:                    { label: 'Draf', warna: 'amber', tahap: 2 },
   diajukan:                 { label: 'Menunggu verifikasi', warna: 'indigo', tahap: 3 },
-  dikembalikan_sekretariat: { label: 'Dikembalikan Sekretariat', warna: 'red', tahap: 2 },
+  dikembalikan_sekretariat: { label: 'Dikembalikan untuk perbaikan', warna: 'red', tahap: 2 },
   terverifikasi:            { label: 'Terverifikasi', warna: 'indigo', tahap: 4 },
   asesmen:                  { label: 'Dalam asesmen', warna: 'indigo', tahap: 4 },
   menunggu_bukti_tambahan:  { label: 'Perlu bukti tambahan', warna: 'amber', tahap: 4 },
@@ -22,7 +22,7 @@ export const STATUS = {
 }
 
 export const TAHAPAN = [
-  'Pendaftaran', 'Pengajuan berkas', 'Verifikasi Sekretariat', 'Asesmen',
+  'Pendaftaran', 'Pengajuan berkas', 'Verifikasi berkas', 'Asesmen',
   'Pleno dan hasil', 'Persetujuan Komite', 'SK dan rencana studi',
 ]
 

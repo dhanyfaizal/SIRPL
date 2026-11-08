@@ -78,8 +78,8 @@ export default function Sidebar() {
         {/* Menu PMB */}
         {role === 'pmb' && (
           <>
-            <div className="sidebar-section-label">Monitoring PMB</div>
-            <NavItem label="Progress Dokumen" icon={ClipboardCheck} to="/dashboard" />
+            <div className="sidebar-section-label">PMB dan keuangan</div>
+            <NavItem label="Modul PMB" icon={ClipboardCheck} to="/keuangan" />
             <NavItem label="Ulasan & Kepuasan" icon={Star} to="/feedback" />
           </>
         )}
@@ -88,7 +88,7 @@ export default function Sidebar() {
         {role === 'baak' && (
           <>
             <div className="sidebar-section-label">Validasi</div>
-            <NavItem label="Berkas Masuk" icon={ClipboardCheck} to="/dashboard" />
+            <NavItem label="Verifikasi berkas" icon={ClipboardCheck} to="/tim" />
             <NavItem label="Penetapan NIM RPL" icon={Gavel} to="/pimpinan/nim" />
             <NavItem label="Repositori pelaporan" icon={FolderOpen} to="/repositori" />
             <NavItem label="Ulasan & Kepuasan" icon={Star} to="/feedback" />
