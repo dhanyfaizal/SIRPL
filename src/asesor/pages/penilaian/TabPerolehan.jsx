@@ -8,7 +8,7 @@ import * as api from '../../api'
 import { KEPUTUSAN, NILAI_LULUS, VATM, daftarSubCpmk } from '../../aturan'
 import { PROFISIENSI } from '../../../pemohon/konstanta'
 import { urlBerkas } from '../../../pemohon/api'
-import { BarTahap, Bidang, IkonStatusLangkah, Kartu, Lencana, Pemberitahuan, PilihSegmen, Tombol } from '../../../pemohon/ui'
+import { BarTahap, Bidang, Dialog, IkonStatusLangkah, Kartu, Lencana, Pemberitahuan, PilihSegmen, Tombol } from '../../../pemohon/ui'
 
 const LABEL_PROF = Object.fromEntries(PROFISIENSI.map((x) => [x.v, x.l]))
 const WARNA_PROF = { sangat_baik: 'green', baik: 'indigo', tidak_pernah: 'slate' }
@@ -20,7 +20,7 @@ async function bukaBukti(b) {
   try { const url = await urlBerkas(b.file_url); if (w) w.location.href = url } catch (e) { w?.close(); toast.error(e.message) }
 }
 
-function Editor({ p, d, m, bolehNilai, onLanjut, adaBerikut }) {
+function Editor({ p, d, m, bolehNilai, onLanjut, adaBerikut, onKotor }) {
   const { pasangPenilaian } = useAsesor()
   const sub = useMemo(() => daftarSubCpmk(m.mk), [m.mk])
   const ev = d.evaluasi.find((e) => e.mk_id === m.mk_id)
@@ -37,6 +37,7 @@ function Editor({ p, d, m, bolehNilai, onLanjut, adaBerikut }) {
   const [sibuk, setSibuk] = useState(false)
   useEffect(() => { setF(awal) }, [awal])
   const kotor = JSON.stringify(f) !== JSON.stringify(awal)
+  useEffect(() => { onKotor?.(kotor) }, [kotor]) // eslint-disable-line react-hooks/exhaustive-deps
   const lanjutan = d.lanjutan.filter((x) => x.mk_id === m.mk_id)
 
   const ubahVatm = (i, k) => setF((s) => ({ ...s, vatm: s.vatm.map((x, j) => (j === i ? { ...x, [k]: !x[k] } : x)) }))
@@ -155,6 +156,8 @@ function Editor({ p, d, m, bolehNilai, onLanjut, adaBerikut }) {
 
 export default function TabPerolehan({ p, d, bolehNilai }) {
   const [param, setParam] = useSearchParams()
+  const [kotor, setKotor] = useState(false)
+  const [tahan, setTahan] = useState(null)
   const daftar = useMemo(() => d.mkDiajukan.filter((m) => m.mekanisme === 'perolehan')
     .map((m) => ({ ...m, mk: d.mataKuliah.find((x) => x.id === m.mk_id), pn: d.penilaian.find((x) => x.mk_id === m.mk_id) }))
     .filter((m) => m.mk), [d])
@@ -163,7 +166,9 @@ export default function TabPerolehan({ p, d, bolehNilai }) {
   const idx = daftar.findIndex((m) => m.mk_id === aktifId)
   const aktif = daftar[idx]
   const status = (m) => (!m.pn || m.pn.keputusan === 'belum_dinilai' ? 'belum' : m.pn.keputusan === 'perlu_asesmen_lanjutan' ? 'proses' : 'selesai')
-  const pilih = (id) => { const n = new URLSearchParams(param); n.set('tab', 'perolehan'); n.set('mk', id); setParam(n) }
+  const pindah = (id) => { const n = new URLSearchParams(param); n.set('tab', 'perolehan'); n.set('mk', id); setKotor(false); setParam(n) }
+  // Pindah mata kuliah membuang isian yang belum disimpan: minta konfirmasi dulu.
+  const pilih = (id) => { if (id === aktifId) return; if (kotor) setTahan(id); else pindah(id) }
   const berikut = [...daftar.slice(idx + 1), ...daftar.slice(0, idx)].find((m) => status(m) === 'belum')
 
   return (
@@ -182,7 +187,11 @@ export default function TabPerolehan({ p, d, bolehNilai }) {
           ))}
         </ul>
       </nav>
-      <Editor key={aktifId} p={p} d={d} m={aktif} bolehNilai={bolehNilai} adaBerikut={!!berikut} onLanjut={() => berikut && pilih(berikut.mk_id)} />
+      <Editor key={aktifId} p={p} d={d} m={aktif} bolehNilai={bolehNilai} adaBerikut={!!berikut} onKotor={setKotor} onLanjut={() => berikut && pindah(berikut.mk_id)} />
+      <Dialog buka={!!tahan} judul="Perubahan belum disimpan" onTutup={() => setTahan(null)} lebar={460}
+        kaki={<><Tombol onClick={() => setTahan(null)}>Kembali mengisi</Tombol><Tombol jenis="danger" onClick={() => { const id = tahan; setTahan(null); pindah(id) }}>Buang perubahan</Tombol></>}>
+        <p>Penilaian {aktif.mk.nama_mk} belum disimpan. Bila pindah mata kuliah, isian tersebut hilang.</p>
+      </Dialog>
     </div>
   )
 }

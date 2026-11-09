@@ -71,8 +71,9 @@ function FormProdi({ daftar, ro }) {
 // ── Bagian 2: data pribadi (F02 bagian 1) ───────────────────────
 function FormPribadi({ daftar, ro }) {
   const { data, userId, ubah } = usePemohon()
-  const { profile } = useAuth()
+  const { profile, updateProfile } = useAuth()
   const a = data.biodata || {}
+  const [hp, setHp] = useState(profile?.no_whatsapp || '')
   const [f, setF] = useState(() => ({
     tempat_lahir: a.tempat_lahir || '', tanggal_lahir: a.tanggal_lahir || '', jenis_kelamin: a.jenis_kelamin || '',
     status_perkawinan: a.status_perkawinan || '', agama: AGAMA.includes(a.agama) ? a.agama : '',
@@ -89,10 +90,16 @@ function FormPribadi({ daftar, ro }) {
   daftar(async () => {
     if (!f.tempat_lahir || !f.tanggal_lahir || !f.alamat.trim()) return gagal('Tempat lahir, tanggal lahir, dan alamat wajib diisi')
     if (f.tanggal_lahir > batasLahir || f.tanggal_lahir < '1940-01-01') return gagal('Tanggal lahir tidak valid. Periksa kembali tahun lahir Anda')
+    const nomorHp = hp.replace(/\D/g, '')
+    if (!/^(08|628)\d{7,12}$/.test(nomorHp)) return gagal('Isi nomor HP/WhatsApp aktif, mis. 081234567890')
     if (f.kode_pos && f.kode_pos.length !== 5) return gagal('Kode pos harus 5 angka')
     if (f.kewarganegaraan === 'WNA' && !f.kebangsaan.trim()) return gagal('Isi negara asal untuk WNA')
     const isi = kosongKeNull({ ...f, kebangsaan: f.kewarganegaraan === 'WNI' ? 'Indonesia' : f.kebangsaan.trim() })
     isi.tahun_lulus = f.tahun_lulus ? Number(f.tahun_lulus) : null
+    if (nomorHp !== (profile?.no_whatsapp || '').replace(/\D/g, '')) {
+      const { error } = await updateProfile({ no_whatsapp: nomorHp })
+      if (error) return gagal(`Nomor HP tidak dapat disimpan: ${error.message}`)
+    }
     const hasil = await api.simpanBiodata(userId, isi)
     ubah(() => ({ biodata: hasil }))
     return true
@@ -102,7 +109,10 @@ function FormPribadi({ daftar, ro }) {
     <div className="pm-tumpuk-besar">
       <div className="pm-form-2">
         <Bidang label="Nama lengkap" hint="Diubah di menu Profil"><input className="input" value={profile?.nama_lengkap || ''} readOnly /></Bidang>
-        <Bidang label="Email dan HP"><input className="input" value={[profile?.email, profile?.no_whatsapp].filter(Boolean).join(' · ')} readOnly /></Bidang>
+        <Bidang label="Email"><input className="input" value={profile?.email || ''} readOnly /></Bidang>
+        <Bidang label="Nomor HP / WhatsApp" wajib hint="Dipakai di Formulir Aplikasi (F02) dan untuk pemberitahuan jadwal.">
+          <InputAngka nilai={hp} onUbah={setHp} panjang={15} nonaktif={ro} inputMode="tel" placeholder="081234567890" />
+        </Bidang>
         <div className="input-group">
           <span className="input-label">Tempat lahir <span className="pm-wajib">*</span></span>
           <Combobox nilai={f.tempat_lahir} onUbah={set('tempat_lahir')} opsi={opsiKota} bolehKetik nonaktif={ro}

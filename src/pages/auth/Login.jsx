@@ -232,7 +232,7 @@ export default function Login() {
 
           {/* Description */}
           <p style={{ textAlign: 'center', fontSize: 14, color: '#6b7280', margin: '0 0 20px' }}>
-            {isMock ? 'Gunakan Simulasi Login Peran untuk masuk' : 'Daftar dan Login hanya dengan Akun Google Anda.'}
+            {isMock ? 'Gunakan Simulasi Login Peran untuk masuk' : 'Pemohon mendaftar dan masuk dengan Akun Google. Akun dengan email dan kata sandi dari Admin masuk lewat formulir di bawah.'}
           </p>
 
           {/* Error Alert */}
@@ -427,8 +427,6 @@ export default function Login() {
 
           {/* Footer note */}
           <p style={{ marginTop: 24, textAlign: 'center', fontSize: 12, color: '#9ca3af', lineHeight: 1.6, margin: '24px 0 0' }}>
-            Hanya Akun Google resmi yang diizinkan.
-            <br />
             Hubungi admin jika Anda tidak dapat masuk.
           </p>
         </div>

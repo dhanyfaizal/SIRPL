@@ -56,7 +56,7 @@ export default function Penilaian() {
   ].filter(Boolean)
   const awal = adaTransfer ? 'transfer' : adaPerolehan ? 'perolehan' : 'berkas'
   const tab = TAB.some((t) => t.id === param.get('tab')) ? param.get('tab') : awal
-  const pilih = (t) => setParam(t === awal ? {} : { tab: t })
+  const pilih = (t, tambahan) => setParam(t === awal && !tambahan ? {} : { tab: t, ...(tambahan || {}) })
 
   const r = ringkasPenilaian(mk, data.penilaian.filter((x) => x.pengajuan_id === p.id), d?.mataKuliah || [])
   const hit = (mek) => {

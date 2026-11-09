@@ -65,11 +65,15 @@ function DialogAisys({ p, daftar, terisi, onPakai, onTutup }) {
       .then((h) => { setHasil(h); setPilih(Object.fromEntries((h.usulan || []).filter((u) => u.asal && !terisi.has(u.mk_id)).map((u) => [u.mk_id, true]))) })
       .catch((e) => setGalat(e.message))
   }, [p.id, p.file_transkrip_url])
+  // Asesor dapat memilih sendiri mata kuliah asal dari daftar yang terbaca
+  // bila AISYS tidak menemukan padanan (mis. "Pendidikan Pancasila").
+  const [manual, setManual] = useState({})
   const usulan = Object.fromEntries((hasil?.usulan || []).map((u) => [u.mk_id, u]))
-  const jumlah = Object.values(pilih).filter(Boolean).length
+  const asalDari = (id) => (manual[id] != null ? hasil?.terbaca?.[manual[id]] : usulan[id]?.asal) || null
+  const jumlah = daftar.filter((m) => pilih[m.mk_id] && asalDari(m.mk_id)).length
   return (
     <Dialog buka judul="Usulan AISYS dari transkrip" onTutup={onTutup} lebar={860}
-      kaki={<><Tombol onClick={onTutup}>Tutup</Tombol>{hasil ? <Tombol jenis="primary" disabled={!jumlah} onClick={() => onPakai(daftar.filter((m) => pilih[m.mk_id]).map((m) => ({ mk_id: m.mk_id, asal: usulan[m.mk_id].asal })))}>Isi {jumlah} mata kuliah</Tombol> : null}</>}>
+      kaki={<><Tombol onClick={onTutup}>Tutup</Tombol>{hasil ? <Tombol jenis="primary" disabled={!jumlah} onClick={() => onPakai(daftar.filter((m) => pilih[m.mk_id] && asalDari(m.mk_id)).map((m) => ({ mk_id: m.mk_id, asal: asalDari(m.mk_id) })))}>Isi {jumlah} mata kuliah</Tombol> : null}</>}>
       {galat ? <p className="pm-merah">{galat}</p> : null}
       {!hasil && !galat ? (
         <div className="as-aisys-tunggu" role="status"><div className="sk" style={{ height: 12, width: '60%', borderRadius: 6 }} /><p className="pm-kecil">{kabar}</p></div>
@@ -83,13 +87,25 @@ function DialogAisys({ p, daftar, terisi, onPakai, onTutup }) {
               <tbody>
                 {daftar.map((m) => {
                   const u = usulan[m.mk_id]
+                  const asal = asalDari(m.mk_id)
                   return (
                     <tr key={m.mk_id}>
-                      <td data-label="Pakai"><input type="checkbox" disabled={!u?.asal} checked={!!pilih[m.mk_id]} onChange={(e) => setPilih((s) => ({ ...s, [m.mk_id]: e.target.checked }))} aria-label={`Pakai usulan untuk ${m.mk.nama_mk}`} /></td>
+                      <td data-label="Pakai"><input type="checkbox" disabled={!asal} checked={!!pilih[m.mk_id] && !!asal} onChange={(e) => setPilih((s) => ({ ...s, [m.mk_id]: e.target.checked }))} aria-label={`Pakai usulan untuk ${m.mk.nama_mk}`} /></td>
                       <td data-label="Tujuan"><div className="pm-tebal">{m.mk.nama_mk}</div><div className="pm-kecil">{m.mk.kode_mk} · {m.mk.sks} SKS{terisi.has(m.mk_id) ? ' · sudah terisi, centang untuk menimpa' : ''}</div></td>
-                      <td data-label="Usulan asal">{u?.asal ? <><div>{u.asal.nama}{u.asal.kode ? ` (${u.asal.kode})` : ''}</div>{u.alasan ? <div className="pm-kecil">{u.alasan}</div> : null}</> : <span className="pm-kecil">Tidak ditemukan padanan</span>}</td>
-                      <td data-label="SKS">{u?.asal?.sks ?? '-'}</td>
-                      <td data-label="Nilai">{u?.asal?.nilai ? <Lencana warna={nilaiLulus(u.asal.nilai) ? 'green' : 'red'}>{u.asal.nilai}</Lencana> : '-'}</td>
+                      <td data-label="Usulan asal">
+                        {u?.asal && manual[m.mk_id] == null ? <><div>{u.asal.nama}{u.asal.kode ? ` (${u.asal.kode})` : ''}</div>{u.alasan ? <div className="pm-kecil">{u.alasan}</div> : null}</> : null}
+                        {!u?.asal || manual[m.mk_id] != null ? (
+                          <select className="input" value={manual[m.mk_id] >= 0 ? manual[m.mk_id] : ''} aria-label={`Pilih mata kuliah asal untuk ${m.mk.nama_mk}`}
+                            onChange={(e) => { const v = e.target.value === '' ? null : Number(e.target.value); setManual((s) => ({ ...s, [m.mk_id]: v })); setPilih((s) => ({ ...s, [m.mk_id]: v != null })) }}>
+                            <option value="">{u?.asal ? 'Pakai usulan AISYS' : 'Tidak ditemukan padanan; pilih sendiri'}</option>
+                            {hasil.terbaca.map((t, i) => <option key={i} value={i}>{t.nama}{t.sks ? ` · ${t.sks} SKS` : ''}{t.nilai ? ` · ${t.nilai}` : ''}</option>)}
+                          </select>
+                        ) : (
+                          <button type="button" className="btn btn-ghost btn-sm" onClick={() => setManual((s) => ({ ...s, [m.mk_id]: -1 }))}>Ganti</button>
+                        )}
+                      </td>
+                      <td data-label="SKS">{asal?.sks ?? '-'}</td>
+                      <td data-label="Nilai">{asal?.nilai ? <Lencana warna={nilaiLulus(asal.nilai) ? 'green' : 'red'}>{asal.nilai}</Lencana> : '-'}</td>
                     </tr>
                   )
                 })}

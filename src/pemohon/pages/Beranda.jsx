@@ -1,10 +1,12 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { ArrowRight } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuth } from '../../contexts/AuthContext'
 import { usePemohon } from '../PemohonData'
 import * as api from '../api'
+import { supabase } from '../../lib/supabase'
+import { KOMPONEN_TAGIHAN, STATUS_TAGIHAN, ringkasPengajuan } from '../../keuangan/tagihan'
 import { JENIS_RPL, STATUS, TAHAPAN, rupiah, tanggal } from '../konstanta'
 import { Bidang, Dialog, Halaman, IkonStatusLangkah, Kartu, Kerangka, LencanaStatus, Pemberitahuan, Tombol } from '../ui'
 import { hitungKelengkapan } from '../kelengkapan'
@@ -86,6 +88,61 @@ function MulaiPengajuan() {
   )
 }
 
+// Ringkasan pembayaran: setelah pengajuan dikirim, tampilkan tagihan sebenarnya
+// (sudah termasuk diskon dan cicilan dari PMB); sebelum itu hanya estimasi tarif.
+function KartuBayar({ pengajuan, k, tarifAsesmen, tarifDaftar, bayarDaftar }) {
+  const { data, ubah } = usePemohon()
+  const terkirim = pengajuan.status !== 'draft'
+  useEffect(() => {
+    if (!terkirim || data.tagihan) return
+    let batal = false
+    supabase.rpc('siapkan_tagihan', { p_pengajuan: pengajuan.id }).then(({ data: rows }) => { if (!batal && rows) ubah(() => ({ tagihan: rows })) })
+    return () => { batal = true }
+  }, [terkirim, pengajuan.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (terkirim && data.tagihan?.length) {
+    const r = ringkasPengajuan(data.tagihan, data.pembayaran)
+    return (
+      <Kartu judul="Pembayaran">
+        {r.rinci.map(({ t, r: x }) => {
+          const st = STATUS_TAGIHAN[x.status] || STATUS_TAGIHAN.belum
+          return (
+            <div key={t.id} className="pm-baris-bayar">
+              <div>
+                <div className="pm-tebal">{KOMPONEN_TAGIHAN[t.komponen] || t.komponen}</div>
+                <div className="pm-kecil">{rupiah(x.total)}{Number(t.potongan) > 0 ? ` setelah diskon ${rupiah(t.potongan)}` : ''}{x.cicilan ? ` · ${x.angsuran.length} kali angsuran` : ''}</div>
+              </div>
+              <span className={`badge-pill badge-${st.warna}`}>{st.label}</span>
+            </div>
+          )
+        })}
+        <div className="pm-kecil">Sisa {rupiah(r.sisa)} dari {rupiah(r.total)}</div>
+        <Link to="/pemohon/pembayaran" className="pm-tautan">Rincian pembayaran</Link>
+      </Kartu>
+    )
+  }
+  return (
+    <Kartu judul="Pembayaran">
+          <div className="pm-baris-bayar">
+            <div>
+              <div className="pm-tebal">Biaya pendaftaran</div>
+              <div className="pm-kecil">{tarifDaftar ? rupiah(tarifDaftar.besaran) : '-'}</div>
+            </div>
+            {bayarDaftar ? <LencanaBayar s={bayarDaftar.status} /> : <span className="badge-pill badge-slate">Belum dibayar</span>}
+          </div>
+          <div className="pm-baris-bayar">
+            <div>
+              <div className="pm-tebal">Biaya asesmen</div>
+              <div className="pm-kecil">{k.sksDiajukan} SKS diajukan × {tarifAsesmen ? rupiah(tarifAsesmen.besaran) : '-'}</div>
+              <div className="pm-kecil">Estimasi {tarifAsesmen ? rupiah(k.sksDiajukan * Number(tarifAsesmen.besaran)) : '-'}</div>
+            </div>
+            <span className="badge-pill badge-slate">Saat dikirim</span>
+          </div>
+          <Link to="/pemohon/pembayaran" className="pm-tautan">Rincian pembayaran</Link>
+    </Kartu>
+  )
+}
+
 export default function Beranda() {
   const { siap, data, pengajuan, galat } = usePemohon()
   const { profile } = useAuth()
@@ -159,24 +216,7 @@ export default function Beranda() {
           </ul>
         </Kartu>
 
-        <Kartu judul="Pembayaran">
-          <div className="pm-baris-bayar">
-            <div>
-              <div className="pm-tebal">Biaya pendaftaran</div>
-              <div className="pm-kecil">{tarifDaftar ? rupiah(tarifDaftar.besaran) : '-'}</div>
-            </div>
-            {bayarDaftar ? <LencanaBayar s={bayarDaftar.status} /> : <span className="badge-pill badge-slate">Belum dibayar</span>}
-          </div>
-          <div className="pm-baris-bayar">
-            <div>
-              <div className="pm-tebal">Biaya asesmen</div>
-              <div className="pm-kecil">{k.sksDiajukan} SKS diajukan × {tarifAsesmen ? rupiah(tarifAsesmen.besaran) : '-'}</div>
-              <div className="pm-kecil">Estimasi {tarifAsesmen ? rupiah(k.sksDiajukan * Number(tarifAsesmen.besaran)) : '-'}</div>
-            </div>
-            <span className="badge-pill badge-slate">Saat dikirim</span>
-          </div>
-          <Link to="/pemohon/pembayaran" className="pm-tautan">Rincian pembayaran</Link>
-        </Kartu>
+        <KartuBayar pengajuan={pengajuan} k={k} tarifAsesmen={tarifAsesmen} tarifDaftar={tarifDaftar} bayarDaftar={bayarDaftar} />
 
         <Kartu judul="Jadwal terdekat">
           {(() => {

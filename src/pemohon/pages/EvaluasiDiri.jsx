@@ -5,7 +5,7 @@ import { usePemohon } from '../PemohonData'
 import * as api from '../api'
 import { PROFISIENSI } from '../konstanta'
 import { evaluasiLengkap, hitungKelengkapan, mkPerolehan } from '../kelengkapan'
-import { BarTahap, Bidang, GerbangTahap, Halaman, IkonStatusLangkah, Kartu, Kerangka, LencanaModeBaca, Pemberitahuan, Segmen, TombolLanjut } from '../ui'
+import { BarTahap, Bidang, Dialog, GerbangTahap, Halaman, IkonStatusLangkah, Kartu, Kerangka, LencanaModeBaca, Pemberitahuan, Segmen, Tombol, TombolLanjut } from '../ui'
 
 const PERNYATAAN = [
   'Semua informasi yang saya tuliskan sepenuhnya benar dan saya bertanggung jawab atas seluruh data dalam formulir ini. Apabila di kemudian hari informasi tersebut tidak benar, saya bersedia menerima sanksi sesuai ketentuan yang berlaku.',
@@ -19,7 +19,7 @@ function daftarSubCpmk(mk) {
   return [{ kode: 'CPMK', deskripsi: mk.cpmk || 'Capaian pembelajaran mata kuliah ini (program studi belum merinci sub-CPMK).' }]
 }
 
-function Editor({ mk, evaluasi, daftar, ro }) {
+function Editor({ mk, evaluasi, daftar, ro, onKotor }) {
   const { data, pengajuan, ubah } = usePemohon()
   const bisaDiubah = !ro
   const sub = useMemo(() => daftarSubCpmk(mk), [mk])
@@ -32,12 +32,16 @@ function Editor({ mk, evaluasi, daftar, ro }) {
   const [tempat, setTempat] = useState(evaluasi?.tempat_pernyataan || '')
   useEffect(() => { setButir(awalButir); setSetuju(!!evaluasi?.pernyataan_setuju); setTempat(evaluasi?.tempat_pernyataan || '') }, [awalButir, evaluasi])
 
+  const kotor = !ro && (JSON.stringify(butir) !== JSON.stringify(awalButir) || setuju !== !!evaluasi?.pernyataan_setuju || tempat !== (evaluasi?.tempat_pernyataan || ''))
+  useEffect(() => { onKotor?.(kotor) }, [kotor]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const ubahButir = (i, nilai) => setButir((s) => s.map((b, j) => (j === i ? { ...b, ...nilai } : b)))
   const terisi = butir.filter((b) => b.profisiensi).length
   const tanpaBukti = butir.filter((b) => b.profisiensi && b.profisiensi !== 'tidak_pernah' && !b.bukti.length).length
 
   daftar(async () => {
     if (terisi < butir.length) { toast.error('Isi tingkat profisiensi untuk semua butir'); return false }
+    if (tanpaBukti) { toast.error(`Rujuk nomor bukti untuk ${tanpaBukti} butir berprofisiensi baik atau sangat baik, atau ubah menjadi "Tidak pernah"`); return false }
     if (!setuju) { toast.error('Centang persetujuan pernyataan calon'); return false }
     {
       const hasil = await api.simpanEvaluasi({
@@ -89,7 +93,7 @@ function Editor({ mk, evaluasi, daftar, ro }) {
           </table>
         </div>
         {tanpaBukti ? <div className="card-body" style={{ paddingTop: 0 }}>
-          <Pemberitahuan jenis="amber">{tanpaBukti} butir berprofisiensi baik atau sangat baik belum dirujuk ke bukti. Klaim tanpa bukti sulit diakui asesor.</Pemberitahuan>
+          <Pemberitahuan jenis="amber">{tanpaBukti} butir berprofisiensi baik atau sangat baik belum dirujuk ke bukti. Pilih minimal satu nomor bukti untuk setiap butir tersebut sebelum menyimpan.</Pemberitahuan>
         </div> : null}
       </Kartu>
 
@@ -113,6 +117,8 @@ export default function EvaluasiDiri() {
   const navigate = useNavigate()
   const simpanRef = useRef(null)
   const [sibuk, setSibuk] = useState(false)
+  const [kotor, setKotor] = useState(false)
+  const [tahan, setTahan] = useState(null)
   if (!siap) return <Kerangka />
   if (!pengajuan) return <Navigate to="/pemohon" replace />
 
@@ -158,7 +164,7 @@ export default function EvaluasiDiri() {
             {daftar.map((d) => (
               <li key={d.mk_id}>
                 <button type="button" className={d.mk_id === aktifId ? 'is-on' : ''} aria-current={d.mk_id === aktifId ? 'true' : undefined}
-                  onClick={() => setParams({ mk: d.mk_id })}>
+                  onClick={() => { if (d.mk_id === aktifId) return; if (kotor) setTahan(d.mk_id); else { setKotor(false); setParams({ mk: d.mk_id }) } }}>
                   <IkonStatusLangkah status={evaluasiLengkap(ev(d.mk_id)) ? 'selesai' : ev(d.mk_id) ? 'proses' : 'belum'} />
                   <span className="pm-grow">{d.mk.nama_mk}</span>
                   <span className="pm-kecil">{d.mk.sks} SKS</span>
@@ -167,8 +173,19 @@ export default function EvaluasiDiri() {
             ))}
           </ul>
         </nav>
-        <Editor key={aktifId} mk={aktif.mk} evaluasi={ev(aktifId)} ro={ro} daftar={(fn) => { simpanRef.current = fn }} />
+        <Editor key={aktifId} mk={aktif.mk} evaluasi={ev(aktifId)} ro={ro} onKotor={setKotor} daftar={(fn) => { simpanRef.current = fn }} />
       </div>
+      <Dialog buka={!!tahan} judul="Isian belum disimpan" onTutup={() => setTahan(null)} lebar={460}
+        kaki={<>
+          <Tombol onClick={() => { const id = tahan; setTahan(null); setKotor(false); setParams({ mk: id }) }}>Buang isian</Tombol>
+          <Tombol jenis="primary" sibuk={sibuk} onClick={async () => {
+            setSibuk(true)
+            try { const ok = await simpanRef.current?.(); if (ok) { const id = tahan; setTahan(null); setKotor(false); setParams({ mk: id }) } }
+            catch (e) { toast.error(e.message) } finally { setSibuk(false) }
+          }}>Simpan lalu pindah</Tombol>
+        </>}>
+        <p>Isian evaluasi diri {aktif.mk.nama_mk} belum disimpan. Simpan dulu agar tidak hilang.</p>
+      </Dialog>
       </GerbangTahap>
       <Kartu judul="Tingkat profisiensi">
         <div className="pm-grid-3">

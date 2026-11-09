@@ -196,7 +196,7 @@ export default function TagihanDetail() {
                     <tbody>
                       {rt.angsuran.map((a) => (
                         <tr key={a.ke}>
-                          <td data-label="Ke">{rt.cicilan ? a.ke : 'Lunas'}</td>
+                          <td data-label="Ke">{rt.cicilan ? a.ke : 'Sekali bayar'}</td>
                           <td data-label="Jumlah" className="pm-tebal ku-angka">{rupiah(a.jumlah)}</td>
                           <td data-label="Jatuh tempo" className={a.terlambat ? 'ku-merah' : 'pm-kecil'}>{a.jatuh_tempo ? tanggal(a.jatuh_tempo) : '-'}{a.terlambat ? ' (terlambat)' : ''}</td>
                           <td data-label="Pembayaran">

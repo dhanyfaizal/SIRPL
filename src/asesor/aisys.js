@@ -84,11 +84,14 @@ export async function bacaTranskripAisys(pengajuanId, path, kabar) {
   if (error || !blob) throw new Error('Transkrip tidak dapat diunduh')
   const pdf = blob.type === 'application/pdf' || /\.pdf$/i.test(path)
   const bahan = pdf ? await bacaPdf(await blob.arrayBuffer(), kabar) : await bacaGambar(blob)
-  kabar?.('AISYS membaca transkrip, biasanya 20 sampai 60 detik')
+  kabar?.('AISYS membaca transkrip. Transkrip panjang bisa memakan waktu hingga 2 menit; jangan tutup halaman ini')
   const { data, error: e } = await supabase.functions.invoke('aisys', { body: { tugas: 'transkrip', pengajuan_id: pengajuanId, ...bahan } })
   if (e) {
-    let pesan = 'AISYS tidak dapat dihubungi'
-    try { pesan = (await e.context?.json())?.galat || pesan } catch { /* biarkan pesan umum */ }
+    const status = e.context?.status
+    let pesan = status === 404
+      ? 'Layanan AISYS belum dipasang di server (Edge Function "aisys"). Hubungi Admin'
+      : 'AISYS tidak dapat dihubungi. Periksa koneksi lalu coba lagi'
+    try { pesan = (await e.context?.json())?.galat || pesan } catch { /* biarkan pesan di atas */ }
     throw new Error(pesan)
   }
   if (data?.galat) throw new Error(data.galat)

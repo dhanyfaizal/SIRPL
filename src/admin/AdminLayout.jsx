@@ -18,7 +18,7 @@ function useNav() {
   const { data } = useAdmin()
   return useMemo(() => {
     const belumVerif = (data?.pengguna || []).filter((u) => !u.is_verified && u.role !== 'calon_rpl').length || null
-    const belumLapor = (data?.pengajuan || []).filter((p) => ['sk_terbit', 'selesai'].includes(p.status) && p.status_pelaporan !== 'diinput_pddikti').length || null
+    const belumLapor = (data?.pengajuan || []).filter((p) => p.alur_versi !== 1 && ['sk_terbit', 'selesai'].includes(p.status) && p.status_pelaporan !== 'diinput_pddikti').length || null
     return [
       { section: 'Beranda' },
       { id: 'beranda', label: 'Beranda', icon: House, to: '/admin' },

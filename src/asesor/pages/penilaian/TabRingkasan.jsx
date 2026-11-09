@@ -9,6 +9,8 @@ import { tanggal } from '../../../pemohon/konstanta'
 import { BarTahap, Bidang, Dialog, Kartu, Lencana, Pemberitahuan, Tombol } from '../../../pemohon/ui'
 
 const LABEL_TUJUAN = { pleno_awal: 'pleno awal', pleno: 'pleno hasil rekognisi' }
+// Riwayat keuangan (diskon, cicilan, tagihan) bukan urusan asesor.
+const LOG_KEUANGAN = new Set(['atur_tagihan', 'tambah_tagihan', 'hapus_tagihan', 'verifikasi_bayar', 'bayar_lunas', 'bayar_ditolak'])
 
 export default function TabRingkasan({ p, d, bolehNilai, koordinator, tugas, keTab }) {
   const { data, peta, gantiPengajuan, role } = useAsesor()
@@ -66,7 +68,7 @@ export default function TabRingkasan({ p, d, bolehNilai, koordinator, tugas, keT
               {r.baris.map((b) => (
                 <tr key={b.mk_id}>
                   <td className="pm-kecil" data-label="Kode">{b.mk.kode_mk}</td>
-                  <td data-label="Mata kuliah"><button type="button" className="as-tautan" onClick={() => keTab(b.mekanisme === 'transfer' ? 'transfer' : 'perolehan')}>{b.mk.nama_mk}</button></td>
+                  <td data-label="Mata kuliah"><button type="button" className="as-tautan" onClick={() => b.mekanisme === 'transfer' ? keTab('transfer', { mk: b.mk_id }) : keTab('perolehan', { mk: b.mk_id })}>{b.mk.nama_mk}</button></td>
                   <td data-label="SKS">{b.mk.sks}</td>
                   <td data-label="Mekanisme">{b.mekanisme === 'transfer' ? 'Transfer' : 'Perolehan'}</td>
                   <td data-label="Keputusan"><Lencana warna={KEPUTUSAN[b.keputusan].warna}>{KEPUTUSAN[b.keputusan].label}</Lencana></td>
@@ -92,7 +94,7 @@ export default function TabRingkasan({ p, d, bolehNilai, koordinator, tugas, keT
         </Kartu>
         <Kartu judul="Riwayat" padat>
           <ul className="tm-daftar as-log">
-            {d.log.slice(0, 8).map((x) => (
+            {d.log.filter((x) => !LOG_KEUANGAN.has(x.aksi)).slice(0, 8).map((x) => (
               <li key={x.id} className="tm-baris">
                 <span className="pm-grow pm-kecil">{x.catatan || (x.ke_status ? `Status menjadi ${x.ke_status.replace(/_/g, ' ')}` : x.aksi.replace(/_/g, ' '))}</span>
                 <span className="pm-kecil">{tanggal(x.created_at, true)}</span>

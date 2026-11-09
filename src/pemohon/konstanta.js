@@ -96,6 +96,17 @@ export function rupiah(n) {
   return 'Rp' + Number(n || 0).toLocaleString('id-ID')
 }
 
+export const STATUS_KERJA = { pegawai_tetap: 'Pegawai tetap', pegawai_honorer: 'Pegawai honorer', pns: 'Pegawai negeri sipil', lainnya: 'Lainnya', tidak_bekerja: 'Tidak bekerja' }
+export const STATUS_KAWIN = { lajang: 'Lajang', menikah: 'Menikah', pernah_menikah: 'Pernah menikah' }
+
+// Tanggal panjang untuk dokumen resmi: "15 Mei 1995". Tanggal tanpa jam
+// (YYYY-MM-DD) dibaca sebagai tanggal lokal agar tidak bergeser zona waktu.
+export function tanggalPanjang(d) {
+  if (!d) return ''
+  const t = /^\d{4}-\d{2}-\d{2}$/.test(d) ? new Date(`${d}T00:00:00`) : new Date(d)
+  return Number.isNaN(t.getTime()) ? String(d) : t.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+}
+
 export function tanggal(d, jam = false) {
   if (!d) return '-'
   const opsi = { day: 'numeric', month: 'short', year: 'numeric' }

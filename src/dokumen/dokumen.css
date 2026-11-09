@@ -1,5 +1,7 @@
 /* Mesin dokumen: halaman cetak, tanda tangan ber-QR, verifikasi publik */
-.dk-alat { flex-wrap: wrap; }
+.dk-alat { flex-wrap: wrap; gap: 8px; }
+.dk-alat > .btn { white-space: nowrap; }
+.dk-alat > .pm-grow { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .dk-halaman { position: relative; }
 .dk-halaman h3.dk-sub { font-size: 12px; font-weight: 700; margin: 10px 0 4px; }
 .dk-kecil { font-size: 11px; margin: 4px 0 6px; }

@@ -12,7 +12,7 @@ export function mkPerolehan(data) {
 export function evaluasiLengkap(e) {
   if (!e || !e.pernyataan_setuju) return false
   const butir = Array.isArray(e.butir) ? e.butir : []
-  return butir.length > 0 && butir.every((b) => b.profisiensi)
+  return butir.length > 0 && butir.every((b) => b.profisiensi && (b.profisiensi === 'tidak_pernah' || (b.bukti || []).length > 0))
 }
 
 export const mkTertutup = (mk) => !mk || mk.is_tugas_akhir || mk.rangkaian_ta || mk.dapat_rpl === false

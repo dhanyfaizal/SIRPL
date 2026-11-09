@@ -1,7 +1,7 @@
 // Penyusun isi dokumen (snapshot JSON). Isi dibekukan saat diterbitkan:
 // perubahan data sesudahnya tidak mengubah dokumen yang sudah ditandatangani.
 import { supabase } from '../lib/supabase'
-import { JENIS_BUKTI, JENIS_RPL, KATEGORI_RIWAYAT, STATUS_PDDIKTI } from '../pemohon/konstanta'
+import { JENIS_BUKTI, JENIS_RPL, KATEGORI_RIWAYAT, STATUS_KAWIN, STATUS_KERJA, STATUS_PDDIKTI, tanggalPanjang } from '../pemohon/konstanta'
 
 function cek({ data, error }) {
   if (error) throw new Error(error.message || 'Terjadi kesalahan pada server')
@@ -69,13 +69,13 @@ const SUSUN = {
       isi: {
         ...kepala(k), diajukan: k.p.submitted_at,
         pribadi: [
-          ['Nama lengkap', k.u?.nama_lengkap], ['Tempat, tanggal lahir', [b.tempat_lahir, b.tanggal_lahir].filter(Boolean).join(', ')],
+          ['Nama lengkap', k.u?.nama_lengkap], ['Tempat, tanggal lahir', [b.tempat_lahir, tanggalPanjang(b.tanggal_lahir)].filter(Boolean).join(', ')],
           ['Jenis kelamin', b.jenis_kelamin === 'pria' ? 'Pria' : b.jenis_kelamin === 'wanita' ? 'Wanita' : ''],
-          ['Status perkawinan', b.status_perkawinan], ['Kebangsaan', b.kebangsaan || b.kewarganegaraan], ['Agama', b.agama],
+          ['Status perkawinan', STATUS_KAWIN[b.status_perkawinan] || b.status_perkawinan], ['Kebangsaan', b.kebangsaan || b.kewarganegaraan], ['Agama', b.agama],
           ['Alamat rumah', [b.alamat, b.kota, b.kode_pos].filter(Boolean).join(', ')], ['Telepon / HP', [b.telepon_rumah, k.u?.no_whatsapp].filter(Boolean).join(' / ')],
           ['Email', k.u?.email], ['Pendidikan terakhir', [b.pendidikan_terakhir, b.nama_sekolah_pt, b.tahun_lulus].filter(Boolean).join(', ')],
         ],
-        pekerjaan: [['Institusi', r.institusi_kerja], ['Jabatan', r.jabatan], ['Status pekerjaan', r.status_pekerjaan], ['Alamat kantor', r.alamat_kerja], ['Telepon kantor', r.telepon_kerja]],
+        pekerjaan: [['Institusi', r.institusi_kerja], ['Jabatan', r.jabatan], ['Status pekerjaan', STATUS_KERJA[r.status_pekerjaan] || r.status_pekerjaan], ['Alamat kantor', r.alamat_kerja], ['Telepon kantor', r.telepon_kerja]],
         pt_asal: ['transfer', 'gabungan'].includes(k.p.jenis_rpl) ? [['Perguruan tinggi asal', k.p.pt_asal], ['Program studi asal', k.p.prodi_asal], ['Status di PDDikti', STATUS_PDDIKTI[k.p.status_pddikti_asal] || k.p.status_pddikti_asal]] : null,
         mk: k.baris.map(barisMk),
       },
@@ -87,7 +87,7 @@ const SUSUN = {
       judul: `Daftar Riwayat Hidup - ${k.u?.nama_lengkap || ''}`,
       isi: {
         ...kepala(k),
-        identitas: [['Nama', k.u?.nama_lengkap], ['Tempat, tanggal lahir', [b.tempat_lahir, b.tanggal_lahir].filter(Boolean).join(', ')],
+        identitas: [['Nama', k.u?.nama_lengkap], ['Tempat, tanggal lahir', [b.tempat_lahir, tanggalPanjang(b.tanggal_lahir)].filter(Boolean).join(', ')],
           ['Institusi tempat bekerja', r.institusi_kerja], ['Jabatan', r.jabatan], ['Alamat rumah', b.alamat], ['Email', k.u?.email]],
         bagian: KATEGORI_RIWAYAT.map((kat) => ({
           judul: kat.l, kolom: kat.kolom.map((c) => kat.label[c]),
