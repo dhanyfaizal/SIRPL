@@ -62,7 +62,7 @@ export default function Hasil() {
 
   return (
     <Halaman judul="Hasil rekognisi"
-      sub={pengajuan.hasil_disampaikan_at ? `Disampaikan ${tanggal(pengajuan.hasil_disampaikan_at)}. Hasil belum final sampai disetujui Komite RPL dan ditetapkan dengan SK Ketua.` : null}
+      sub={pengajuan.hasil_disampaikan_at ? `Disampaikan ${tanggal(pengajuan.hasil_disampaikan_at)}. ${['sk_terbit', 'selesai'].includes(pengajuan.status) ? 'Hasil sudah ditetapkan dengan SK Ketua STIKOM Yos Sudarso.' : 'Hasil belum final sampai disetujui Komite RPL dan ditetapkan dengan SK Ketua.'}` : null}
       aksi={menunggu ? <>
         <Tombol ikon={MessageSquareWarning} onClick={() => { setPilihMk({}); setAlasan(''); setDialog('sanggah') }}>Ajukan sanggahan</Tombol>
         <Tombol jenis="primary" ikon={Check} onClick={() => { setSetuju(false); setDialog('setuju') }}>Setujui hasil</Tombol>
