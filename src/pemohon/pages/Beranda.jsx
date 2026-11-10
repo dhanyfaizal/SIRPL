@@ -6,7 +6,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { usePemohon } from '../PemohonData'
 import * as api from '../api'
 import { supabase } from '../../lib/supabase'
-import { KOMPONEN_TAGIHAN, STATUS_TAGIHAN, ringkasPengajuan } from '../../keuangan/tagihan'
+import { KOMPONEN_TAGIHAN, STATUS_TAGIHAN, ringkasPengajuan, tagihanDitutup } from '../../keuangan/tagihan'
 import { JENIS_RPL, STATUS, TAHAPAN, rupiah, tanggal } from '../konstanta'
 import { Bidang, Dialog, Halaman, IkonStatusLangkah, Kartu, Kerangka, LencanaStatus, Pemberitahuan, Tombol } from '../ui'
 import { hitungKelengkapan } from '../kelengkapan'
@@ -102,10 +102,12 @@ function KartuBayar({ pengajuan, k, tarifAsesmen, tarifDaftar, bayarDaftar }) {
 
   if (terkirim && data.tagihan?.length) {
     const r = ringkasPengajuan(data.tagihan, data.pembayaran)
+    const tutup = tagihanDitutup(pengajuan)
     return (
       <Kartu judul="Pembayaran">
+        {tutup ? <p className="pm-kecil">Pengajuan dihentikan. Sisa tagihan tidak perlu dibayar; pembayaran yang sudah lunas tetap tercatat.</p> : null}
         {r.rinci.map(({ t, r: x }) => {
-          const st = STATUS_TAGIHAN[x.status] || STATUS_TAGIHAN.belum
+          const st = tutup && x.status !== 'lunas' ? { label: 'Ditutup', warna: 'slate' } : (STATUS_TAGIHAN[x.status] || STATUS_TAGIHAN.belum)
           return (
             <div key={t.id} className="pm-baris-bayar">
               <div>
@@ -116,7 +118,7 @@ function KartuBayar({ pengajuan, k, tarifAsesmen, tarifDaftar, bayarDaftar }) {
             </div>
           )
         })}
-        <div className="pm-kecil">Sisa {rupiah(r.sisa)} dari {rupiah(r.total)}</div>
+        {tutup ? null : <div className="pm-kecil">Sisa {rupiah(r.sisa)} dari {rupiah(r.total)}</div>}
         <Link to="/pemohon/pembayaran" className="pm-tautan">Rincian pembayaran</Link>
       </Kartu>
     )

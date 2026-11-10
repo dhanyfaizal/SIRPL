@@ -5,7 +5,7 @@ import { supabase } from '../../lib/supabase'
 import { usePemohon } from '../PemohonData'
 import * as api from '../api'
 import { rupiah, tanggal } from '../konstanta'
-import { KOMPONEN_TAGIHAN, STATUS_TAGIHAN, ringkasPengajuan } from '../../keuangan/tagihan'
+import { KOMPONEN_TAGIHAN, STATUS_TAGIHAN, ringkasPengajuan, tagihanDitutup } from '../../keuangan/tagihan'
 import { BukaBerkas, Dialog, Halaman, Kartu, Kerangka, Lencana, Pemberitahuan, PilihBerkas, Tombol } from '../ui'
 
 const LABEL_TARIF = {
@@ -40,6 +40,7 @@ export default function Pembayaran() {
   if (!data.tagihan && !galat) return <Kerangka />
 
   const r = ringkasPengajuan(data.tagihan || [], data.pembayaran)
+  const tutup = tagihanDitutup(pengajuan)
   const namaDiskon = (id) => (data.diskon || []).find((d) => d.id === id)?.nama || 'Diskon'
 
   const kirim = async () => {
@@ -56,17 +57,22 @@ export default function Pembayaran() {
   return (
     <Halaman judul="Pembayaran" sub="Biaya mengikuti Bab IV Pedoman RPL STIKOM Yos Sudarso dan diverifikasi oleh bagian PMB. Biaya yang sudah dibayar tidak dapat ditarik kembali.">
       {galat ? <Pemberitahuan jenis="red" judul="Tagihan tidak dapat dimuat">{galat}</Pemberitahuan> : null}
+      {tutup ? (
+        <Pemberitahuan jenis="indigo" judul="Tagihan ditutup">
+          Pengajuan Anda dihentikan, sehingga sisa tagihan tidak perlu dibayar. Pembayaran yang sudah lunas tetap tercatat; hubungi bagian PMB untuk informasi lebih lanjut.
+        </Pemberitahuan>
+      ) : null}
       {r.rinci.length ? (
         <div className="pm-dl-ringkas">
           <div><span className="pm-kecil">Total tagihan</span><b>{rupiah(r.total)}</b></div>
           <div><span className="pm-kecil">Sudah dibayar</span><b>{rupiah(r.terbayar)}</b></div>
-          <div><span className="pm-kecil">Sisa</span><b>{rupiah(r.sisa)}</b></div>
+          <div><span className="pm-kecil">Sisa</span><b>{tutup ? '-' : rupiah(r.sisa)}</b></div>
         </div>
       ) : null}
 
       {r.rinci.map(({ t, r: rt }) => (
         <Kartu key={t.id} judul={KOMPONEN_TAGIHAN[t.komponen]} sub={t.keterangan || undefined} padat
-          aksi={<Lencana warna={STATUS_TAGIHAN[rt.status].warna}>{STATUS_TAGIHAN[rt.status].label}</Lencana>}>
+          aksi={tutup && rt.status !== 'lunas' ? <Lencana warna="slate">Ditutup</Lencana> : <Lencana warna={STATUS_TAGIHAN[rt.status].warna}>{STATUS_TAGIHAN[rt.status].label}</Lencana>}>
           <div className="pm-tagihan-ringkas">
             <span>Nominal <b>{rupiah(t.nominal)}</b></span>
             {Number(t.potongan) > 0 ? <span className="pm-hijau">{namaDiskon(t.diskon_id)} <b>-{rupiah(t.potongan)}</b></span> : null}
@@ -91,7 +97,7 @@ export default function Pembayaran() {
                         </td>
                         <td className="pm-kanan" data-label="">
                           {a.bukti ? <BukaBerkas path={a.bukti.bukti_bayar_url} label="Bukti" />
-                            : <Tombol onClick={() => { setFile(null); setBuka({ t, a, label: KOMPONEN_TAGIHAN[t.komponen] }) }}>Kirim bukti bayar</Tombol>}
+                            : tutup ? null : <Tombol onClick={() => { setFile(null); setBuka({ t, a, label: KOMPONEN_TAGIHAN[t.komponen] }) }}>Kirim bukti bayar</Tombol>}
                         </td>
                       </tr>
                     )

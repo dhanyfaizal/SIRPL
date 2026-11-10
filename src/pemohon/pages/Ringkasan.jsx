@@ -69,7 +69,12 @@ export default function Ringkasan() {
       aksi={terkunci ? <LencanaModeBaca /> : null}>
       <GerbangTahap tahap={bisaDiubah ? tahap : null} sebelum={k.sebelumBelum('kirim')}>
 
-      {!bisaDiubah ? (
+      {pengajuan.status === 'tidak_memenuhi_syarat' ? (
+        <Pemberitahuan jenis="red" judul="Pengajuan tidak memenuhi syarat">
+          <div style={{ whiteSpace: 'pre-line' }}>{pengajuan.catatan_revisi || 'Hubungi Sekretariat RPL untuk keterangan lebih lanjut.'}</div>
+          <div className="pm-kecil" style={{ marginTop: 6 }}>Pengajuan ini berhenti dan tidak dapat dikirim ulang.</div>
+        </Pemberitahuan>
+      ) : !bisaDiubah ? (
         <Pemberitahuan jenis="green" judul="Pengajuan sudah dikirim">
           Status saat ini: <LencanaStatus status={pengajuan.status} />. Pantau perkembangannya di Beranda.
         </Pemberitahuan>

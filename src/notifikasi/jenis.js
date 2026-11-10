@@ -19,7 +19,7 @@ export const JENIS_WA = [
     ['jadwal_asesor', 'Asesor: jadwal wawancara/uji'], ['siap_pleno', 'Tim: siap pleno'], ['perlu_komite', 'Komite: menunggu keputusan'],
     ['dikembalikan_komite', 'Ketua Tim: dikembalikan Komite'], ['perlu_sk', 'Sekretariat: disetujui Komite, catat SK'],
     ['perlu_nim', 'BAAK: SK terbit, tetapkan NIM'], ['bukti_bayar', 'PMB: bukti bayar baru'],
-    ['bukti_tambahan_masuk', 'Asesor: bukti tambahan dikirim pemohon'],
+    ['bukti_tambahan_masuk', 'Asesor: bukti tambahan dikirim pemohon'], ['nilai_ulang', 'Asesor: penilaian dibuka kembali (sanggahan/Komite)'],
     ['tanda_tangan', 'Penandatangan: dokumen menunggu tanda tangan'],
   ] },
 ]
@@ -28,7 +28,7 @@ export const LABEL_WA = Object.fromEntries(JENIS_WA.flatMap((g) => g.daftar).con
 // Kelompok kerja: dipakai untuk menyaring halaman WA keluar per bagian.
 export const KATEGORI_WA = [
   { v: 'berkas', l: 'Berkas', jenis: ['pengajuan_diterima', 'berkas_dikembalikan', 'berkas_terverifikasi', 'tidak_memenuhi', 'bukti_tambahan', 'bukti_tambahan_masuk', 'berkas_masuk'] },
-  { v: 'asesmen', l: 'Asesmen dan jadwal', jenis: ['penilaian_lanjutan', 'jadwal_baru', 'jadwal_ubah', 'jadwal_batal', 'hasil_rpl', 'perlu_asesor', 'tugas_asesor', 'jadwal_asesor', 'siap_pleno', 'tanda_tangan'] },
+  { v: 'asesmen', l: 'Asesmen dan jadwal', jenis: ['penilaian_lanjutan', 'jadwal_baru', 'jadwal_ubah', 'jadwal_batal', 'hasil_rpl', 'perlu_asesor', 'tugas_asesor', 'jadwal_asesor', 'siap_pleno', 'nilai_ulang', 'tanda_tangan'] },
   { v: 'keputusan', l: 'Komite, SK, NIM', jenis: ['perlu_komite', 'dikembalikan_komite', 'perlu_sk', 'sk_terbit', 'perlu_nim', 'nim_terbit'] },
   { v: 'pembayaran', l: 'Pembayaran', jenis: ['bayar_lunas', 'bayar_ditolak', 'bukti_bayar'] },
 ]

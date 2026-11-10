@@ -1,4 +1,5 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { supabase } from '../../lib/supabase'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, Mail, Phone } from 'lucide-react'
 import { useAsesor } from '../AsesorData'
@@ -10,6 +11,37 @@ import TabTransfer from './penilaian/TabTransfer'
 import TabPerolehan from './penilaian/TabPerolehan'
 import TabLanjutan from './penilaian/TabLanjutan'
 import TabRingkasan from './penilaian/TabRingkasan'
+
+// Status 'klarifikasi' dipakai untuk dua hal: sanggahan pemohon dan penilaian ulang
+// atas permintaan Komite. Bila yang terakhir terjadi adalah tindak lanjut Ketua Tim
+// "Asesor diminta menilai ulang", tampilkan alasan Komite dan catatan Tim.
+function PenilaianUlangKomite({ p }) {
+  const [info, setInfo] = useState(null)
+  useEffect(() => {
+    let batal = false
+    Promise.all([
+      supabase.from('log_aktivitas_rpl').select('catatan, created_at').eq('pengajuan_id', p.id).eq('aksi', 'tindak_lanjut_komite')
+        .order('created_at', { ascending: false }).limit(1),
+      supabase.from('persetujuan_komite').select('catatan, created_at').eq('pengajuan_id', p.id).eq('keputusan', 'dikembalikan')
+        .order('created_at', { ascending: false }).limit(1),
+      supabase.from('klarifikasi_rpl').select('created_at').eq('pengajuan_id', p.id).order('created_at', { ascending: false }).limit(1),
+    ]).then(([tl, km, sg]) => {
+      if (batal) return
+      const t = tl.data?.[0]; const k = km.data?.[0]; const s = sg.data?.[0]
+      const ulang = t && /^Asesor diminta menilai ulang/.test(t.catatan || '') && (!s || s.created_at < t.created_at)
+      setInfo(ulang ? { komite: k?.catatan, tim: (t.catatan || '').replace(/^Asesor diminta menilai ulang:?\s*/, '') } : null)
+    })
+    return () => { batal = true }
+  }, [p.id])
+  if (!info) return null
+  return (
+    <Pemberitahuan jenis="amber" judul="Dinilai ulang atas permintaan Komite RPL">
+      {info.komite ? <div><b>Catatan Komite:</b> {info.komite}</div> : null}
+      {info.tim ? <div><b>Catatan Ketua Tim:</b> {info.tim}</div> : null}
+      <div className="pm-kecil" style={{ marginTop: 6 }}>Perbarui penilaian mata kuliah yang dimaksud, lalu ajukan kembali ke pleno hasil.</div>
+    </Pemberitahuan>
+  )
+}
 
 export default function Penilaian() {
   const { kelompok = 'semua', id } = useParams()
@@ -89,6 +121,7 @@ export default function Penilaian() {
       {p.status === 'menunggu_bukti_tambahan' ? (
         <Pemberitahuan jenis="amber" judul="Menunggu bukti tambahan dari pemohon">{p.catatan_revisi}</Pemberitahuan>
       ) : null}
+      {p.status === 'klarifikasi' ? <PenilaianUlangKomite p={p} /> : null}
 
       <section className="card tm-tab-kartu">
         <div className="pm-tabs" role="tablist" aria-label="Bagian penilaian">

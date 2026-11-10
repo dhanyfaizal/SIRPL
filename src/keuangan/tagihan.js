@@ -4,6 +4,11 @@ export const KOMPONEN_TAGIHAN = {
 }
 export const KOMPONEN_TAMBAHAN = ['matrikulasi', 'moocs', 'lain_lain']
 
+// Pengajuan yang berhenti: sisa tagihan tidak ditagih lagi (pembayaran yang sudah lunas tetap tercatat;
+// pengembalian dana mengikuti kebijakan keuangan, di luar sistem).
+export const STATUS_TAGIHAN_DITUTUP = ['tidak_memenuhi_syarat', 'dibatalkan']
+export const tagihanDitutup = (p) => STATUS_TAGIHAN_DITUTUP.includes(p?.status)
+
 export const STATUS_TAGIHAN = {
   belum: { label: 'Belum dibayar', warna: 'slate' },
   diperiksa: { label: 'Menunggu verifikasi', warna: 'amber' },

@@ -3,7 +3,7 @@ import { useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Download } from 'lucide-react'
 import { useKeuangan } from '../KeuanganData'
-import { STATUS_TAGIHAN, ringkasPengajuan } from '../tagihan'
+import { STATUS_TAGIHAN, ringkasPengajuan, tagihanDitutup } from '../tagihan'
 import { unduhCsv } from '../../admin/aturan'
 import { JENIS_RPL, rupiah } from '../../pemohon/konstanta'
 import { Halaman, Kerangka, Lencana, Pemberitahuan, PilihSegmen, Tombol } from '../../pemohon/ui'
@@ -23,7 +23,7 @@ export default function Tagihan() {
     return semua
       .filter(({ p }) => !periode || p.periode_id === periode)
       .filter(({ p }) => !prodi || p.prodi_pilihan_id === prodi)
-      .filter(({ r }) => status === 'semua' || (status === 'belum_lunas' ? r.sisa > 0 : status === 'terlambat' ? r.terlambat > 0 : status === 'diskon' ? r.potongan > 0 : status === 'cicilan' ? r.cicilan : true))
+      .filter(({ p, r }) => status === 'semua' || (status === 'belum_lunas' ? r.sisa > 0 && !tagihanDitutup(p) : status === 'terlambat' ? r.terlambat > 0 && !tagihanDitutup(p) : status === 'diskon' ? r.potongan > 0 : status === 'cicilan' ? r.cicilan : true))
       .filter(({ p }) => {
         if (!q) return true
         const u = peta.orang[p.user_id]
@@ -84,11 +84,13 @@ export default function Tagihan() {
                   <td data-label="Program studi">{peta.prodi[p.prodi_pilihan_id]?.nama || '-'}</td>
                   <td data-label="Total" className="ku-kanan">{rupiah(r.total)}{r.potongan ? <div className="pm-kecil ku-potong">diskon {rupiah(r.potongan)}</div> : null}</td>
                   <td data-label="Terbayar" className="ku-kanan">{rupiah(r.terbayar)}</td>
-                  <td data-label="Sisa" className="ku-kanan pm-tebal">{rupiah(r.sisa)}</td>
+                  <td data-label="Sisa" className="ku-kanan pm-tebal">{tagihanDitutup(p) ? '-' : rupiah(r.sisa)}</td>
                   <td data-label="Status">
                     <div className="pm-baris-aksi">
-                      <Lencana warna={STATUS_TAGIHAN[r.status]?.warna}>{STATUS_TAGIHAN[r.status]?.label}</Lencana>
-                      {r.terlambat ? <Lencana warna="red">Terlambat</Lencana> : null}
+                      {tagihanDitutup(p)
+                        ? <Lencana warna="slate" title="Pengajuan tidak memenuhi syarat atau dibatalkan; sisa tagihan tidak ditagih">Ditutup</Lencana>
+                        : <Lencana warna={STATUS_TAGIHAN[r.status]?.warna}>{STATUS_TAGIHAN[r.status]?.label}</Lencana>}
+                      {r.terlambat && !tagihanDitutup(p) ? <Lencana warna="red">Terlambat</Lencana> : null}
                       {r.cicilan ? <Lencana warna="slate">Cicilan</Lencana> : null}
                     </div>
                   </td>

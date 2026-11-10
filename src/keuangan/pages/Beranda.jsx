@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { ArrowRight } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useKeuangan } from '../KeuanganData'
-import { KOMPONEN_TAGIHAN, ringkasPengajuan } from '../tagihan'
+import { KOMPONEN_TAGIHAN, ringkasPengajuan, tagihanDitutup } from '../tagihan'
 import { rupiah, tanggal } from '../../pemohon/konstanta'
 import { Halaman, Kartu, Kerangka, Lencana, Pemberitahuan } from '../../pemohon/ui'
 
@@ -13,7 +13,9 @@ export default function Beranda() {
 
   const hitung = useMemo(() => {
     if (!data) return null
-    const per = data.pengajuan.map((p) => ({ p, r: ringkasPengajuan(peta.tagihanPer[p.id] || [], peta.bayarPer[p.id] || []) }))
+    // Pengajuan yang berhenti (tidak memenuhi syarat/dibatalkan) tidak dihitung sebagai piutang.
+    const per = data.pengajuan.filter((p) => !tagihanDitutup(p))
+      .map((p) => ({ p, r: ringkasPengajuan(peta.tagihanPer[p.id] || [], peta.bayarPer[p.id] || []) }))
     const kini = new Date().toISOString().slice(0, 10)
     const tujuh = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10)
     const jatuh = []
