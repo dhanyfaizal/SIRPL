@@ -5,6 +5,7 @@ import toast from 'react-hot-toast'
 import { usePemohon } from '../PemohonData'
 import * as api from '../api'
 import { HASIL_TERLIHAT, KEPUTUSAN, tanggal } from '../konstanta'
+import { usang } from '../../dokumen/PanelDokumen'
 import { BukaBerkas, Dialog, Halaman, Kartu, Kerangka, Lencana, LencanaStatus, Pemberitahuan, Tombol } from '../ui'
 
 export default function Hasil() {
@@ -33,7 +34,8 @@ export default function Hasil() {
   const sksDiakui = diakui.reduce((n, b) => n + b.mk.sks, 0)
   const prodi = data.prodi.find((p) => p.id === pengajuan.prodi_pilihan_id)
   const tidakDiakui = baris.filter((b) => b.keputusan !== 'diakui')
-  const suratHasil = data.dokumen.find((d) => d.jenis_kode === 'SURAT_HASIL' && d.status === 'final')
+  // Surat hasil lama (terbit sebelum hasil terakhir disampaikan, mis. sebelum sanggahan) tidak ditampilkan.
+  const suratHasil = data.dokumen.find((d) => d.jenis_kode === 'SURAT_HASIL' && d.status === 'final' && !usang(d, pengajuan))
   const sk = data.dokumen.find((d) => d.jenis_kode === 'F08' && d.status === 'final')
   const menunggu = pengajuan.status === 'hasil_disampaikan'
 

@@ -34,7 +34,11 @@ async function konteksPengajuan(id) {
     q('mk_diajukan').then(cek), q('evaluasi_diri').then(cek), q('bukti_portofolio').order('nomor').then(cek),
     q('penilaian_mk').then(cek), q('penilaian_lanjutan').then(cek), q('jadwal_asesmen').order('waktu').then(cek),
     q('klarifikasi_rpl').order('created_at').then(cek), q('verifikasi_pddikti').maybeSingle().then(cek),
-    p.pleno_id ? supabase.from('pleno_rpl').select('*').eq('id', p.pleno_id).maybeSingle().then(cek) : null,
+    // Nomor berita acara: isian manual pada pleno, atau nomor F11 yang diterbitkan mesin dokumen.
+    p.pleno_id ? Promise.all([
+      supabase.from('pleno_rpl').select('*').eq('id', p.pleno_id).maybeSingle().then(cek),
+      supabase.from('dokumen_terbit').select('nomor').eq('pleno_id', p.pleno_id).eq('jenis_kode', 'F11').neq('status', 'dicabut').order('created_at', { ascending: false }).limit(1).then(cek),
+    ]).then(([pl, ba]) => (pl ? { ...pl, nomor_berita_acara: pl.nomor_berita_acara || ba?.[0]?.nomor || null } : null)) : null,
   ])
   const mkId = (id2) => (mk || []).find((m) => m.id === id2)
   const baris = (mkDiajukan || []).map((m) => ({ ...m, mk: mkId(m.mk_id), pn: (penilaian || []).find((x) => x.mk_id === m.mk_id) })).filter((b) => b.mk)

@@ -19,7 +19,7 @@ export default function Dokumen() {
       <KotakTtd ringkas />
       <Kartu judul="Dokumen pengajuan" padat>
         {!daftar ? <div className="card-body"><div className="sk" style={{ height: 60 }} /></div>
-          : daftar.filter((d) => d.status !== 'dicabut').length ? <ul className="tm-daftar">{daftar.filter((d) => d.status !== 'dicabut').map((d) => <BarisDokumen key={d.id} d={d} />)}</ul>
+          : daftar.filter((d) => d.status !== 'dicabut').length ? <ul className="tm-daftar">{daftar.filter((d) => d.status !== 'dicabut').map((d) => <BarisDokumen key={d.id} d={d} pengajuan={pengajuan} />)}</ul>
           : <p className="pm-kosong">Belum ada dokumen. Dokumen diterbitkan Tim Pengelola RPL sesuai tahapan.</p>}
       </Kartu>
     </Halaman>

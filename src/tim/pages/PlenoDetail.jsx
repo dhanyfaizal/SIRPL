@@ -113,7 +113,7 @@ export default function PlenoDetail() {
         <div className="pm-form-2">
           <Bidang label="Tanggal" wajib><input className="input" type="date" value={f.tanggal} disabled={!bolehCatat} onChange={(e) => setInfo({ ...f, tanggal: e.target.value })} /></Bidang>
           <Bidang label="Tempat"><input className="input" value={f.tempat} disabled={!bolehCatat} onChange={(e) => setInfo({ ...f, tempat: e.target.value })} /></Bidang>
-          <Bidang label="Nomor berita acara (F11)" hint="Boleh dikosongkan; nomor otomatis disiapkan bersama modul dokumen."><input className="input" value={f.nomor_berita_acara} disabled={!bolehCatat} onChange={(e) => setInfo({ ...f, nomor_berita_acara: e.target.value })} /></Bidang>
+          <Bidang label="Nomor berita acara (F11)" hint="Kosongkan untuk memakai nomor otomatis Berita Acara (F11) saat diterbitkan."><input className="input" value={f.nomor_berita_acara} disabled={!bolehCatat} onChange={(e) => setInfo({ ...f, nomor_berita_acara: e.target.value })} /></Bidang>
           <div />
           <Bidang label="Notulen / catatan pleno" lebar><textarea className="input" rows={3} value={f.notulen} disabled={!bolehCatat} onChange={(e) => setInfo({ ...f, notulen: e.target.value })} /></Bidang>
         </div>

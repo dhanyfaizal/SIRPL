@@ -51,7 +51,7 @@ export default function Verifikasi() {
               </div>
             </div>
             <dl className="dk-verif-dl">
-              <dt>Jenis dokumen</dt><dd>{hasil.jenis_dokumen} ({hasil.jenis_kode})</dd>
+              <dt>Jenis dokumen</dt><dd>{hasil.jenis_dokumen} {hasil.jenis_kode !== 'SURAT_HASIL' ? ` (${hasil.jenis_kode})` : ''}</dd>
               <dt>Judul</dt><dd>{hasil.judul}</dd>
               {hasil.nomor ? <><dt>Nomor dokumen</dt><dd>{hasil.nomor}</dd></> : null}
               <dt>Tanggal dokumen</dt><dd>{tgl(hasil.tanggal_dokumen)}</dd>

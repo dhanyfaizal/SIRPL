@@ -10,17 +10,23 @@ import { DOKUMEN_PENGAJUAN, hitungSyarat, konteksPengajuan, susunPengajuan } fro
 import { Kartu, Lencana, Tombol } from '../pemohon/ui'
 import { STATUS_DOK } from './pages/LihatDokumen'
 
+// Kode jenis yang ditampilkan (SURAT_HASIL tidak punya nomor formulir).
+export const kodeTampil = (k) => (k === 'SURAT_HASIL' ? 'Surat Hasil' : k)
+// Dokumen hasil yang terbit sebelum hasil terakhir disampaikan (mis. sesudah sanggahan) sudah usang.
+const JENIS_HASIL = ['SURAT_HASIL', 'F09']
+export const usang = (d, p) => !!(d && p?.hasil_disampaikan_at && JENIS_HASIL.includes(d.jenis_kode) && new Date(d.created_at) < new Date(p.hasil_disampaikan_at))
+
 const tgl = (d) => (d ? new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '-')
 
-export function BarisDokumen({ d }) {
-  const st = STATUS_DOK[d.status] || STATUS_DOK.draf
+export function BarisDokumen({ d, pengajuan }) {
+  const st = usang(d, pengajuan) ? { warna: 'amber', label: 'Versi lama' } : (STATUS_DOK[d.status] || STATUS_DOK.draf)
   const sudah = d.ttd.filter((t) => t.status === 'ditandatangani').length
   return (
     <li className="tm-baris">
       <FileText size={16} aria-hidden="true" />
       <div className="pm-grow">
         <Link className="pm-tebal" to={`/dokumen/${d.id}`}>{d.judul}</Link>
-        <div className="pm-kecil">{d.jenis_kode}{d.nomor ? ` · ${d.nomor}` : ''} · {tgl(d.tanggal_dokumen)} · {sudah}/{d.ttd.length} tanda tangan
+        <div className="pm-kecil">{kodeTampil(d.jenis_kode)}{d.nomor ? ` · ${d.nomor}` : ''} · {tgl(d.tanggal_dokumen)} · {sudah}/{d.ttd.length} tanda tangan
           {d.ttd.some((t) => t.status === 'ditolak') ? ' · ada yang menolak' : ''}</div>
       </div>
       <Lencana warna={st.warna}>{st.label}</Lencana>
@@ -57,7 +63,7 @@ export function PanelDokumenPengajuan({ pengajuan, bolehTerbit }) {
     <div className="pm-tumpuk-besar">
       <Kartu judul="Dokumen terbit" sub="Dokumen ditandatangani secara elektronik dengan kode QR verifikasi" padat>
         {!daftar ? <div className="card-body"><div className="sk" style={{ height: 60 }} /></div>
-          : daftar.filter((d) => d.status !== 'dicabut').length ? <ul className="tm-daftar">{daftar.filter((d) => d.status !== 'dicabut').map((d) => <BarisDokumen key={d.id} d={d} />)}</ul>
+          : daftar.filter((d) => d.status !== 'dicabut').length ? <ul className="tm-daftar">{daftar.filter((d) => d.status !== 'dicabut').map((d) => <BarisDokumen key={d.id} d={d} pengajuan={pengajuan} />)}</ul>
           : <p className="pm-kosong">Belum ada dokumen.</p>}
       </Kartu>
       {bolehTerbit && syarat ? (
@@ -75,7 +81,7 @@ export function PanelDokumenPengajuan({ pengajuan, bolehTerbit }) {
             }).map(({ j, kunci, label, ada, opsi, boleh }) => (
               <li key={kunci} className="tm-baris">
                 <span className={`pm-grow${boleh ? '' : ' pm-kecil'}`}>{label}</span>
-                {ada ? <Lencana warna={STATUS_DOK[ada.status].warna}>{STATUS_DOK[ada.status].label}</Lencana> : null}
+                {ada ? (usang(ada, pengajuan) ? <Lencana warna="amber">Perlu diterbitkan ulang</Lencana> : <Lencana warna={STATUS_DOK[ada.status].warna}>{STATUS_DOK[ada.status].label}</Lencana>) : null}
                 <Tombol ikon={FilePlus2} disabled={!boleh} sibuk={sibuk === kunci} onClick={() => terbit(j.kode, opsi, kunci)}>{ada ? 'Terbitkan ulang' : 'Terbitkan'}</Tombol>
               </li>
             ))}
@@ -103,7 +109,7 @@ export function KotakTtd({ ringkas = false }) {
             {tunggu.map((t) => (
               <li key={t.id} className="tm-baris">
                 <PenLine size={16} aria-hidden="true" />
-                <div className="pm-grow"><div className="pm-tebal">{t.dokumen.judul}</div><div className="pm-kecil">{t.dokumen.jenis_kode}{t.dokumen.nomor ? ` · ${t.dokumen.nomor}` : ''} · sebagai {t.jabatan_snapshot}</div></div>
+                <div className="pm-grow"><div className="pm-tebal">{t.dokumen.judul}</div><div className="pm-kecil">{kodeTampil(t.dokumen.jenis_kode)}{t.dokumen.nomor ? ` · ${t.dokumen.nomor}` : ''} · sebagai {t.jabatan_snapshot}</div></div>
                 <Link className="btn btn-primary btn-sm" to={`/dokumen/${t.dokumen_id}`}>Periksa dan tandatangani</Link>
               </li>
             ))}
@@ -116,7 +122,7 @@ export function KotakTtd({ ringkas = false }) {
             {lain.map((t) => (
               <li key={t.id} className="tm-baris">
                 <FileText size={16} aria-hidden="true" />
-                <div className="pm-grow"><Link className="pm-tebal" to={`/dokumen/${t.dokumen_id}`}>{t.dokumen.judul}</Link><div className="pm-kecil">{t.dokumen.jenis_kode}{t.dokumen.nomor ? ` · ${t.dokumen.nomor}` : ''}</div></div>
+                <div className="pm-grow"><Link className="pm-tebal" to={`/dokumen/${t.dokumen_id}`}>{t.dokumen.judul}</Link><div className="pm-kecil">{kodeTampil(t.dokumen.jenis_kode)}{t.dokumen.nomor ? ` · ${t.dokumen.nomor}` : ''}</div></div>
                 <Lencana warna={t.status === 'ditandatangani' ? 'green' : t.status === 'ditolak' ? 'red' : 'slate'}>{t.status === 'ditandatangani' ? `Ditandatangani ${tgl(t.ditandatangani_at)}` : t.status === 'ditolak' ? 'Ditolak' : 'Dokumen dicabut'}</Lencana>
               </li>
             ))}
