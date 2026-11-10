@@ -90,7 +90,7 @@ sudah di-commit dan di-push ke `feat/alur-pedoman` tetapi belum dicek di layar; 
 | 35 | Halaman Pelaporan mencampur 22 data alur lama tanpa NIM/SK (tidak selaras dengan badge) | `Pelaporan.jsx` (syarat `alur_versi !== 1`, sama dengan badge). Perbaikan pertama tidak pernah ter-commit; ditulis ulang 10 Nov 2026 | Selesai (10 Nov, commit `598ff33`: tahap 1 berisi 0, tahap 2 berisi 2 pemohon uji) |
 | — | Data: kurikulum SI tanpa sub-CPMK; akun asesor tanpa prodi; `uji.pemohon2` dan `uji.ketuastikom` tanpa nama lengkap (dokumen mencetak username) | lengkapi data di staging | **Terbuka** |
 | — | Komite "Sudah disetujui" dan Beranda "Selesai" ikut menghitung data alur lama | — | **Terbuka** (kecil) |
-| 36 | Laporan menyembunyikan pembayaran dari Komite hanya di tampilan (`lihatUang`); lewat API, `uji.komite` tetap mendapat `terbayar`/`potongan` per pengajuan dari RPC `laporan_rpl` dan bisa membaca tabel `pembayaran_rpl` dan `tagihan_rpl` langsung (RLS) | Perlu keputusan: apakah Komite boleh melihat data keuangan? Bila tidak: batasi kolom di `laporan_rpl` per peran dan perketat RLS kedua tabel | **Terbuka** (perlu keputusan) |
+| 36 | Laporan menyembunyikan pembayaran dari Komite hanya di tampilan (`lihatUang`); lewat API, `uji.komite` tetap mendapat `terbayar`/`potongan` per pengajuan dari RPC `laporan_rpl` dan bisa membaca tabel `pembayaran_rpl` dan `tagihan_rpl` langsung (RLS) | Diputuskan 10 Nov 2026: Komite **boleh** melihat data keuangan; akses API dibiarkan. Penyembunyian di tampilan hanya untuk kerapian, bukan pembatasan akses | **Diterima** (tidak diubah) |
 
 ---
 
@@ -123,7 +123,7 @@ yang baru diperbarui beberapa detik kemudian (terjadi pada `ui.jsx`, `kelengkapa
    Angka dicocokkan dengan RPC `laporan_rpl`: rata-rata SKS (14+6)/2 = 10,0; tingkat pengakuan 20/44 = 45%;
    median lama layanan (3 dan 1 hari) = 2 hari; pembayaran 2.100.000 + 313.000 = Rp2.413.000 (diskon Rp75.000);
    pelaporan 2 Masuk PDDikti. Pimpinan (`uji.ketuastikom`) melihat kartu dan kolom pembayaran; Komite tidak
-   (tetapi lihat #36). Unduh CSV laporan belum dicoba.
+   (hanya tampilan; Komite memang boleh mengakses data keuangan, lihat #36). Unduh CSV laporan belum dicoba.
 4. #22 dan #17: buat satu pengajuan uji baru sampai tahap asesmen, lalu cek penanda "belum disimpan" dan pilih padanan AISYS manual.
 5. Notifikasi WA (setelah token Fonnte dirotasi):
    - Deploy `notifikasi-wa` dengan `--no-verify-jwt`.
