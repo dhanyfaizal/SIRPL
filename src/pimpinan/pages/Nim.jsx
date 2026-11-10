@@ -14,7 +14,10 @@ export default function Nim() {
   const [sibuk, setSibuk] = useState(null)
   if (!siap) return <Kerangka />
   const boleh = BOLEH.tetapkanNim(role)
-  const baris = data.pengajuan.filter((p) => (lingkup === 'belum' ? p.status === 'sk_terbit' : p.status === 'selesai'))
+  // "Sudah ber-NIM" hanya memuat pengajuan alur Juknis yang benar-benar ber-NIM (data lama alur v1 tidak ikut).
+  const belum = data.pengajuan.filter((p) => p.status === 'sk_terbit')
+  const sudah = data.pengajuan.filter((p) => p.status === 'selesai' && p.alur_versi !== 1 && p.nim)
+  const baris = lingkup === 'belum' ? belum : sudah
 
   const simpan = async (p) => {
     const nim = (isi[p.id] ?? p.nim ?? '').trim()
@@ -31,7 +34,7 @@ export default function Nim() {
 
   return (
     <Halaman judul="Penetapan NIM" sub="Pemohon yang sudah ditetapkan dengan SK Ketua menjadi mahasiswa setelah BAAK menetapkan NIM."
-      aksi={<PilihSegmen pilihan={[{ v: 'belum', l: `Belum ber-NIM (${data.pengajuan.filter((p) => p.status === 'sk_terbit').length})` }, { v: 'sudah', l: 'Sudah ber-NIM' }]} nilai={lingkup} onUbah={setLingkup} label="Lingkup" />}>
+      aksi={<PilihSegmen pilihan={[{ v: 'belum', l: `Belum ber-NIM (${belum.length})` }, { v: 'sudah', l: `Sudah ber-NIM (${sudah.length})` }]} nilai={lingkup} onUbah={setLingkup} label="Lingkup" />}>
       <Kartu padat>
         <div className="table-wrap">
           <table className="pm-tabel pm-tabel-responsif">
@@ -47,7 +50,7 @@ export default function Nim() {
                     <td className="pm-kecil" data-label="SK">{sk ? sk.nomor_sk : '-'}</td>
                     <td data-label="SKS diakui">{ringkasHasil(p, data).sksDiakui} SKS</td>
                     <td data-label="NIM">
-                      {boleh ? (
+                      {boleh && lingkup === 'belum' ? (
                         <div className="pm-baris-aksi">
                           <input className="input" style={{ width: 160 }} value={nilai} onChange={(e) => setIsi((s) => ({ ...s, [p.id]: e.target.value }))} aria-label={`NIM ${peta.orang[p.user_id]?.nama_lengkap || ''}`} placeholder="NIM" />
                           {nilai.trim() && nilai.trim() !== (p.nim || '') ? <Tombol ikon={Save} sibuk={sibuk === p.id} onClick={() => simpan(p)}>Simpan</Tombol> : null}
