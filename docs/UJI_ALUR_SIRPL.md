@@ -28,8 +28,9 @@ perbaikannya, apa yang masih menunggu, dan cara melanjutkan.
 | Pemohon | No. daftar | Jenis | Hasil akhir |
 |---|---|---|---|
 | Uji Pemohon | RPL-2026-0024 | Gabungan | 14 SKS (7 MK), lewat sanggahan Pancasila; NIM **2026RPL0024**; biaya lunas |
-| uji.pemohon2 | RPL-2026-0025 | Perolehan | 6 SKS (2 MK); NIM **2026RPL0025** (ditetapkan sebelum aturan lunas berlaku; angsuran ke-2 masih terbuka) |
-| uji.pemohon3 | RPL-2026-0026 | Transfer | Dibuat 10 Nov 2026 untuk uji #17/#22. Asesor `uji.asesor` (koordinator); 7 MK diakui (16 SKS), 3 tidak diakui; pleno hasil ditetapkan, status **Hasil menunggu tanggapan**; F11 `004/BA-RPL` **menunggu tanda tangan** Ketua Tim dan Asesor (0/2); biaya pendaftaran dan asesmen lunas. Transkrip dan ijazah PDF tiruan buatan uji. |
+| uji.pemohon2 | RPL-2026-0025 | Perolehan | 6 SKS (2 MK); NIM **2026RPL0025** (ditetapkan sebelum aturan lunas berlaku; angsuran ke-2 lunas 10 Nov 2026) |
+| uji.pemohon3 | RPL-2026-0026 | Transfer | Dibuat 10 Nov 2026 untuk uji #17/#22. 7 MK diakui (16 SKS). Lewat **pengembalian Komite** lalu dikirim ulang, SK `902/SK/STIKOM-YS/XI/2026`, F08 final, NIM **2026RPL0026**; status **selesai**, pelaporan tahap 1. |
+| uji.pemohon4 | RPL-2026-0027 | Transfer | Dibuat 10 Nov 2026 untuk uji cabang: tanpa portofolio, **dikembalikan BAAK** (transkrip tidak lengkap) lalu kirim ulang, jadwal dibuat/diubah/dibatalkan, **bukti tambahan** diminta dan dikirim. Status **Dalam asesmen**, belum dinilai. Biaya lunas. |
 
 RPL-2026-0024 dan 0025 sudah ber-SK `901/SK/STIKOM-YS/XI/2026` dan berstatus pelaporan **Masuk PDDikti** (tahap 4, sejak 10 Nov 2026).
 
@@ -93,6 +94,13 @@ sudah di-commit dan di-push ke `feat/alur-pedoman` tetapi belum dicek di layar; 
 | — | Komite "Sudah disetujui" dan Beranda "Selesai" ikut menghitung data alur lama | `PimpinanData.jsx` menyaring `alur_versi` 1 di sumber data modul Pimpinan | Selesai (10 Nov, `14a170e`: Beranda Pimpinan "Selesai" 2, bukan 24) |
 | 37 | Bukti portofolio wajib juga untuk jalur transfer | `kelengkapan.js`, `Bukti.jsx`, `tim/aturan.js`: wajib untuk perolehan/gabungan (dirujuk F03), opsional untuk transfer; daftar periksa BAAK menandai "(opsional untuk transfer)" | Selesai (10 Nov: daftar periksa BAAK RPL-2026-0026 menampilkan "(opsional untuk transfer)"). Belum dicoba di layar: pemohon transfer baru melanjutkan tanpa bukti |
 | 38 | CSV Pelaporan: Tanggal SK `2026-11-10`, kolom tanggal lain `10 Nov 2026` | `Pelaporan.jsx` memakai format yang sama | Ter-deploy (`14a170e`), CSV belum diunduh ulang |
+| 39 | Aturan anti-kembar 10 menit di `antre_wa` menelan pesan sah: dua bukti bayar sekaligus (PMB hanya dapat 1 pesan), dua pelunasan (pemohon 1 pesan), **kirim ulang ke Komite** (pesan "perlu_komite" kedua tidak masuk), perubahan jadwal untuk asesor | Usul: anggap kembar hanya bila **isi pesan sama persis**, bukan sekadar jenis yang sama | **Terbuka** |
+| 40 | Peristiwa tanpa WA: Komite setuju → Sekretariat perlu mencatat SK (`menunggu_sk`); pemohon mengirim bukti tambahan → asesor; jadwal dibatalkan → asesor | Tambah pemicu di `wa_status_pengajuan` dan `wa_jadwal` | **Terbuka** |
+| 41 | Beranda pemohon saat "Perlu bukti tambahan" hanya lencana; permintaan asesor hanya di Riwayat, tanpa kotak/tombol ke halaman Bukti (berbeda dengan "dikembalikan" yang punya kotak merah) | `Beranda.jsx` pemohon | **Terbuka** |
+| 42 | Saat berkas dikembalikan, halaman Data pemohon tidak menandai bagian yang perlu diperbaiki ("Berkas wajib" tetap "Selesai") | `Persyaratan.jsx` | **Terbuka** (kecil) |
+| 43 | Pemohon bisa menyetujui hasil sebelum Surat Hasil/F09 diterbitkan Ketua Tim (RPL-2026-0026) | Perlu keputusan: wajibkan Surat Hasil final sebelum tombol Setujui aktif? | **Perlu keputusan** |
+| 44 | Komite tidak melihat catatan Ketua Tim saat pengajuan dikirim ulang ("Riwayat keputusan Komite" hanya berisi alasan pengembalian) | `pimpinan/pages/Komite.jsx` | **Terbuka** (kecil) |
+| 45 | Jadwal yang dibatalkan masih menampilkan tautan Meet di halaman jadwal pemohon | `pemohon/pages/Jadwal.jsx` | **Terbuka** (kecil) |
 | 36 | Laporan menyembunyikan pembayaran dari Komite hanya di tampilan (`lihatUang`); lewat API, `uji.komite` tetap mendapat `terbayar`/`potongan` per pengajuan dari RPC `laporan_rpl` dan bisa membaca tabel `pembayaran_rpl` dan `tagihan_rpl` langsung (RLS) | Diputuskan 10 Nov 2026: Komite **boleh** melihat data keuangan; akses API dibiarkan. Penyembunyian di tampilan hanya untuk kerapian, bukan pembatasan akses | **Diterima** (tidak diubah) |
 
 ---
@@ -133,6 +141,9 @@ yang baru diperbarui beberapa detik kemudian (terjadi pada `ui.jsx`, `kelengkapa
 5. Notifikasi WA mode manual: lihat 4.4. (Langkah Fonnte hanya bila suatu saat mode diubah ke otomatis: deploy `notifikasi-wa` dengan `--no-verify-jwt`; secret `FONNTE_TOKEN` dan `NOTIFIKASI_RAHASIA`; Database Webhook tabel `antrean_notifikasi` event Insert dengan header `x-sirpl-rahasia`.)
 6. ~~Uji perbaikan #20, #27, #28.~~ Lulus 10 Nov 2026 (lihat tabel).
 7. Setelah deploy #37, #38, dan filter alur lama Pimpinan: cek Beranda Pimpinan "Selesai" = 2 (bukan 24); CSV Pelaporan Tanggal SK `10 Nov 2026`; pemohon transfer baru bisa lanjut tanpa bukti portofolio.
+9. ~~Uji cabang alur (10 Nov 2026).~~ Lulus: (1) BAAK kembalikan berkas → pemohon lihat catatan di Beranda, ganti transkrip, "Kirim ulang pengajuan"; (3) asesor minta bukti tambahan → kotak kuning di halaman Bukti → "Kirim ke asesor" → status kembali asesmen; (4) Komite kembalikan → tab "Hasil dan sanggahan" Ketua Tim (Minta asesor menilai ulang / Kirim ulang ke Komite) → Komite setuju; (5) jadwal buat/ubah/batal, pemohon melihat "Dibatalkan"; (6) angsuran ke-2 `uji.pemohon2` lunas, sisa tagihan 0; (8) 21 pesan WA dari pemicu nyata, termasuk ke pemohon (penanda "Pemohon" + nomor pendaftaran); (9) `/keuangan/wa` PMB tersaring Pembayaran; (10) pemohon transfer lanjut tanpa portofolio; (11) CSV Tanggal SK `10 Nov 2026`; (12) RPL-2026-0026 tuntas sampai NIM. Temuan baru #39–#45.
+   Belum: (2) **Tidak memenuhi syarat** (status akhir, perlu satu akun pemohon uji lagi); (7) prodi TI (ditunda); pilihan "Minta asesor menilai ulang" setelah pengembalian Komite.
+   Nomor WA tiruan `0812000000xx` diisi di profil akun uji staf, pemohon2, dan pemohon4 agar pesan masuk antrean.
 8. ~~Notifikasi WA manual.~~ Lulus 10 Nov 2026 (`2eeefa2`). Admin: Status Aktif, Cara kirim Manual, alamat aplikasi `https://sirpl-staging-stikomyos.vercel.app`. Pesan uji (nomor tiruan `081200000099` di profil `uji.admin`) muncul di WA keluar Admin dan `/tim/wa` (badge 1); Buka WhatsApp menghasilkan `https://wa.me/6281200000099?text=…` dengan isi lengkap (tab WhatsApp tidak dibuka); Tandai terkirim → tab Terkirim dengan waktu dan "Admin Uji SIRPL"; Batal → kembali ke Belum dikirim; Lewati → tab Dilewati.
    Belum dicoba: pesan dari pemicu nyata ke pemohon (penanda "Pemohon" dan nomor pendaftaran) dan halaman `/keuangan/wa` sebagai PMB. 18 akun staf belum mengisi nomor WhatsApp, sehingga pesan untuk staf belum masuk antrean.
 
