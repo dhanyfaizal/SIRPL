@@ -84,10 +84,10 @@ sudah di-commit dan di-push ke `feat/alur-pedoman` tetapi belum dicek di layar; 
 | 29 | NIM bisa ditetapkan sebelum biaya lunas | migrasi `20261122000000_nim_wajib_lunas.sql` (`sisa_tagihan`, `tetapkan_nim`), kolom Pembayaran di `Nim.jsx` | Selesai |
 | 30 | Tab "Sudah ber-NIM" berisi 22 data alur lama dengan NIM kosong yang bisa diedit | `Nim.jsx` | Selesai |
 | 31 | Halaman hasil tetap bertuliskan "belum final" setelah SK | `Hasil.jsx` | Selesai |
-| 32 | Cabut tautan berbagi tanpa konfirmasi | `Repositori.jsx` (commit `2d9e02b`, `a683a06`) | **Ter-push, belum diuji** |
-| 33 | "Setiap akses tercatat" tanpa tampilan riwayat | `Repositori.jsx` ("Dibuka N kali · terakhir …") | **Ter-push, belum diuji** |
-| 34 | Kolom kata sandi tautan tidak tersamar | `Repositori.jsx` | **Ter-push, belum diuji** |
-| 35 | Halaman Pelaporan mencampur 22 data alur lama tanpa NIM/SK (tidak selaras dengan badge) | `Pelaporan.jsx` (commit `a683a06`) | **Ter-push, belum diuji** |
+| 32 | Cabut tautan berbagi tanpa konfirmasi | `Repositori.jsx` (commit `2d9e02b`, `a683a06`); dialog ada di build staging, belum dicoba karena tidak ada tautan aktif | **Ter-push, belum diuji di layar** |
+| 33 | "Setiap akses tercatat" tanpa tampilan riwayat | `Repositori.jsx` ("Dibuka N kali · terakhir …") | Selesai (10 Nov: "Dibuka 4 kali · terakhir …" tampil) |
+| 34 | Kolom kata sandi tautan tidak tersamar | `Repositori.jsx` | Selesai (10 Nov: kolom bertipe password) |
+| 35 | Halaman Pelaporan mencampur 22 data alur lama tanpa NIM/SK (tidak selaras dengan badge) | `Pelaporan.jsx` (syarat `alur_versi !== 1`, sama dengan badge). Perbaikan pertama tidak pernah ter-commit; ditulis ulang 10 Nov 2026 | **Belum deploy** |
 | — | Data: kurikulum SI tanpa sub-CPMK; akun asesor tanpa prodi; `uji.pemohon2` dan `uji.ketuastikom` tanpa nama lengkap (dokumen mencetak username) | lengkapi data di staging | **Terbuka** |
 | — | Komite "Sudah disetujui" dan Beranda "Selesai" ikut menghitung data alur lama | — | **Terbuka** (kecil) |
 
@@ -96,7 +96,8 @@ sudah di-commit dan di-push ke `feat/alur-pedoman` tetapi belum dicek di layar; 
 ## 4. Yang harus dilakukan berikutnya
 
 ### 4.1 Pastikan deploy terbaru aktif di staging
-Perbaikan #32–#35 sudah di-commit (`a683a06`) dan di-push ke `origin/feat/alur-pedoman`.
+Perbaikan #32–#34 sudah di-commit (`a683a06`) dan di-push; build staging `index-CLsipUWc.js` sudah memuatnya.
+Perbaikan #35 (`Pelaporan.jsx`) ternyata tidak pernah ter-commit dan sudah ditulis ulang; perlu commit dan push.
 Yang tersisa:
 - Cek bahwa deploy Vercel untuk commit `a683a06` mencantumkan domain
   `sirpl-staging-stikomyos.vercel.app` (pernah sekali domain tidak ikut pindah).

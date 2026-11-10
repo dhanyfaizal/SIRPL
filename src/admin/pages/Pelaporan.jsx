@@ -18,7 +18,9 @@ export default function Pelaporan() {
   const [konfirmasi, setKonfirmasi] = useState(null)
   const [sibuk, setSibuk] = useState(false)
 
-  const berSk = useMemo(() => (data?.pengajuan || []).filter((p) => ['sk_terbit', 'selesai'].includes(p.status)), [data])
+  // Hanya alur Juknis (alur_versi 2): data alur lama tidak punya SK/NIM dan tidak dilaporkan dari sini.
+  // Syarat ini sama dengan badge Pelaporan di AdminLayout.
+  const berSk = useMemo(() => (data?.pengajuan || []).filter((p) => p.alur_versi !== 1 && ['sk_terbit', 'selesai'].includes(p.status)), [data])
   const baris = useMemo(() => berSk
     .filter((p) => p.status_pelaporan === tahap)
     .filter((p) => !periode || p.periode_id === periode)
