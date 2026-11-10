@@ -56,7 +56,7 @@ export default function Jadwal() {
             <dl className="pm-dl">
               <dt>Mata kuliah</dt><dd>{namaMk(j.mk_ids) || '-'}</dd>
               {j.status === 'dibatalkan' ? (
-                <><dt>Keterangan</dt><dd>Jadwal ini dibatalkan{j.catatan_kehadiran ? `: ${j.catatan_kehadiran}` : ''}. Jadwal pengganti akan diberitahukan.</dd></>
+                <><dt>Keterangan</dt><dd>Jadwal ini dibatalkan{j.catatan_kehadiran ? `: ${j.catatan_kehadiran.trim().replace(/[.\s]+$/, '')}` : ''}. Jadwal pengganti akan diberitahukan.</dd></>
               ) : (
                 <><dt>{j.mode === 'daring' ? 'Tautan' : 'Ruangan'}</dt>
                 <dd>{j.mode === 'daring' ? (tautan ? <span className="pm-kecil">{tautan}</span> : '-') : (j.ruangan || j.tempat_atau_tautan || '-')}</dd></>
