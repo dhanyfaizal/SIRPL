@@ -1,5 +1,5 @@
 // Persetujuan Komite RPL atas hasil rekognisi yang sudah disetujui pemohon.
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, Check, Undo2 } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -23,7 +23,19 @@ function Detail({ p }) {
   const [sibuk, setSibuk] = useState(false)
   const r = ringkasHasil(p, data)
   const prodi = peta.prodi[p.prodi_pilihan_id]
-  const riwayat = data.komite.filter((x) => x.pengajuan_id === p.id)
+  // Tindak lanjut Ketua Tim atas pengembalian (dicatat di log_aktivitas_rpl) ikut ditampilkan,
+  // agar Komite melihat tanggapan Tim saat pengajuan dikirim ulang.
+  const [tindak, setTindak] = useState([])
+  useEffect(() => {
+    let batal = false
+    supabase.from('log_aktivitas_rpl').select('id, catatan, created_at').eq('pengajuan_id', p.id).eq('aksi', 'tindak_lanjut_komite')
+      .then(({ data: d }) => { if (!batal) setTindak(d || []) })
+    return () => { batal = true }
+  }, [p.id])
+  const riwayat = [
+    ...data.komite.filter((x) => x.pengajuan_id === p.id).map((x) => ({ ...x, jenis: x.keputusan })),
+    ...tindak.map((x) => ({ ...x, id: `log-${x.id}`, jenis: 'tindak_lanjut' })),
+  ].sort((a, b) => (a.created_at < b.created_at ? 1 : -1))
   const sanggahan = data.klarifikasi.filter((x) => x.pengajuan_id === p.id)
   const bolehPutus = BOLEH.putuskanKomite(role) && p.status === 'menunggu_komite'
   const u = peta.orang[p.user_id]
@@ -74,11 +86,13 @@ function Detail({ p }) {
         </div>
       </Kartu>
       {riwayat.length ? (
-        <Kartu judul="Riwayat keputusan Komite" padat>
+        <Kartu judul="Riwayat keputusan Komite dan tindak lanjut Tim" padat>
           <ul className="tm-daftar">
             {riwayat.map((x) => (
               <li key={x.id} className="tm-baris">
-                <Lencana warna={x.keputusan === 'disetujui' ? 'green' : 'amber'}>{x.keputusan === 'disetujui' ? 'Disetujui' : 'Dikembalikan'}</Lencana>
+                <Lencana warna={x.jenis === 'disetujui' ? 'green' : x.jenis === 'tindak_lanjut' ? 'indigo' : 'amber'}>
+                  {x.jenis === 'disetujui' ? 'Disetujui' : x.jenis === 'tindak_lanjut' ? 'Tindak lanjut Tim' : 'Dikembalikan'}
+                </Lencana>
                 <span className="pm-grow pm-kecil">{x.catatan || '-'}</span>
                 <span className="pm-kecil">{tanggal(x.created_at, true)}</span>
               </li>

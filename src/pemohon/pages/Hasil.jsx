@@ -77,10 +77,16 @@ export default function Hasil() {
       sub={pengajuan.hasil_disampaikan_at ? `Disampaikan ${tanggal(pengajuan.hasil_disampaikan_at)}. ${['sk_terbit', 'selesai'].includes(pengajuan.status) ? 'Hasil sudah ditetapkan dengan SK Ketua STIKOM Yos Sudarso.' : 'Hasil belum final sampai disetujui Komite RPL dan ditetapkan dengan SK Ketua.'}` : null}
       aksi={menunggu ? <>
         <Tombol ikon={MessageSquareWarning} onClick={() => { setPilihMk({}); setAlasan(''); setDialog('sanggah') }}>Ajukan sanggahan</Tombol>
-        <Tombol jenis="primary" ikon={Check} onClick={() => { setSetuju(false); setDialog('setuju') }}>Setujui hasil</Tombol>
+        <Tombol jenis="primary" ikon={Check} disabled={!suratHasil} title={!suratHasil ? 'Menunggu Surat Hasil diterbitkan' : undefined}
+          onClick={() => { setSetuju(false); setDialog('setuju') }}>Setujui hasil</Tombol>
       </> : null}>
 
-      {menunggu ? (
+      {/* Persetujuan baru dapat diberikan setelah Surat Hasil resmi (final, versi terbaru) terbit. */}
+      {menunggu && !suratHasil ? (
+        <Pemberitahuan jenis="indigo" judul="Surat Hasil sedang disiapkan">
+          Anda dapat memeriksa rincian di bawah dan mengajukan sanggahan. Tombol Setujui hasil aktif setelah Surat Hasil resmi diterbitkan dan ditandatangani Tim Pengelola RPL.
+        </Pemberitahuan>
+      ) : menunggu ? (
         <Pemberitahuan jenis="amber" judul="Hasil menunggu tanggapan Anda">
           Setujui bila hasil sudah sesuai. Bila tidak, ajukan sanggahan untuk mata kuliah tertentu disertai alasan dan bukti tambahan.
         </Pemberitahuan>

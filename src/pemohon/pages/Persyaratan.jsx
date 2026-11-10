@@ -489,6 +489,12 @@ export default function Persyaratan() {
         </div>
       ) : <LencanaModeBaca />}>
       {!bisaDiubah ? <Pemberitahuan>Pengajuan sudah dikirim, data hanya dapat dilihat.</Pemberitahuan> : null}
+      {pengajuan.status === 'dikembalikan_sekretariat' ? (
+        <Pemberitahuan jenis="red" judul="Perlu diperbaiki sebelum dikirim ulang">
+          <div style={{ whiteSpace: 'pre-line' }}>{pengajuan.catatan_revisi || 'Periksa kembali data dan berkas Anda.'}</div>
+          <div className="pm-kecil" style={{ marginTop: 6 }}>Buka bagian yang disebut dengan tombol Ubah, perbaiki, simpan, lalu kirim ulang di tahap Ringkasan dan kirim.</div>
+        </Pemberitahuan>
+      ) : null}
 
       {bagian.map((b, i) => {
         const terbuka = !bisaDiubah || pertamaBelum === -1 || i <= pertamaBelum

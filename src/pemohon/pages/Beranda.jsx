@@ -178,8 +178,15 @@ export default function Beranda() {
         </Pemberitahuan>
       ) : null}
       {pengajuan.status === 'dikembalikan_sekretariat' ? (
-        <Pemberitahuan jenis="red" judul="Pengajuan dikembalikan untuk perbaikan">
+        <Pemberitahuan jenis="red" judul="Pengajuan dikembalikan untuk perbaikan"
+          aksi={<Link className="btn btn-primary btn-sm" to="/pemohon/pengajuan/data">Perbaiki berkas</Link>}>
           <div style={{ whiteSpace: 'pre-line' }}>{pengajuan.catatan_revisi || 'Periksa kembali berkas Anda, lalu kirim ulang.'}</div>
+        </Pemberitahuan>
+      ) : null}
+      {pengajuan.status === 'menunggu_bukti_tambahan' ? (
+        <Pemberitahuan jenis="amber" judul="Asesor meminta bukti tambahan"
+          aksi={<Link className="btn btn-primary btn-sm" to="/pemohon/pengajuan/bukti">Unggah bukti tambahan</Link>}>
+          <div style={{ whiteSpace: 'pre-line' }}>{pengajuan.catatan_revisi || 'Unggah bukti yang diminta asesor, lalu kirim ke asesor.'}</div>
         </Pemberitahuan>
       ) : null}
       {pengajuan.status === 'tidak_memenuhi_syarat' ? (

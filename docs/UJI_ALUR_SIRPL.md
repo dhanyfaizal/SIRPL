@@ -94,13 +94,13 @@ sudah di-commit dan di-push ke `feat/alur-pedoman` tetapi belum dicek di layar; 
 | — | Komite "Sudah disetujui" dan Beranda "Selesai" ikut menghitung data alur lama | `PimpinanData.jsx` menyaring `alur_versi` 1 di sumber data modul Pimpinan | Selesai (10 Nov, `14a170e`: Beranda Pimpinan "Selesai" 2, bukan 24) |
 | 37 | Bukti portofolio wajib juga untuk jalur transfer | `kelengkapan.js`, `Bukti.jsx`, `tim/aturan.js`: wajib untuk perolehan/gabungan (dirujuk F03), opsional untuk transfer; daftar periksa BAAK menandai "(opsional untuk transfer)" | Selesai (10 Nov: daftar periksa BAAK RPL-2026-0026 menampilkan "(opsional untuk transfer)"). Belum dicoba di layar: pemohon transfer baru melanjutkan tanpa bukti |
 | 38 | CSV Pelaporan: Tanggal SK `2026-11-10`, kolom tanggal lain `10 Nov 2026` | `Pelaporan.jsx` memakai format yang sama | Ter-deploy (`14a170e`), CSV belum diunduh ulang |
-| 39 | Aturan anti-kembar 10 menit di `antre_wa` menelan pesan sah: dua bukti bayar sekaligus (PMB hanya dapat 1 pesan), dua pelunasan (pemohon 1 pesan), **kirim ulang ke Komite** (pesan "perlu_komite" kedua tidak masuk), perubahan jadwal untuk asesor | Usul: anggap kembar hanya bila **isi pesan sama persis**, bukan sekadar jenis yang sama | **Terbuka** |
-| 40 | Peristiwa tanpa WA: Komite setuju → Sekretariat perlu mencatat SK (`menunggu_sk`); pemohon mengirim bukti tambahan → asesor; jadwal dibatalkan → asesor | Tambah pemicu di `wa_status_pengajuan` dan `wa_jadwal` | **Terbuka** |
-| 41 | Beranda pemohon saat "Perlu bukti tambahan" hanya lencana; permintaan asesor hanya di Riwayat, tanpa kotak/tombol ke halaman Bukti (berbeda dengan "dikembalikan" yang punya kotak merah) | `Beranda.jsx` pemohon | **Terbuka** |
-| 42 | Saat berkas dikembalikan, halaman Data pemohon tidak menandai bagian yang perlu diperbaiki ("Berkas wajib" tetap "Selesai") | `Persyaratan.jsx` | **Terbuka** (kecil) |
-| 43 | Pemohon bisa menyetujui hasil sebelum Surat Hasil/F09 diterbitkan Ketua Tim (RPL-2026-0026) | Perlu keputusan: wajibkan Surat Hasil final sebelum tombol Setujui aktif? | **Perlu keputusan** |
-| 44 | Komite tidak melihat catatan Ketua Tim saat pengajuan dikirim ulang ("Riwayat keputusan Komite" hanya berisi alasan pengembalian) | `pimpinan/pages/Komite.jsx` | **Terbuka** (kecil) |
-| 45 | Jadwal yang dibatalkan masih menampilkan tautan Meet di halaman jadwal pemohon | `pemohon/pages/Jadwal.jsx` | **Terbuka** (kecil) |
+| 39 | Aturan anti-kembar 10 menit di `antre_wa` menelan pesan sah: dua bukti bayar sekaligus (PMB hanya dapat 1 pesan), dua pelunasan (pemohon 1 pesan), **kirim ulang ke Komite** (pesan "perlu_komite" kedua tidak masuk), perubahan jadwal untuk asesor | Migrasi `20261125000000_wa_perbaikan.sql`: `antre_wa` menganggap kembar hanya bila isi pesan sama persis | **Belum deploy** |
+| 40 | Peristiwa tanpa WA: Komite setuju → Sekretariat perlu mencatat SK (`menunggu_sk`); pemohon mengirim bukti tambahan → asesor; jadwal dibatalkan → asesor | Migrasi yang sama: `menunggu_sk` → Sekretaris (`perlu_sk`); `menunggu_bukti_tambahan` → `asesmen` → asesor (`bukti_tambahan_masuk`); jadwal dibatalkan → asesor (`jadwal_asesor`). Jenis baru didaftarkan di `notifikasi/jenis.js` | **Belum deploy** |
+| 41 | Beranda pemohon saat "Perlu bukti tambahan" hanya lencana; permintaan asesor hanya di Riwayat, tanpa kotak/tombol ke halaman Bukti (berbeda dengan "dikembalikan" yang punya kotak merah) | `pemohon/pages/Beranda.jsx`: kotak kuning berisi permintaan asesor + tombol "Unggah bukti tambahan"; kotak "dikembalikan" diberi tombol "Perbaiki berkas" | **Belum deploy** |
+| 42 | Saat berkas dikembalikan, halaman Data pemohon tidak menandai bagian yang perlu diperbaiki ("Berkas wajib" tetap "Selesai") | `Persyaratan.jsx`: kotak merah berisi catatan perbaikan BAAK di atas halaman Data | **Belum deploy** |
+| 43 | Pemohon bisa menyetujui hasil sebelum Surat Hasil/F09 diterbitkan Ketua Tim (RPL-2026-0026) | Diputuskan 10 Nov 2026: `Hasil.jsx` menonaktifkan "Setujui hasil" sampai Surat Hasil final (versi terbaru) terbit, dengan penjelasan; sanggahan tetap bisa diajukan. Pembatasan di tampilan, belum di basis data | **Belum deploy** |
+| 44 | Komite tidak melihat catatan Ketua Tim saat pengajuan dikirim ulang ("Riwayat keputusan Komite" hanya berisi alasan pengembalian) | `pimpinan/pages/Komite.jsx`: riwayat memuat tindak lanjut Ketua Tim dari `log_aktivitas_rpl` ("Tindak lanjut Tim") | **Belum deploy** |
+| 45 | Jadwal yang dibatalkan masih menampilkan tautan Meet di halaman jadwal pemohon | `pemohon/pages/Jadwal.jsx`: jadwal dibatalkan menampilkan keterangan dan alasan, tanpa tautan | **Belum deploy** |
 | 36 | Laporan menyembunyikan pembayaran dari Komite hanya di tampilan (`lihatUang`); lewat API, `uji.komite` tetap mendapat `terbayar`/`potongan` per pengajuan dari RPC `laporan_rpl` dan bisa membaca tabel `pembayaran_rpl` dan `tagihan_rpl` langsung (RLS) | Diputuskan 10 Nov 2026: Komite **boleh** melihat data keuangan; akses API dibiarkan. Penyembunyian di tampilan hanya untuk kerapian, bukan pembatasan akses | **Diterima** (tidak diubah) |
 
 ---
@@ -178,6 +178,7 @@ yang baru diperbarui beberapa detik kemudian (terjadi pada `ui.jsx`, `kelengkapa
 | `20261122000000_nim_wajib_lunas.sql` | `sisa_tagihan`, NIM setelah lunas | sudah |
 | `20261123000000_nama_berkas_repositori.sql` | nama berkas repositori + nomor | sudah |
 | `20261124000000_wa_manual.sql` | WA mode manual (WA keluar), Fonnte jadi opsi | sudah (10 Nov) |
+| `20261125000000_wa_perbaikan.sql` | WA: anti-kembar per isi pesan, pemicu perlu SK / bukti tambahan masuk / jadwal batal ke asesor | **belum** |
 
 Semua migrasi memakai `BEGIN/COMMIT` sendiri dan aman dijalankan ulang (`CREATE OR REPLACE` / `DROP ... IF EXISTS`).
 

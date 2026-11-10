@@ -55,8 +55,12 @@ export default function Jadwal() {
             aksi={<Lencana warna={s.w}>{s.l}</Lencana>}>
             <dl className="pm-dl">
               <dt>Mata kuliah</dt><dd>{namaMk(j.mk_ids) || '-'}</dd>
-              <dt>{j.mode === 'daring' ? 'Tautan' : 'Ruangan'}</dt>
-              <dd>{j.mode === 'daring' ? (tautan ? <span className="pm-kecil">{tautan}</span> : '-') : (j.ruangan || j.tempat_atau_tautan || '-')}</dd>
+              {j.status === 'dibatalkan' ? (
+                <><dt>Keterangan</dt><dd>Jadwal ini dibatalkan{j.catatan_kehadiran ? `: ${j.catatan_kehadiran}` : ''}. Jadwal pengganti akan diberitahukan.</dd></>
+              ) : (
+                <><dt>{j.mode === 'daring' ? 'Tautan' : 'Ruangan'}</dt>
+                <dd>{j.mode === 'daring' ? (tautan ? <span className="pm-kecil">{tautan}</span> : '-') : (j.ruangan || j.tempat_atau_tautan || '-')}</dd></>
+              )}
               {j.konfirmasi_hadir_at ? <><dt>Konfirmasi</dt><dd>Anda mengonfirmasi hadir {tanggal(j.konfirmasi_hadir_at, true)}</dd></> : null}
             </dl>
             {j.status === 'dijadwalkan' ? (
