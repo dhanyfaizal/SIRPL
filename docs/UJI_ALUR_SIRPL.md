@@ -84,7 +84,7 @@ sudah di-commit dan di-push ke `feat/alur-pedoman` tetapi belum dicek di layar; 
 | 29 | NIM bisa ditetapkan sebelum biaya lunas | migrasi `20261122000000_nim_wajib_lunas.sql` (`sisa_tagihan`, `tetapkan_nim`), kolom Pembayaran di `Nim.jsx` | Selesai |
 | 30 | Tab "Sudah ber-NIM" berisi 22 data alur lama dengan NIM kosong yang bisa diedit | `Nim.jsx` | Selesai |
 | 31 | Halaman hasil tetap bertuliskan "belum final" setelah SK | `Hasil.jsx` | Selesai |
-| 32 | Cabut tautan berbagi tanpa konfirmasi | `Repositori.jsx` (commit `2d9e02b`, `a683a06`); dialog ada di build staging, belum dicoba karena tidak ada tautan aktif | **Ter-push, belum diuji di layar** |
+| 32 | Cabut tautan berbagi tanpa konfirmasi | `Repositori.jsx` (commit `2d9e02b`, `a683a06`) | Selesai (10 Nov: dialog "Cabut tautan berbagi?" muncul; Batal → tetap Aktif; konfirmasi → Dicabut. Tautan uji "Uji #32 dialog cabut" sudah dicabut) |
 | 33 | "Setiap akses tercatat" tanpa tampilan riwayat | `Repositori.jsx` ("Dibuka N kali · terakhir …") | Selesai (10 Nov: "Dibuka 4 kali · terakhir …" tampil) |
 | 34 | Kolom kata sandi tautan tidak tersamar | `Repositori.jsx` | Selesai (10 Nov: kolom bertipe password) |
 | 35 | Halaman Pelaporan mencampur 22 data alur lama tanpa NIM/SK (tidak selaras dengan badge) | `Pelaporan.jsx` (syarat `alur_versi !== 1`, sama dengan badge). Perbaikan pertama tidak pernah ter-commit; ditulis ulang 10 Nov 2026 | Selesai (10 Nov, commit `598ff33`: tahap 1 berisi 0, tahap 2 berisi 2 pemohon uji) |
@@ -109,8 +109,8 @@ yang baru diperbarui beberapa detik kemudian (terjadi pada `ui.jsx`, `kelengkapa
 `TabTransfer.jsx`, `Nim.jsx`, `Hasil.jsx`, `Repositori.jsx`). Selalu cek `git diff --stat` sebelum commit.
 
 ### 4.2 Uji yang tersisa
-1. Repositori (Ketua Tim): tombol Cabut memunculkan dialog; baris tautan menampilkan "Dibuka N kali"; kolom kata sandi tersamar (#32–#34).
-2. Pelaporan (BAAK): hanya 2 pemohon uji tampil (#35; tangkapan N10 masih menunjukkan 24 pemohon); lanjutkan tahap 3 "Diverifikasi LLDIKTI" dan 4 "Masuk PDDikti"; coba "Kembalikan"; Unduh CSV.
+1. ~~Repositori (Ketua Tim): dialog Cabut, "Dibuka N kali", sandi tersamar (#32–#34).~~ Lulus 10 Nov 2026.
+2. Pelaporan (BAAK): hanya 2 pemohon uji tampil (#35, lulus 10 Nov 2026); lanjutkan tahap 3 "Diverifikasi LLDIKTI" dan 4 "Masuk PDDikti"; coba "Kembalikan"; Unduh CSV.
 3. Laporan dan analitik (Pimpinan/Komite).
 4. #22 dan #17: buat satu pengajuan uji baru sampai tahap asesmen, lalu cek penanda "belum disimpan" dan pilih padanan AISYS manual.
 5. Notifikasi WA (setelah token Fonnte dirotasi):
