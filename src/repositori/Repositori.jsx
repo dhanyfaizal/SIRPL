@@ -22,6 +22,17 @@ function KelolaTautan({ periode, prodi }) {
   const [form, setForm] = useState(null)
   const [baru, setBaru] = useState(null)
   const [sibuk, setSibuk] = useState(false)
+  const [akanCabut, setAkanCabut] = useState(null)
+  // Ringkasan log akses per tautan (jumlah dan waktu terakhir).
+  const [akses, setAkses] = useState({})
+  useEffect(() => {
+    supabase.from('log_akses_repositori').select('tautan_id, created_at').order('created_at', { ascending: false }).limit(2000)
+      .then(({ data }) => {
+        const r = {}
+        for (const x of data || []) { if (!x.tautan_id) continue; r[x.tautan_id] = r[x.tautan_id] || { n: 0, akhir: x.created_at }; r[x.tautan_id].n += 1 }
+        setAkses(r)
+      })
+  }, [daftar])
   const muat = useCallback(() => supabase.from('tautan_berbagi').select('id, token, nama, periode_id, prodi_ids, mekanisme, kedaluwarsa_at, kata_sandi_hash, dicabut_at, created_at').order('created_at', { ascending: false })
     .then(cek).then(setDaftar).catch((e) => toast.error(e.message)), [])
   useEffect(() => { muat() }, [muat])
@@ -42,8 +53,9 @@ function KelolaTautan({ periode, prodi }) {
       setBaru({ ...h, sandi: form.pakaiSandi ? form.sandi : null }); setForm(null); muat()
     } catch (e) { toast.error(e.message) } finally { setSibuk(false) }
   }
-  const cabut = async (t) => {
-    try { cek(await supabase.rpc('cabut_tautan_berbagi', { p_id: t.id })); toast.success('Tautan dicabut'); muat() } catch (e) { toast.error(e.message) }
+  const cabut = async () => {
+    setSibuk(true)
+    try { cek(await supabase.rpc('cabut_tautan_berbagi', { p_id: akanCabut.id })); toast.success('Tautan dicabut'); setAkanCabut(null); muat() } catch (e) { toast.error(e.message) } finally { setSibuk(false) }
   }
   const status = (t) => (t.dicabut_at ? ['Dicabut', 'red'] : t.kedaluwarsa_at && new Date(t.kedaluwarsa_at) < new Date() ? ['Kedaluwarsa', 'slate'] : ['Aktif', 'green'])
 
@@ -64,11 +76,12 @@ function KelolaTautan({ periode, prodi }) {
                       {periode.find((p) => p.id === t.periode_id)?.nama || 'Semua periode'} · {(t.prodi_ids || []).length ? prodi.filter((p) => t.prodi_ids.includes(p.id)).map((p) => p.nama).join(', ') : 'Semua prodi'}
                       {t.mekanisme ? ` · ${t.mekanisme === 'transfer' ? 'Transfer kredit' : 'Perolehan kredit'}` : ''} · {t.kata_sandi_hash ? 'bersandi' : 'terbuka'} · {t.kedaluwarsa_at ? `berlaku s.d. ${tgl(t.kedaluwarsa_at)}` : 'tanpa batas waktu'}
                     </div>
+                    <div className="pm-kecil">{akses[t.id] ? `Dibuka ${akses[t.id].n} kali · terakhir ${tgl(akses[t.id].akhir)}` : 'Belum pernah dibuka'}</div>
                   </div>
                   <Lencana warna={warna}>{lab}</Lencana>
                   {lab === 'Aktif' ? <>
                     <button type="button" className="btn btn-ghost btn-sm" onClick={() => salin(tautan(t.token))}><Copy size={13} /> Salin</button>
-                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => cabut(t)}><Ban size={13} /> Cabut</button>
+                    <button type="button" className="btn btn-ghost btn-sm" onClick={() => setAkanCabut(t)}><Ban size={13} /> Cabut</button>
                   </> : null}
                 </li>
               )
@@ -108,11 +121,15 @@ function KelolaTautan({ periode, prodi }) {
             </Bidang>
             {form.pakaiSandi ? (
               <Bidang label="Kata sandi" lebar hint="Minimal 8 karakter. Sampaikan terpisah dari tautan; sandi tidak dapat dilihat lagi setelah disimpan.">
-                <input className="input" type="text" value={form.sandi} onChange={(e) => setForm((s) => ({ ...s, sandi: e.target.value }))} autoComplete="new-password" />
+                <input className="input" type="password" value={form.sandi} onChange={(e) => setForm((s) => ({ ...s, sandi: e.target.value }))} autoComplete="new-password" />
               </Bidang>
             ) : null}
           </div>
         ) : null}
+      </Dialog>
+      <Dialog buka={!!akanCabut} judul="Cabut tautan berbagi?" onTutup={() => setAkanCabut(null)} lebar={480}
+        kaki={<><Tombol onClick={() => setAkanCabut(null)}>Batal</Tombol><Tombol jenis="danger" sibuk={sibuk} onClick={cabut}>Cabut tautan</Tombol></>}>
+        {akanCabut ? <p>Tautan untuk <b>{akanCabut.nama}</b> tidak dapat dibuka lagi setelah dicabut. Tindakan ini tidak dapat dibatalkan; buat tautan baru bila penerima masih memerlukan akses.</p> : null}
       </Dialog>
       <Dialog buka={!!baru} judul="Tautan berbagi siap" onTutup={() => setBaru(null)} lebar={560}
         kaki={<Tombol jenis="primary" onClick={() => setBaru(null)}>Selesai</Tombol>}>
