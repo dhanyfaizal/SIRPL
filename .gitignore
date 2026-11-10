@@ -25,3 +25,11 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Berkas rahasia lokal (jangan pernah di-commit)
+Cloudflare.txt
+recovery-codes*.txt
+
+# Tangkapan layar uji (besar; simpan di luar repo)
+tangkapan_uji_sirpl/
+tangkapan_uji_sirpl.zip
