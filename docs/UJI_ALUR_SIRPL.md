@@ -90,9 +90,9 @@ sudah di-commit dan di-push ke `feat/alur-pedoman` tetapi belum dicek di layar; 
 | 34 | Kolom kata sandi tautan tidak tersamar | `Repositori.jsx` | Selesai (10 Nov: kolom bertipe password) |
 | 35 | Halaman Pelaporan mencampur 22 data alur lama tanpa NIM/SK (tidak selaras dengan badge) | `Pelaporan.jsx` (syarat `alur_versi !== 1`, sama dengan badge). Perbaikan pertama tidak pernah ter-commit; ditulis ulang 10 Nov 2026 | Selesai (10 Nov, commit `598ff33`: tahap 1 berisi 0, tahap 2 berisi 2 pemohon uji) |
 | — | Data: kurikulum SI tanpa sub-CPMK; akun asesor tanpa prodi; akun uji tanpa nama lengkap (dokumen mencetak username) | 10 Nov: nama lengkap diisi (Uji Pemohon Dua/Tiga, Uji Ketua STIKOM, Uji Sekretaris, Uji PMB, Uji BAAK); `uji.asesor` homebase Sistem Informasi. **Sub-CPMK belum**: perlu isi kurikulum resmi dari Kaprodi SI (Admin → Kurikulum) | Sebagian (sisa sub-CPMK) |
-| — | Komite "Sudah disetujui" dan Beranda "Selesai" ikut menghitung data alur lama | `PimpinanData.jsx` menyaring `alur_versi` 1 di sumber data modul Pimpinan | **Belum deploy** |
-| 37 | Bukti portofolio wajib juga untuk jalur transfer | `kelengkapan.js`, `Bukti.jsx`, `tim/aturan.js`: wajib untuk perolehan/gabungan (dirujuk F03), opsional untuk transfer; daftar periksa BAAK menandai "(opsional untuk transfer)" | **Belum deploy** |
-| 38 | CSV Pelaporan: Tanggal SK `2026-11-10`, kolom tanggal lain `10 Nov 2026` | `Pelaporan.jsx` memakai format yang sama | **Belum deploy** |
+| — | Komite "Sudah disetujui" dan Beranda "Selesai" ikut menghitung data alur lama | `PimpinanData.jsx` menyaring `alur_versi` 1 di sumber data modul Pimpinan | Selesai (10 Nov, `14a170e`: Beranda Pimpinan "Selesai" 2, bukan 24) |
+| 37 | Bukti portofolio wajib juga untuk jalur transfer | `kelengkapan.js`, `Bukti.jsx`, `tim/aturan.js`: wajib untuk perolehan/gabungan (dirujuk F03), opsional untuk transfer; daftar periksa BAAK menandai "(opsional untuk transfer)" | Selesai (10 Nov: daftar periksa BAAK RPL-2026-0026 menampilkan "(opsional untuk transfer)"). Belum dicoba di layar: pemohon transfer baru melanjutkan tanpa bukti |
+| 38 | CSV Pelaporan: Tanggal SK `2026-11-10`, kolom tanggal lain `10 Nov 2026` | `Pelaporan.jsx` memakai format yang sama | Ter-deploy (`14a170e`), CSV belum diunduh ulang |
 | 36 | Laporan menyembunyikan pembayaran dari Komite hanya di tampilan (`lihatUang`); lewat API, `uji.komite` tetap mendapat `terbayar`/`potongan` per pengajuan dari RPC `laporan_rpl` dan bisa membaca tabel `pembayaran_rpl` dan `tagihan_rpl` langsung (RLS) | Diputuskan 10 Nov 2026: Komite **boleh** melihat data keuangan; akses API dibiarkan. Penyembunyian di tampilan hanya untuk kerapian, bukan pembatasan akses | **Diterima** (tidak diubah) |
 
 ---
@@ -133,7 +133,8 @@ yang baru diperbarui beberapa detik kemudian (terjadi pada `ui.jsx`, `kelengkapa
 5. Notifikasi WA mode manual: lihat 4.4. (Langkah Fonnte hanya bila suatu saat mode diubah ke otomatis: deploy `notifikasi-wa` dengan `--no-verify-jwt`; secret `FONNTE_TOKEN` dan `NOTIFIKASI_RAHASIA`; Database Webhook tabel `antrean_notifikasi` event Insert dengan header `x-sirpl-rahasia`.)
 6. ~~Uji perbaikan #20, #27, #28.~~ Lulus 10 Nov 2026 (lihat tabel).
 7. Setelah deploy #37, #38, dan filter alur lama Pimpinan: cek Beranda Pimpinan "Selesai" = 2 (bukan 24); CSV Pelaporan Tanggal SK `10 Nov 2026`; pemohon transfer baru bisa lanjut tanpa bukti portofolio.
-8. Notifikasi WA manual: jalankan migrasi `20261118000000_notifikasi_wa.sql` (bila belum) dan `20261124000000_wa_manual.sql`; Admin → Notifikasi WhatsApp: Status **Aktif**, Cara kirim **Manual**, alamat aplikasi staging; ubah status satu pengajuan uji lalu cek pesan muncul di **WA keluar** (Tim/PMB/Admin), Buka WhatsApp, Tandai terkirim, Batal.
+8. ~~Notifikasi WA manual.~~ Lulus 10 Nov 2026 (`2eeefa2`). Admin: Status Aktif, Cara kirim Manual, alamat aplikasi `https://sirpl-staging-stikomyos.vercel.app`. Pesan uji (nomor tiruan `081200000099` di profil `uji.admin`) muncul di WA keluar Admin dan `/tim/wa` (badge 1); Buka WhatsApp menghasilkan `https://wa.me/6281200000099?text=…` dengan isi lengkap (tab WhatsApp tidak dibuka); Tandai terkirim → tab Terkirim dengan waktu dan "Admin Uji SIRPL"; Batal → kembali ke Belum dikirim; Lewati → tab Dilewati.
+   Belum dicoba: pesan dari pemicu nyata ke pemohon (penanda "Pemohon" dan nomor pendaftaran) dan halaman `/keuangan/wa` sebagai PMB. 18 akun staf belum mengisi nomor WhatsApp, sehingga pesan untuk staf belum masuk antrean.
 
 ### 4.4 Notifikasi WhatsApp: mode manual (keputusan 10 Nov 2026)
 - **Pengirim:** satu nomor **WA Business institusi**, ditautkan di WhatsApp Desktop/Web komputer BAAK/PMB (maks. 4 perangkat tertaut).
@@ -165,7 +166,7 @@ yang baru diperbarui beberapa detik kemudian (terjadi pada `ui.jsx`, `kelengkapa
 | `20261121000000_aisys_klarifikasi.sql` | AISYS boleh saat sanggahan | sudah |
 | `20261122000000_nim_wajib_lunas.sql` | `sisa_tagihan`, NIM setelah lunas | sudah |
 | `20261123000000_nama_berkas_repositori.sql` | nama berkas repositori + nomor | sudah |
-| `20261124000000_wa_manual.sql` | WA mode manual (WA keluar), Fonnte jadi opsi | **belum** |
+| `20261124000000_wa_manual.sql` | WA mode manual (WA keluar), Fonnte jadi opsi | sudah (10 Nov) |
 
 Semua migrasi memakai `BEGIN/COMMIT` sendiri dan aman dijalankan ulang (`CREATE OR REPLACE` / `DROP ... IF EXISTS`).
 
