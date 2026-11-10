@@ -30,7 +30,7 @@ perbaikannya, apa yang masih menunggu, dan cara melanjutkan.
 | Uji Pemohon | RPL-2026-0024 | Gabungan | 14 SKS (7 MK), lewat sanggahan Pancasila; NIM **2026RPL0024**; biaya lunas |
 | uji.pemohon2 | RPL-2026-0025 | Perolehan | 6 SKS (2 MK); NIM **2026RPL0025** (ditetapkan sebelum aturan lunas berlaku; angsuran ke-2 masih terbuka) |
 
-Keduanya sudah ber-SK `901/SK/STIKOM-YS/XI/2026` dan berstatus pelaporan **Dilaporkan ke Sistem RPL**.
+Keduanya sudah ber-SK `901/SK/STIKOM-YS/XI/2026` dan berstatus pelaporan **Masuk PDDikti** (tahap 4, sejak 10 Nov 2026).
 
 Berkas tiruan untuk unggahan ada di folder `uji/` (ijazah, transkrip, sertifikat, surat
 keterangan kerja, F07 bertanda tangan, bukti bayar PDF/JPG).
@@ -110,7 +110,14 @@ yang baru diperbarui beberapa detik kemudian (terjadi pada `ui.jsx`, `kelengkapa
 
 ### 4.2 Uji yang tersisa
 1. ~~Repositori (Ketua Tim): dialog Cabut, "Dibuka N kali", sandi tersamar (#32–#34).~~ Lulus 10 Nov 2026.
-2. Pelaporan (BAAK): hanya 2 pemohon uji tampil (#35, lulus 10 Nov 2026); lanjutkan tahap 3 "Diverifikasi LLDIKTI" dan 4 "Masuk PDDikti"; coba "Kembalikan"; Unduh CSV.
+2. ~~Pelaporan (BAAK): tahap 2 → 3 → 4, "Kembalikan", Unduh CSV.~~ Lulus 10 Nov 2026. Kedua pemohon uji
+   kini berstatus **Masuk PDDikti**. Kembalikan 3→2 dan 4→3 berjalan dengan dialog "koreksi satu langkah".
+   CSV `pelaporan-rpl-diinput_pddikti-2026-11-10.csv` berisi 2 baris dengan 17 kolom dan ketiga tanggal pelaporan.
+   Catatan kecil:
+   - Sekali, setelah simpan tahap 3→4, angka tab dan daftar tidak berubah walau notifikasi sukses muncul;
+     data tersimpan (terlihat setelah muat ulang). Tidak terulang pada dua percobaan berikutnya.
+   - CSV: kolom Tanggal SK berformat `2026-11-10`, sedangkan kolom tanggal pelaporan `10 Nov 2026`.
+   - CSV: Nama `uji.pemohon2` (akun tanpa nama lengkap) dan Prodi asal `efafae` (isian uji) — data, bukan kode.
 3. Laporan dan analitik (Pimpinan/Komite).
 4. #22 dan #17: buat satu pengajuan uji baru sampai tahap asesmen, lalu cek penanda "belum disimpan" dan pilih padanan AISYS manual.
 5. Notifikasi WA (setelah token Fonnte dirotasi):
