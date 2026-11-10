@@ -87,7 +87,7 @@ sudah di-commit dan di-push ke `feat/alur-pedoman` tetapi belum dicek di layar; 
 | 32 | Cabut tautan berbagi tanpa konfirmasi | `Repositori.jsx` (commit `2d9e02b`, `a683a06`); dialog ada di build staging, belum dicoba karena tidak ada tautan aktif | **Ter-push, belum diuji di layar** |
 | 33 | "Setiap akses tercatat" tanpa tampilan riwayat | `Repositori.jsx` ("Dibuka N kali · terakhir …") | Selesai (10 Nov: "Dibuka 4 kali · terakhir …" tampil) |
 | 34 | Kolom kata sandi tautan tidak tersamar | `Repositori.jsx` | Selesai (10 Nov: kolom bertipe password) |
-| 35 | Halaman Pelaporan mencampur 22 data alur lama tanpa NIM/SK (tidak selaras dengan badge) | `Pelaporan.jsx` (syarat `alur_versi !== 1`, sama dengan badge). Perbaikan pertama tidak pernah ter-commit; ditulis ulang 10 Nov 2026 | **Belum deploy** |
+| 35 | Halaman Pelaporan mencampur 22 data alur lama tanpa NIM/SK (tidak selaras dengan badge) | `Pelaporan.jsx` (syarat `alur_versi !== 1`, sama dengan badge). Perbaikan pertama tidak pernah ter-commit; ditulis ulang 10 Nov 2026 | Selesai (10 Nov, commit `598ff33`: tahap 1 berisi 0, tahap 2 berisi 2 pemohon uji) |
 | — | Data: kurikulum SI tanpa sub-CPMK; akun asesor tanpa prodi; `uji.pemohon2` dan `uji.ketuastikom` tanpa nama lengkap (dokumen mencetak username) | lengkapi data di staging | **Terbuka** |
 | — | Komite "Sudah disetujui" dan Beranda "Selesai" ikut menghitung data alur lama | — | **Terbuka** (kecil) |
 
@@ -97,7 +97,7 @@ sudah di-commit dan di-push ke `feat/alur-pedoman` tetapi belum dicek di layar; 
 
 ### 4.1 Pastikan deploy terbaru aktif di staging
 Perbaikan #32–#34 sudah di-commit (`a683a06`) dan di-push; build staging `index-CLsipUWc.js` sudah memuatnya.
-Perbaikan #35 (`Pelaporan.jsx`) ternyata tidak pernah ter-commit dan sudah ditulis ulang; perlu commit dan push.
+Perbaikan #35 (`Pelaporan.jsx`) sempat tidak ter-commit; ditulis ulang di `598ff33` dan sudah aktif di staging (`index-Bmwhd9Nk.js`).
 Yang tersisa:
 - Cek bahwa deploy Vercel untuk commit `a683a06` mencantumkan domain
   `sirpl-staging-stikomyos.vercel.app` (pernah sekali domain tidak ikut pindah).
