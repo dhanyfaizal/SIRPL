@@ -48,6 +48,11 @@ Centang semua sebelum menjadwalkan rilis.
 
 ### 3.2 Migrasi data
 - [x] Skrip pratinjau `supabase/scripts/pratinjau_migrasi_alur_pedoman.sql` (hanya SELECT; blok [1] ringkasan, [2]–[6] rincian). Jalankan di produksi sebelum gladi; **semua baris bertanda "!!" harus beres**: peran di luar daftar baru membuat migrasi **skema** gagal, status tidak terpetakan membuat migrasi **data** gagal.
+- [x] Pratinjau produksi (DB_SistemRPL, Nov 2026): **tidak ada baris "!!"**. 23 pengajuan: 22 `mapped_admin` → `selesai`, 1 `draft`; 8 peran, semuanya sah; 381 butir pemetaan MK, 0 dilewati, 0 pengakuan tugas akhir dibatalkan; 0 pengajuan > 100 SKS.
+- [ ] **Draft kosong** `be2faa6b-9c39-4284-bfe8-6b7a2ec985cb` (pemohon Wendi, dibuat 21 Okt 2026, tanpa berkas, belum dikirim). Setelah migrasi, draft alur lama menjadi hanya-baca sehingga pemohon tidak bisa melanjutkan atau membuat pengajuan baru; karena itu **dihapus pada hari H** (bagian 5.2a). Isinya sudah diekspor (CSV). Sebelumnya cek apakah Wendi punya pengajuan lain yang sudah tuntas:
+      `SELECT id, status, created_at, submitted_at FROM pengajuan_rpl WHERE user_id = '4c988407-70f2-40e6-9a32-402414a587ac' ORDER BY created_at;`
+      Bila hanya draft ini, beri tahu Wendi untuk mendaftar ulang **setelah** rilis (jangan sebelum rilis: isian akan tercatat sebagai alur lama).
+- [ ] Peran yang belum ada akunnya di produksi: `ketua_tim`, `sekretaris`, `komite` (dan `lpmp` bila dipakai). Siapkan sebelum hari H (lihat 3.3).
 - [ ] Putuskan kebijakan pengajuan alur lama: tetap dibaca lewat dasbor lama (bawaan), diarsipkan (`is_archived`), atau dimigrasikan manual.
 - [ ] Cek apakah `20261105230000_hotfix_keamanan_produksi.sql` **sudah pernah** dijalankan di DB_SistemRPL (lihat bagian 5 langkah 3).
 
@@ -102,6 +107,17 @@ supabase db dump --db-url "$DB_SISTEMRPL_URL" --data-only -f cadangan_data_$(dat
 
 Unduh juga isi bucket Storage `rpl-documents` bila memungkinkan. Pastikan berkas cadangan bisa dibuka
 sebelum lanjut.
+
+### 5.2a Hapus draft kosong alur lama (sesudah cadangan, sebelum migrasi)
+Pastikan bagian atas dashboard Supabase bertuliskan **DB_SistemRPL**, bukan SIRPL-staging. Hapus berdasarkan id
+(data terkait ikut terhapus lewat ON DELETE CASCADE; berkas di Storage tidak tersentuh):
+
+```sql
+DELETE FROM pengajuan_rpl WHERE id = 'be2faa6b-9c39-4284-bfe8-6b7a2ec985cb' AND status = 'draft';
+```
+
+Hasil yang diharapkan: **1 baris** terhapus. Bila 0, periksa apakah draft sudah dihapus atau statusnya berubah;
+jangan mengganti kondisi menjadi hanya `status = 'draft'`.
 
 ### 5.3 Migrasi (SQL Editor DB_SistemRPL, berurutan)
 
