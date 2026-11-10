@@ -58,8 +58,13 @@ export function hitungKelengkapan(data) {
     && (data.riwayat.status_pekerjaan !== 'pegawai_tetap' || ada(p?.file_f07_ttd_url))
   const jumlahBukti = (data.bukti || []).length
   const mkP = mkPerolehan(data)
-  const fedOk = mkP.filter((m) => evaluasiLengkap((data.evaluasi || []).find((e) => e.mk_id === m.mk_id))).length
   const terkirim = !!p && !BISA_DIUBAH.includes(p.status)
+  // Aturan bukti F03 berlaku saat mengisi. Pengajuan yang sudah dikirim tidak
+  // dinilai ulang dengan aturan baru (data lama tetap dianggap lengkap).
+  const fedOk = mkP.filter((m) => {
+    const e = (data.evaluasi || []).find((x) => x.mk_id === m.mk_id)
+    return terkirim ? !!e?.pernyataan_setuju : evaluasiLengkap(e)
+  }).length
 
   const langkah = [
     { id: 'data', to: '/pemohon/pengajuan/data', label: 'Data dan persyaratan', selesai: dataOk,

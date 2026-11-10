@@ -13,7 +13,7 @@ const PDDIKTI = [{ v: true, l: 'Sesuai' }, { v: false, l: 'Tidak sesuai' }]
 
 function awalDraf(pn) {
   const a = (pn?.asal || [])[0] || {}
-  return { nama: a.nama || '', kode: a.kode || '', sks: a.sks ?? '', nilai: a.nilai || '', keputusan: pn?.keputusan && pn.keputusan !== 'belum_dinilai' ? pn.keputusan : '', nilai_huruf: pn?.nilai_huruf || '', catatan: pn?.catatan || '' }
+  return { nama: a.nama || '', kode: a.kode || '', sks: a.sks == null ? '' : String(a.sks), nilai: a.nilai || '', keputusan: pn?.keputusan && pn.keputusan !== 'belum_dinilai' ? pn.keputusan : '', nilai_huruf: pn?.nilai_huruf || '', catatan: pn?.catatan || '' }
 }
 
 function KartuPddikti({ p, d, bolehNilai }) {
@@ -135,6 +135,7 @@ export default function TabTransfer({ p, d, bolehNilai }) {
 
   const ubah = (id, nilai) => setDraf((s) => {
     const baru = { ...s[id], ...nilai }
+    if ('sks' in nilai) baru.sks = nilai.sks == null ? '' : String(nilai.sks)
     // Usulan otomatis dari nilai asal: lulus (minimal C) diakui dengan nilai yang sama.
     if ('nilai' in nilai && nilai.nilai) {
       if (nilaiLulus(nilai.nilai)) { baru.keputusan = 'diakui'; baru.nilai_huruf = nilai.nilai } else { baru.keputusan = 'tidak_diakui'; baru.nilai_huruf = '' }
@@ -154,6 +155,8 @@ export default function TabTransfer({ p, d, bolehNilai }) {
       keputusan: x.keputusan, nilai_huruf: x.keputusan === 'diakui' ? x.nilai_huruf : null, catatan: x.catatan.trim() || null,
     })
     pasangPenilaian(p.id, hasil)
+    // Draf disamakan dengan yang tersimpan agar penanda "belum disimpan" hilang.
+    setDraf((s) => ({ ...s, [m.mk_id]: awalDraf(hasil) }))
     return hasil
   }
   const simpan = async (daftarSimpan) => {

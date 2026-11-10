@@ -147,6 +147,8 @@ export function BukaBerkas({ path, label = 'Lihat' }) {
   return (
     <button type="button" className="btn btn-ghost btn-sm" disabled={sibuk}
       onClick={async () => {
+        // Dokumen dari mesin dokumen tidak berupa berkas Storage: buka halaman dokumennya.
+        if (path.startsWith('snapshot:')) { window.open(`/dokumen/${path.slice(9)}`, '_blank'); return }
         setSibuk(true)
         // Buka jendela lebih dulu agar tidak diblokir browser, lalu isi alamatnya.
         const w = window.open('about:blank', '_blank')
