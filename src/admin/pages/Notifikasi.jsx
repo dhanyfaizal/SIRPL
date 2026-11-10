@@ -1,4 +1,6 @@
-// Notifikasi WhatsApp: pengaturan, jenis pesan, dan antrean pengiriman.
+// Notifikasi WhatsApp: pengaturan, jenis pesan, mode kirim, dan antrean.
+// Mode manual: staf mengirim dari nomor WA Business lewat halaman WA keluar.
+// Mode otomatis: Edge Function notifikasi-wa mengirim lewat Fonnte.
 import { useCallback, useEffect, useState } from 'react'
 import { RefreshCw, RotateCcw, Save, Send } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -6,22 +8,9 @@ import { supabase } from '../../lib/supabase'
 import { useAdmin, cek } from '../AdminData'
 import { tanggal } from '../../pemohon/konstanta'
 import { Bidang, Halaman, Kartu, Kerangka, Lencana, Pemberitahuan, PilihSegmen, Tombol } from '../../pemohon/ui'
+import { JENIS_WA as JENIS, LABEL_WA as LABEL } from '../../notifikasi/jenis'
+import { DaftarWaKeluar } from '../../notifikasi/WaKeluar'
 
-const JENIS = [
-  { grup: 'Untuk pemohon', daftar: [
-    ['pengajuan_diterima', 'Pengajuan diterima'], ['berkas_dikembalikan', 'Berkas dikembalikan untuk perbaikan'], ['berkas_terverifikasi', 'Berkas terverifikasi'],
-    ['tidak_memenuhi', 'Tidak memenuhi syarat'], ['bukti_tambahan', 'Permintaan bukti tambahan'], ['penilaian_lanjutan', 'Masuk penilaian lanjutan'],
-    ['jadwal_baru', 'Jadwal wawancara/uji baru'], ['jadwal_ubah', 'Perubahan jadwal'], ['jadwal_batal', 'Jadwal dibatalkan'], ['hasil_rpl', 'Hasil asesmen tersedia'],
-    ['sk_terbit', 'SK terbit'], ['nim_terbit', 'NIM ditetapkan'], ['bayar_lunas', 'Pembayaran lunas'], ['bayar_ditolak', 'Bukti bayar ditolak'],
-  ] },
-  { grup: 'Untuk staf', daftar: [
-    ['berkas_masuk', 'BAAK: pengajuan baru'], ['perlu_asesor', 'Ketua Tim: perlu penugasan asesor'], ['tugas_asesor', 'Asesor: penugasan baru'],
-    ['jadwal_asesor', 'Asesor: jadwal wawancara/uji'], ['siap_pleno', 'Tim: siap pleno'], ['perlu_komite', 'Komite: menunggu keputusan'],
-    ['dikembalikan_komite', 'Ketua Tim: dikembalikan Komite'], ['perlu_nim', 'BAAK: SK terbit, tetapkan NIM'], ['bukti_bayar', 'PMB: bukti bayar baru'],
-    ['tanda_tangan', 'Penandatangan: dokumen menunggu tanda tangan'],
-  ] },
-]
-const LABEL = Object.fromEntries(JENIS.flatMap((g) => g.daftar).concat([['uji', 'Pesan uji']]))
 const STATUS = { menunggu: ['Menunggu', 'amber'], diproses: ['Diproses', 'indigo'], terkirim: ['Terkirim', 'green'], gagal: ['Gagal', 'red'], dilewati: ['Dilewati', 'slate'] }
 let simpanan = null
 
@@ -32,6 +21,7 @@ export default function Notifikasi() {
   const [saring, setSaring] = useState('semua')
   const [sibuk, setSibuk] = useState(null)
   const [galat, setGalat] = useState(null)
+  const [ulang, setUlang] = useState(0)
 
   const muat = useCallback(async () => {
     try {
@@ -53,7 +43,7 @@ export default function Notifikasi() {
   const simpan = async () => {
     setSibuk('simpan')
     try {
-      cek(await supabase.from('pengaturan_notifikasi').update({ aktif: atur.aktif, url_aplikasi: atur.url_aplikasi.trim(), jenis_nonaktif: atur.jenis_nonaktif, updated_at: new Date().toISOString() }).eq('id', 1))
+      cek(await supabase.from('pengaturan_notifikasi').update({ aktif: atur.aktif, mode: atur.mode || 'manual', url_aplikasi: atur.url_aplikasi.trim(), jenis_nonaktif: atur.jenis_nonaktif, updated_at: new Date().toISOString() }).eq('id', 1))
       toast.success('Pengaturan notifikasi disimpan')
       await muat()
     } catch (e) { toast.error(e.message) } finally { setSibuk(null) }
@@ -76,7 +66,8 @@ export default function Notifikasi() {
     try {
       const wa = cek(await supabase.rpc('uji_notifikasi'))
       toast.success(`Pesan uji masuk antrean ke ${wa}`)
-      await proses(true)
+      if ((atur.mode || 'manual') === 'otomatis') await proses(true)
+      else { setSibuk(null); setUlang((x) => x + 1) }
     } catch (e) { toast.error(e.message); setSibuk(null) }
   }
   const ulangi = async (id) => {
@@ -89,13 +80,20 @@ export default function Notifikasi() {
   const hit = (s) => antrean.filter((n) => n.status === s).length
 
   return (
-    <Halaman judul="Notifikasi WhatsApp" sub="Pesan dikirim otomatis dari server saat status pengajuan, jadwal, pembayaran, atau tanda tangan berubah. Nomor diambil dari kolom WhatsApp di profil setiap akun.">
+    <Halaman judul="Notifikasi WhatsApp" sub="Pesan disusun sistem saat status pengajuan, jadwal, pembayaran, atau tanda tangan berubah. Nomor diambil dari kolom WhatsApp di profil setiap akun (pemohon mengisinya di formulir pengajuan).">
       {!atur.aktif ? <Pemberitahuan jenis="amber" judul="Notifikasi sedang nonaktif">Tidak ada pesan yang masuk antrean sampai notifikasi diaktifkan.</Pemberitahuan> : null}
       <Kartu judul="Pengaturan" kaki={<Tombol jenis="primary" ikon={Save} sibuk={sibuk === 'simpan'} onClick={simpan}>Simpan pengaturan</Tombol>}>
         <div className="ad-form">
           <div className="input-group">
             <span className="input-label">Status</span>
             <PilihSegmen pilihan={[{ v: true, l: 'Aktif' }, { v: false, l: 'Nonaktif' }]} nilai={atur.aktif} onUbah={(v) => setAtur((s) => ({ ...s, aktif: v }))} label="Status notifikasi" />
+          </div>
+          <div className="input-group">
+            <span className="input-label">Cara kirim</span>
+            <PilihSegmen pilihan={[{ v: 'manual', l: 'Manual (WA Business)' }, { v: 'otomatis', l: 'Otomatis (Fonnte)' }]} nilai={atur.mode || 'manual'} onUbah={(v) => setAtur((s) => ({ ...s, mode: v }))} label="Cara kirim" />
+            <span className="pm-kecil">{(atur.mode || 'manual') === 'manual'
+              ? 'Staf (BAAK, PMB, Sekretaris, Ketua Tim) mengirim dari nomor WA Business institusi lewat menu WA keluar: pesan terbuka di WhatsApp Desktop/Web, tekan Kirim, lalu tandai terkirim.'
+              : 'Pesan dikirim otomatis oleh Edge Function notifikasi-wa melalui Fonnte. Memerlukan FONNTE_TOKEN dan Database Webhook.'}</span>
           </div>
           <Bidang label="Alamat aplikasi" hint="Dipakai untuk tautan di dalam pesan, mis. https://sirpl.stikomyos.ac.id">
             <input className="input" type="url" value={atur.url_aplikasi} onChange={(e) => setAtur((s) => ({ ...s, url_aplikasi: e.target.value }))} />
@@ -114,6 +112,12 @@ export default function Notifikasi() {
         </div>
       </Kartu>
 
+      {(atur.mode || 'manual') === 'manual' ? (
+        <>
+          <div className="pm-baris-aksi"><Tombol ikon={Send} sibuk={sibuk === 'uji'} onClick={uji}>Masukkan pesan uji untuk saya</Tombol></div>
+          <DaftarWaKeluar key={ulang} />
+        </>
+      ) : (
       <section className="card">
         <div className="pm-mk-alat">
           <PilihSegmen nilai={saring} onUbah={setSaring} label="Saring antrean"
@@ -149,6 +153,7 @@ export default function Notifikasi() {
           {!baris.length ? <p className="pm-kosong">Belum ada pesan.</p> : null}
         </div>
       </section>
+      )}
     </Halaman>
   )
 }

@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Outlet, useNavigate } from 'react-router-dom'
+import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import {
-  BadgePercent, CalendarRange, ChevronDown, House, LayoutDashboard, LogOut, MessageSquare, Moon, ReceiptText, RefreshCw, Sun, UserRound, Wallet,
+  BadgePercent, CalendarRange, ChevronDown, House, LayoutDashboard, LogOut, MessageCircle, MessageSquare, Moon, ReceiptText, RefreshCw, Sun, UserRound, Wallet,
 } from 'lucide-react'
 import { AppShell } from '../shell/AppShell'
 import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../contexts/ThemeContext'
 import { KeuanganDataProvider, useKeuangan } from './KeuanganData'
+import { jumlahWaMenunggu } from '../notifikasi/jenis'
 import '../pemohon/pemohon.css'
 import '../tim/tim.css'
 import './keuangan.css'
@@ -16,6 +17,14 @@ const BRAND = { name: 'SIRPL', sub: 'PMB dan Keuangan', logo: '/logo-sys.png' }
 function useNav() {
   const { data } = useKeuangan()
   const { role } = useAuth()
+  const { pathname } = useLocation()
+  // Badge pesan WhatsApp yang menunggu dikirim manual; dihitung ulang saat pindah halaman.
+  const [wa, setWa] = useState(null)
+  useEffect(() => {
+    let batal = false
+    jumlahWaMenunggu().then((n) => { if (!batal) setWa(n || null) })
+    return () => { batal = true }
+  }, [pathname])
   return useMemo(() => {
     const menunggu = (data?.pembayaran || []).filter((b) => b.status === 'menunggu').length || null
     const nav = [
@@ -24,6 +33,7 @@ function useNav() {
       { section: 'Pembayaran' },
       { id: 'verifikasi', label: 'Verifikasi pembayaran', icon: ReceiptText, to: '/keuangan/verifikasi', badge: menunggu },
       { id: 'tagihan', label: 'Tagihan pemohon', icon: Wallet, to: '/keuangan/tagihan' },
+      { id: 'wa', label: 'WA keluar', icon: MessageCircle, to: '/keuangan/wa', badge: wa },
       { section: 'Pengaturan' },
       { id: 'diskon', label: 'Diskon', icon: BadgePercent, to: '/keuangan/diskon' },
       { id: 'skema', label: 'Skema bayar', icon: CalendarRange, to: '/keuangan/skema' },
@@ -34,7 +44,7 @@ function useNav() {
     ]
     if (role === 'admin') nav.push({ id: 'admin', label: 'Konsol Admin', icon: LayoutDashboard, to: '/admin' })
     return nav
-  }, [data, role])
+  }, [data, role, wa])
 }
 
 function MenuAkun() {

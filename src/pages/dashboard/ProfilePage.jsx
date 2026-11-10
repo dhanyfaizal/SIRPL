@@ -189,7 +189,7 @@ export default function ProfilePage() {
                   className="input"
                   disabled={saving}
                 />
-                <span className="input-hint">Nomor kontak aktif ini digunakan untuk menerima notifikasi berkas dari sistem melalui WA Gateway Fonnte.</span>
+                <span className="input-hint">Nomor aktif ini dipakai untuk pemberitahuan WhatsApp dari STIKOM Yos Sudarso (nomor WA Business institusi).</span>
               </div>
 
               {/* Role Badge Readonly */}

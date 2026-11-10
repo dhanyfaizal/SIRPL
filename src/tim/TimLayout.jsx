@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Outlet, useNavigate } from 'react-router-dom'
+import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import {
-  CalendarDays, ChevronDown, CreditCard, FileBadge, FileCog, FolderOpen, FolderTree, Gavel, House, PenLine, LayoutDashboard, Send, ListChecks, LogOut, Moon, RefreshCw, Sun, UserRound,
+  CalendarDays, ChevronDown, CreditCard, FileBadge, FileCog, FolderOpen, FolderTree, Gavel, House, PenLine, LayoutDashboard, Send, ListChecks, LogOut, MessageCircle, Moon, RefreshCw, Sun, UserRound,
 } from 'lucide-react'
 import { AppShell } from '../shell/AppShell'
 import { useAuth } from '../contexts/AuthContext'
 import { useTheme } from '../contexts/ThemeContext'
 import { TimDataProvider, useTim } from './TimData'
 import { KELOMPOK } from './aturan'
+import { jumlahWaMenunggu } from '../notifikasi/jenis'
 import '../pemohon/pemohon.css'
 import './tim.css'
 
@@ -16,6 +17,14 @@ const LABEL_PERAN = { admin: 'Admin', ketua_tim: 'Ketua Tim Pengelola', sekretar
 
 function useNav() {
   const { data, role } = useTim()
+  const { pathname } = useLocation()
+  // Badge pesan WhatsApp yang menunggu dikirim manual; dihitung ulang saat pindah halaman.
+  const [wa, setWa] = useState(null)
+  useEffect(() => {
+    let batal = false
+    jumlahWaMenunggu().then((n) => { if (!batal) setWa(n || null) })
+    return () => { batal = true }
+  }, [pathname])
   return useMemo(() => {
     const hit = (status) => (data?.pengajuan || []).filter((p) => status.includes(p.status)).length || null
     const besok7 = Date.now() + 7 * 86400000
@@ -36,6 +45,7 @@ function useNav() {
       { id: 'akhir', label: 'Komite, SK, dan NIM', icon: FileBadge, to: '/pimpinan' },
       { section: 'Dokumen' },
       { id: 'ttd', label: 'Tanda tangan', icon: PenLine, to: '/tim/tanda-tangan' },
+      { id: 'wa', label: 'WA keluar', icon: MessageCircle, to: '/tim/wa', badge: wa },
       { id: 'repo', label: 'Repositori pelaporan', icon: FolderTree, to: '/repositori' },
       { id: 'atur-dok', label: 'Pengaturan dokumen', icon: FileCog, to: '/pengaturan-dokumen' },
       { section: 'Akun' },
@@ -53,7 +63,7 @@ function useNav() {
     }
     if (role === 'admin') nav.push({ id: 'admin', label: 'Konsol Admin', icon: LayoutDashboard, to: '/admin' })
     return nav
-  }, [data, role])
+  }, [data, role, wa])
 }
 
 function MenuAkun() {

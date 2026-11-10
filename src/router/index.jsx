@@ -25,6 +25,7 @@ import PimpinanLayout from '../pimpinan/PimpinanLayout'
 import LihatDokumen from '../dokumen/pages/LihatDokumen'
 import VerifikasiDokumen from '../dokumen/pages/Verifikasi'
 import TandaTanganDokumen, { TandaTanganModul } from '../dokumen/pages/TandaTangan'
+import WaKeluar from '../notifikasi/WaKeluar'
 import PengaturanDokumen from '../dokumen/pages/Pengaturan'
 import PemohonDokumen from '../pemohon/pages/Dokumen'
 import PetunjukF01 from '../dokumen/pages/Petunjuk'
@@ -211,6 +212,7 @@ export default function AppRouter() {
           <Route path="tagihan/:id" element={<KuTagihanDetail />} />
           <Route path="diskon" element={<KuDiskon />} />
           <Route path="skema" element={<KuSkema />} />
+          <Route path="wa" element={<WaKeluar />} />
           <Route path="profil" element={<ProfilePage />} />
         </Route>
 
@@ -262,6 +264,7 @@ export default function AppRouter() {
           <Route path="pleno/:id" element={<TimPlenoDetail />} />
           <Route path="pembayaran" element={<TimPembayaran />} />
           <Route path="pelaporan" element={<AdminDataProvider><AdminPelaporan /></AdminDataProvider>} />
+          <Route path="wa" element={<WaKeluar />} />
           <Route path="tanda-tangan" element={<TandaTanganModul />} />
           <Route path="profil" element={<ProfilePage />} />
         </Route>
