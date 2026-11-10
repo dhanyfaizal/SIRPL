@@ -47,7 +47,7 @@ Centang semua sebelum menjadwalkan rilis.
 - [ ] Pastikan tidak ada akun `uji.*` yang dibuat di DB_SistemRPL.
 
 ### 3.2 Migrasi data
-- [x] Skrip pratinjau `scripts/pratinjau_migrasi_alur_pedoman.sql` (hanya SELECT; Kueri A ringkasan, Kueri B rincian per pengajuan). Jalankan di produksi sebelum gladi; **semua baris bertanda "!!" harus beres** (status tidak terpetakan membuat migrasi gagal).
+- [x] Skrip pratinjau `supabase/scripts/pratinjau_migrasi_alur_pedoman.sql` (hanya SELECT; blok [1] ringkasan, [2]–[6] rincian). Jalankan di produksi sebelum gladi; **semua baris bertanda "!!" harus beres**: peran di luar daftar baru membuat migrasi **skema** gagal, status tidak terpetakan membuat migrasi **data** gagal.
 - [ ] Putuskan kebijakan pengajuan alur lama: tetap dibaca lewat dasbor lama (bawaan), diarsipkan (`is_archived`), atau dimigrasikan manual.
 - [ ] Cek apakah `20261105230000_hotfix_keamanan_produksi.sql` **sudah pernah** dijalankan di DB_SistemRPL (lihat bagian 5 langkah 3).
 

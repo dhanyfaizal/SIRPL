@@ -4,7 +4,7 @@
 -- Tanggal : 2026-11-06
 -- Prasyarat: 20261106000000_alur_pedoman_skema.sql sudah dijalankan.
 --
--- Jalankan dulu scripts/pratinjau_migrasi_alur_pedoman.sql untuk melihat
+-- Jalankan dulu supabase/scripts/pratinjau_migrasi_alur_pedoman.sql untuk melihat
 -- apa yang akan berubah. Setiap langkah aman dijalankan ulang, jadi bila
 -- terhenti di tengah, perbaiki penyebabnya lalu jalankan seluruh file lagi.
 -- =========================================================================
