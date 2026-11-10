@@ -35,7 +35,7 @@ function useNav() {
       { id: 'pembayaran', label: 'Pembayaran', icon: CreditCard, to: '/tim/pembayaran', badge: bayar },
       { id: 'akhir', label: 'Komite, SK, dan NIM', icon: FileBadge, to: '/pimpinan' },
       { section: 'Dokumen' },
-      { id: 'ttd', label: 'Tanda tangan', icon: PenLine, to: '/tanda-tangan' },
+      { id: 'ttd', label: 'Tanda tangan', icon: PenLine, to: '/tim/tanda-tangan' },
       { id: 'repo', label: 'Repositori pelaporan', icon: FolderTree, to: '/repositori' },
       { id: 'atur-dok', label: 'Pengaturan dokumen', icon: FileCog, to: '/pengaturan-dokumen' },
       { section: 'Akun' },

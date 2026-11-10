@@ -38,14 +38,14 @@ export async function muatSemua(userId) {
 }
 
 function kosongDetail() {
-  return { mataKuliah: [], klaster: [], mkDiajukan: [], evaluasi: [], bukti: [], penilaian: [], jadwal: [],
+  return { mataKuliah: [], klaster: [], mkDiajukan: [], evaluasi: [], bukti: [], penilaian: [], lanjutan: [], jadwal: [],
            klarifikasi: [], pembayaran: [], log: [], dokumen: [], batasSks: null }
 }
 
 export async function muatDetail(p) {
   const prodiId = p.prodi_pilihan_id
   const q = (t) => supabase.from(t).select('*').eq('pengajuan_id', p.id)
-  const [mataKuliah, klaster, mkDiajukan, evaluasi, bukti, penilaian, jadwal, klarifikasi, pembayaran, log, dokumen, batas] =
+  const [mataKuliah, klaster, mkDiajukan, evaluasi, bukti, penilaian, lanjutan, jadwal, klarifikasi, pembayaran, log, dokumen, batas] =
     await Promise.all([
       prodiId ? supabase.from('mata_kuliah_kurikulum').select('*').eq('prodi_id', prodiId).order('semester').order('kode_mk').then(cek) : [],
       prodiId ? supabase.from('klaster_mk').select('*').eq('prodi_id', prodiId).then(cek) : [],
@@ -53,6 +53,8 @@ export async function muatDetail(p) {
       q('evaluasi_diri').then(cek),
       q('bukti_portofolio').order('nomor').then(cek),
       q('penilaian_mk').then(cek),            // RLS: baru terlihat setelah hasil disampaikan
+      // Hasil F10 (asesmen lanjutan) per mata kuliah; RLS sama: baru terlihat setelah hasil disampaikan
+      supabase.from('penilaian_lanjutan').select('mk_id, jadwal_id, hasil, catatan, updated_at').eq('pengajuan_id', p.id).then(cek),
       q('jadwal_asesmen').order('waktu').then(cek),
       q('klarifikasi_rpl').order('created_at', { ascending: false }).then(cek),
       q('pembayaran_rpl').order('created_at', { ascending: false }).then(cek),
@@ -62,7 +64,7 @@ export async function muatDetail(p) {
     ])
   return {
     mataKuliah: mataKuliah || [], klaster: klaster || [], mkDiajukan: mkDiajukan || [], evaluasi: evaluasi || [],
-    bukti: bukti || [], penilaian: penilaian || [], jadwal: jadwal || [], klarifikasi: klarifikasi || [],
+    bukti: bukti || [], penilaian: penilaian || [], lanjutan: lanjutan || [], jadwal: jadwal || [], klarifikasi: klarifikasi || [],
     pembayaran: pembayaran || [], log: log || [], dokumen: dokumen || [], batasSks: batas,
   }
 }

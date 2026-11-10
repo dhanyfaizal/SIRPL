@@ -75,3 +75,13 @@ export async function simpanPenandatangan(id, nilai) {
   if (!hasil?.length) throw new Error('Hanya admin yang dapat mengubah penanda tangan')
   return hasil[0]
 }
+
+// Jumlah dokumen yang menunggu tanda tangan saya (untuk badge menu).
+export async function jumlahTtdMenunggu(userId) {
+  const ttd = cek(await supabase.from('tanda_tangan_dokumen').select('dokumen_id').eq('penandatangan_id', userId).eq('status', 'menunggu')) || []
+  const ids = [...new Set(ttd.map((t) => t.dokumen_id))]
+  if (!ids.length) return 0
+  const { count, error } = await supabase.from('dokumen_terbit').select('id', { count: 'exact', head: true }).in('id', ids).eq('status', 'menunggu_ttd')
+  if (error) throw new Error(error.message)
+  return count || 0
+}

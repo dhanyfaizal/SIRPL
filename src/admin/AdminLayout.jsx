@@ -42,7 +42,7 @@ function useNav() {
       { id: 'tim', label: 'Modul Tim Pengelola', icon: LayoutDashboard, to: '/tim' },
       { id: 'pimpinan', label: 'Komite, SK, dan NIM', icon: LayoutDashboard, to: '/pimpinan' },
       { id: 'keuangan', label: 'PMB dan keuangan', icon: LayoutDashboard, to: '/keuangan' },
-      { id: 'ttd', label: 'Tanda tangan', icon: PenLine, to: '/tanda-tangan' },
+      { id: 'ttd', label: 'Tanda tangan', icon: PenLine, to: '/admin/tanda-tangan' },
       { id: 'umpan', label: 'Umpan balik layanan', icon: MessageSquare, to: '/feedback' },
       { section: 'Akun' },
       { id: 'profil', label: 'Profil', icon: UserRound, to: '/admin/profil' },

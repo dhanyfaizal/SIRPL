@@ -1,5 +1,5 @@
 // SK Ketua STIKOM tentang penetapan hasil RPL (satu SK untuk banyak pemohon).
-import { useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { FileBadge, FilePlus2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { terbitkanLampiranSk } from '../../dokumen/PanelDokumen'
@@ -19,6 +19,20 @@ export default function Sk() {
   const [form, setForm] = useState(null)
   const [sibuk, setSibuk] = useState(false)
   const siapSk = useMemo(() => (data?.pengajuan || []).filter((p) => p.status === 'menunggu_sk' && (!prodiId || p.prodi_pilihan_id === prodiId)), [data, prodiId])
+  // Lampiran F08 yang masih berlaku (belum dicabut) per SK, untuk menandai SK yang lampirannya sudah terbit.
+  const [f08, setF08] = useState([])
+  const skIds = useMemo(() => (data?.sk || []).map((s) => s.id), [data])
+  const muatF08 = useCallback(async () => {
+    if (!skIds.length) return []
+    const { data: d } = await supabase.from('dokumen_terbit').select('id, sk_id, pengajuan_id, status')
+      .eq('jenis_kode', 'F08').neq('status', 'dicabut').in('sk_id', skIds)
+    return d || []
+  }, [skIds])
+  useEffect(() => {
+    let batal = false
+    muatF08().then((d) => { if (!batal) setF08(d) })
+    return () => { batal = true }
+  }, [muatF08])
   if (!siap) return <Kerangka />
   const boleh = BOLEH.terbitkanSk(role)
   const prodiAda = [...new Set(data.pengajuan.filter((p) => p.status === 'menunggu_sk').map((p) => p.prodi_pilihan_id))]
@@ -59,7 +73,16 @@ export default function Sk() {
     try {
       const n = await terbitkanLampiranSk(s, ids)
       toast.success(`${n} lampiran SK (F08) diterbitkan dan menunggu tanda tangan Ketua STIKOM`)
+      setF08(await muatF08())
     } catch (e) { toast.error(e.message, { duration: 7000 }) } finally { setSibuk(false) }
+  }
+  // Ringkasan F08 satu SK: berapa pemohon sudah punya lampiran, berapa sudah final.
+  const statusF08 = (s) => {
+    const ids = data.pengajuan.filter((p) => p.sk_id === s.id).map((p) => p.id)
+    const dok = f08.filter((d) => d.sk_id === s.id && ids.includes(d.pengajuan_id))
+    const ada = new Set(dok.map((d) => d.pengajuan_id)).size
+    const final = new Set(dok.filter((d) => d.status === 'final').map((d) => d.pengajuan_id)).size
+    return { total: ids.length, ada, final }
   }
 
   return (
@@ -103,22 +126,41 @@ export default function Sk() {
         ) : null}
       </Kartu>
 
-      <Kartu judul="SK yang sudah terbit" sub="Lampiran SK (F08) per pemohon ditandatangani Ketua STIKOM secara elektronik." padat aksi={<Link to="/tanda-tangan" className="btn btn-ghost btn-sm">Tanda tangan dokumen</Link>}>
+      <Kartu judul="SK yang sudah terbit" sub="Lampiran SK (F08) per pemohon ditandatangani Ketua STIKOM secara elektronik." padat aksi={<Link to="/pimpinan/tanda-tangan" className="btn btn-ghost btn-sm">Tanda tangan dokumen</Link>}>
         {data.sk.length ? (
           <div className="table-wrap">
             <table className="pm-tabel pm-tabel-responsif">
               <thead><tr><th style={{ width: 220 }}>Nomor SK</th><th>Perihal</th><th style={{ width: 130 }}>Tanggal</th><th style={{ width: 100 }}>Pemohon</th><th style={{ width: 130 }}><span className="pm-sr">Berkas</span></th>{bolehF08 ? <th style={{ width: 190 }}><span className="pm-sr">Lampiran</span></th> : null}</tr></thead>
               <tbody>
-                {data.sk.map((s) => (
-                  <tr key={s.id}>
-                    <td className="pm-tebal" data-label="Nomor">{s.nomor_sk}</td>
-                    <td data-label="Perihal">{s.perihal || '-'}</td>
-                    <td data-label="Tanggal">{tanggal(s.tanggal_sk)}</td>
-                    <td data-label="Pemohon">{jumlahSk(s.id)}</td>
-                    <td data-label="">{s.file_sk_url ? <BukaBerkas path={s.file_sk_url} label="Buka" /> : <Lencana>Tanpa berkas</Lencana>}</td>
-                    {bolehF08 ? <td data-label=""><Tombol ikon={FilePlus2} sibuk={sibuk === s.id} onClick={() => lampiran(s)}>Terbitkan lampiran F08</Tombol></td> : null}
-                  </tr>
-                ))}
+                {data.sk.map((s) => {
+                  const st = statusF08(s)
+                  const lengkap = st.total > 0 && st.ada >= st.total
+                  return (
+                    <tr key={s.id}>
+                      <td className="pm-tebal" data-label="Nomor">{s.nomor_sk}</td>
+                      <td data-label="Perihal">{s.perihal || '-'}</td>
+                      <td data-label="Tanggal">{tanggal(s.tanggal_sk)}</td>
+                      <td data-label="Pemohon">{jumlahSk(s.id)}</td>
+                      <td data-label="">{s.file_sk_url ? <BukaBerkas path={s.file_sk_url} label="Buka" /> : <Lencana>Tanpa berkas</Lencana>}</td>
+                      {bolehF08 ? (
+                        <td data-label="Lampiran F08">
+                          {lengkap ? (
+                            <div className="pm-tumpuk">
+                              <Lencana warna={st.final >= st.total ? 'green' : 'amber'}>
+                                {st.final >= st.total ? `F08 final ${st.final}/${st.total}` : `F08 terbit · ttd ${st.final}/${st.total}`}
+                              </Lencana>
+                              <Tombol jenis="ghost" ikon={FilePlus2} sibuk={sibuk === s.id} onClick={() => lampiran(s)}>Terbitkan ulang</Tombol>
+                            </div>
+                          ) : (
+                            <Tombol ikon={FilePlus2} sibuk={sibuk === s.id} onClick={() => lampiran(s)}>
+                              {st.ada ? `Terbitkan F08 (${st.total - st.ada} belum)` : 'Terbitkan lampiran F08'}
+                            </Tombol>
+                          )}
+                        </td>
+                      ) : null}
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>

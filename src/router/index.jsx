@@ -24,7 +24,7 @@ import AsesorLayout from '../asesor/AsesorLayout'
 import PimpinanLayout from '../pimpinan/PimpinanLayout'
 import LihatDokumen from '../dokumen/pages/LihatDokumen'
 import VerifikasiDokumen from '../dokumen/pages/Verifikasi'
-import TandaTanganDokumen from '../dokumen/pages/TandaTangan'
+import TandaTanganDokumen, { TandaTanganModul } from '../dokumen/pages/TandaTangan'
 import PengaturanDokumen from '../dokumen/pages/Pengaturan'
 import PemohonDokumen from '../pemohon/pages/Dokumen'
 import PetunjukF01 from '../dokumen/pages/Petunjuk'
@@ -223,6 +223,7 @@ export default function AppRouter() {
           <Route path="prodi" element={<AdminProdi />} />
           <Route path="log" element={<AdminLog />} />
           <Route path="notifikasi" element={<AdminNotifikasi />} />
+          <Route path="tanda-tangan" element={<TandaTanganModul />} />
           <Route path="profil" element={<ProfilePage />} />
         </Route>
 
@@ -233,6 +234,7 @@ export default function AppRouter() {
           <Route path="sk" element={<PimpinanSk />} />
           <Route path="nim" element={<PimpinanNim />} />
           <Route path="laporan" element={<Laporan />} />
+          <Route path="tanda-tangan" element={<TandaTanganModul />} />
           <Route path="profil" element={<ProfilePage />} />
         </Route>
 
@@ -244,6 +246,7 @@ export default function AppRouter() {
           <Route path="tugas/:kelompok/:id" element={<AsesorPenilaian />} />
           <Route path="jadwal" element={<AsesorJadwal />} />
           <Route path="biodata" element={<AsesorBiodata />} />
+          <Route path="tanda-tangan" element={<TandaTanganModul />} />
           <Route path="rekap" element={<ProtectedRoute allowedRoles={['admin', 'kaprodi_si', 'kaprodi_ti', 'kaprodi_dkv', 'kaprodi_ka']}><Laporan /></ProtectedRoute>} />
           <Route path="profil" element={<ProfilePage />} />
         </Route>
@@ -259,6 +262,7 @@ export default function AppRouter() {
           <Route path="pleno/:id" element={<TimPlenoDetail />} />
           <Route path="pembayaran" element={<TimPembayaran />} />
           <Route path="pelaporan" element={<AdminDataProvider><AdminPelaporan /></AdminDataProvider>} />
+          <Route path="tanda-tangan" element={<TandaTanganModul />} />
           <Route path="profil" element={<ProfilePage />} />
         </Route>
 

@@ -38,7 +38,7 @@ function useNav() {
         { id: 'mk-rpl', label: 'Mata kuliah RPL', icon: BookOpen, to: '/kurikulum-rpl' },
       ] : []),
       { section: 'Dokumen' },
-      { id: 'ttd', label: 'Tanda tangan dokumen', icon: PenLine, to: '/tanda-tangan' },
+      { id: 'ttd', label: 'Tanda tangan dokumen', icon: PenLine, to: '/asesor/tanda-tangan' },
       { id: 'repo', label: 'Repositori pelaporan', icon: FolderTree, to: '/repositori' },
       { section: 'Akun' },
       { id: 'biodata', label: 'Biodata asesor (F04/F05)', icon: IdCard, to: '/asesor/biodata' },

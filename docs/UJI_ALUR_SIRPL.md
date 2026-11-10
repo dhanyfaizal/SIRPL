@@ -73,15 +73,15 @@ sudah di-commit dan di-push ke `feat/alur-pedoman` tetapi belum dicek di layar; 
 | — | Kartu pembayaran di Beranda pemohon | `Beranda.jsx` | Selesai |
 | 19 | Kode mentah "SURAT_HASIL" di daftar dokumen dan halaman verifikasi | `PanelDokumen.jsx` (`kodeTampil`), `Verifikasi.jsx` | Selesai |
 | 19b | Repositori: nama "SURAT_HASIL …" dan dua F11 bernama sama | migrasi `20261123000000_nama_berkas_repositori.sql` (nama + nomor dokumen) | Selesai |
-| 20 | Catatan asesor di halaman hasil menampilkan catatan awal, bukan hasil F10 | — | **Terbuka** |
+| 20 | Catatan asesor di halaman hasil menampilkan catatan awal, bukan hasil F10 | `pemohon/api.js` memuat `penilaian_lanjutan`; `Hasil.jsx` menampilkan "Asesmen lanjutan: Memenuhi/Belum memenuhi. <catatan F10>" bila MK melewati F10 | **Belum deploy** |
 | 21 | AISYS menolak status "klarifikasi" (sanggahan) | migrasi `20261121000000_aisys_klarifikasi.sql` | Selesai |
 | 22 | "1 perubahan belum disimpan" tidak hilang setelah simpan per baris (SKS teks vs angka) | `TabTransfer.jsx` | Selesai (10 Nov, RPL-2026-0026: setelah simpan per baris, penanda kembali ke "1 dari 10 … sudah dinilai" dan Simpan semua nonaktif) |
 | 23 | Nomor BA F11 tidak masuk Surat Hasil bila kolom nomor pleno kosong | `isi.js` (ambil nomor F11), petunjuk di `PlenoDetail.jsx` | Selesai |
 | 24 | Beranda pemohon menilai ulang F03 lama dengan aturan baru (0/1) | `kelengkapan.js` | Selesai |
 | 25 | Tombol "Surat hasil" pemohon: "Object not found" (dokumen mesin bukan berkas Storage) | `ui.jsx` (`BukaBerkas` membuka `/dokumen/<id>`) | Selesai |
 | 26 | Setelah sanggahan, pemohon masih melihat Surat Hasil/F09 lama tanpa penanda | `PanelDokumen.jsx` ("Perlu diterbitkan ulang", "Versi lama"), `Hasil.jsx`, `Dokumen.jsx` | Selesai |
-| 27 | Baris SK tidak menunjukkan bahwa F08 sudah terbit (tombol tetap "Terbitkan lampiran F08") | — | **Terbuka** |
-| 28 | Modul Pimpinan tanpa badge dokumen menunggu tanda tangan; halaman Tanda tangan keluar dari tata letak (tanpa sidebar) | — | **Terbuka** |
+| 27 | Baris SK tidak menunjukkan bahwa F08 sudah terbit (tombol tetap "Terbitkan lampiran F08") | `Sk.jsx`: memuat F08 per SK; tampil lencana "F08 final n/n" atau "F08 terbit · ttd n/n" dan tombol "Terbitkan ulang"; bila sebagian, "Terbitkan F08 (n belum)" | **Belum deploy** |
+| 28 | Modul Pimpinan tanpa badge dokumen menunggu tanda tangan; halaman Tanda tangan keluar dari tata letak (tanpa sidebar) | Rute baru `/pimpinan`, `/tim`, `/asesor`, `/admin` + `/tanda-tangan` di dalam tata letak (`TandaTanganModul`); menu tiap modul diarahkan ke situ; `/tanda-tangan` mandiri tetap untuk tautan lama. Badge Pimpinan dari `jumlahTtdMenunggu` (`dokumen/api.js`) | **Belum deploy** |
 | 29 | NIM bisa ditetapkan sebelum biaya lunas | migrasi `20261122000000_nim_wajib_lunas.sql` (`sisa_tagihan`, `tetapkan_nim`), kolom Pembayaran di `Nim.jsx` | Selesai |
 | 30 | Tab "Sudah ber-NIM" berisi 22 data alur lama dengan NIM kosong yang bisa diedit | `Nim.jsx` | Selesai |
 | 31 | Halaman hasil tetap bertuliskan "belum final" setelah SK | `Hasil.jsx` | Selesai |
@@ -133,7 +133,7 @@ yang baru diperbarui beberapa detik kemudian (terjadi pada `ui.jsx`, `kelengkapa
    - Secret: `FONNTE_TOKEN` (baru), `NOTIFIKASI_RAHASIA` (acak panjang).
    - Pastikan migrasi `20261118000000_notifikasi_wa.sql` sudah jalan.
    - Database Webhook: tabel `antrean_notifikasi`, event Insert, ke fungsi `notifikasi-wa`, header `x-sirpl-rahasia` = nilai `NOTIFIKASI_RAHASIA`.
-6. Perbaiki temuan terbuka #20, #27, #28.
+6. Uji di layar perbaikan #20, #27, #28 setelah deploy: hasil `uji.pemohon` (MK Matematika Diskrit menampilkan hasil F10); SK 901 di `/pimpinan/sk` menampilkan "F08 final 2/2"; `uji.ketuastikom` melihat sidebar di Tanda tangan dan badge saat ada F08 menunggu.
 
 ### 4.3 Bersih-bersih sesudah uji
 - Rotasi kunci Sumopod dan Fonnte yang pernah bocor.

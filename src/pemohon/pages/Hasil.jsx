@@ -30,6 +30,18 @@ export default function Hasil() {
 
   const baris = data.penilaian.map((p) => ({ ...p, mk: data.mataKuliah.find((m) => m.id === p.mk_id) })).filter((p) => p.mk)
     .sort((a, b) => (a.mk.semester - b.mk.semester) || a.mk.kode_mk.localeCompare(b.mk.kode_mk))
+  // Catatan akhir: bila MK melewati asesmen lanjutan (F10), yang ditampilkan hasil F10 terbaru,
+  // bukan catatan penilaian awal.
+  const f10 = {}
+  for (const l of data.lanjutan || []) {
+    if ((l.hasil || l.catatan) && (!f10[l.mk_id] || l.updated_at > f10[l.mk_id].updated_at)) f10[l.mk_id] = l
+  }
+  const catatanAkhir = (b) => {
+    const l = f10[b.mk_id]
+    if (!l) return b.catatan || '-'
+    const hasil = { memenuhi: 'Memenuhi', belum_memenuhi: 'Belum memenuhi' }[l.hasil]
+    return [hasil ? `Asesmen lanjutan: ${hasil}` : 'Asesmen lanjutan', l.catatan?.trim()].filter(Boolean).join('. ')
+  }
   const diakui = baris.filter((b) => b.keputusan === 'diakui')
   const sksDiakui = diakui.reduce((n, b) => n + b.mk.sks, 0)
   const prodi = data.prodi.find((p) => p.id === pengajuan.prodi_pilihan_id)
@@ -110,7 +122,7 @@ export default function Hasil() {
                   <td data-label="Mekanisme">{b.mekanisme === 'transfer' ? 'Transfer' : 'Perolehan'}</td>
                   <td data-label="Keputusan"><Lencana warna={KEPUTUSAN[b.keputusan]?.warna}>{KEPUTUSAN[b.keputusan]?.label || b.keputusan}</Lencana></td>
                   <td className="pm-tebal" data-label="Nilai">{b.keputusan === 'diakui' ? b.nilai_huruf : '-'}</td>
-                  <td className="pm-kecil" data-label="Catatan asesor">{b.catatan || '-'}</td>
+                  <td className="pm-kecil" data-label="Catatan asesor">{catatanAkhir(b)}</td>
                 </tr>
               ))}
             </tbody>
