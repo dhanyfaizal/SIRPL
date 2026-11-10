@@ -21,7 +21,7 @@ perbaikannya, apa yang masih menunggu, dan cara melanjutkan.
 | Edge Function belum terpasang | `notifikasi-wa` (menunggu token Fonnte baru) |
 
 ### Akun uji (pola email `uji.<peran>@stikomyos.ac.id`)
-`uji.pemohon`, `uji.pemohon2`, `uji.pmb`, `uji.baak`, `uji.sekretaris`, `uji.ketuatim`,
+`uji.pemohon`, `uji.pemohon2`, `uji.pemohon3` (dibuat 10 Nov 2026 lewat dashboard Supabase), `uji.pmb`, `uji.baak`, `uji.sekretaris`, `uji.ketuatim`,
 `uji.asesor`, `uji.komite`, `uji.ketuastikom`. Semua memakai satu kata sandi uji yang sama.
 
 ### Data uji
@@ -29,8 +29,9 @@ perbaikannya, apa yang masih menunggu, dan cara melanjutkan.
 |---|---|---|---|
 | Uji Pemohon | RPL-2026-0024 | Gabungan | 14 SKS (7 MK), lewat sanggahan Pancasila; NIM **2026RPL0024**; biaya lunas |
 | uji.pemohon2 | RPL-2026-0025 | Perolehan | 6 SKS (2 MK); NIM **2026RPL0025** (ditetapkan sebelum aturan lunas berlaku; angsuran ke-2 masih terbuka) |
+| uji.pemohon3 | RPL-2026-0026 | Transfer | Dibuat 10 Nov 2026 untuk uji #17/#22. Status **Dalam asesmen**; asesor `uji.asesor` (koordinator); biaya pendaftaran dan asesmen lunas; 1 MK dinilai (Kewarganegaraan, Diakui B). Transkrip dan ijazah PDF tiruan buatan uji. |
 
-Keduanya sudah ber-SK `901/SK/STIKOM-YS/XI/2026` dan berstatus pelaporan **Masuk PDDikti** (tahap 4, sejak 10 Nov 2026).
+RPL-2026-0024 dan 0025 sudah ber-SK `901/SK/STIKOM-YS/XI/2026` dan berstatus pelaporan **Masuk PDDikti** (tahap 4, sejak 10 Nov 2026).
 
 Berkas tiruan untuk unggahan ada di folder `uji/` (ijazah, transkrip, sertifikat, surat
 keterangan kerja, F07 bertanda tangan, bukti bayar PDF/JPG).
@@ -66,7 +67,7 @@ sudah di-commit dan di-push ke `feat/alur-pedoman` tetapi belum dicek di layar; 
 | — | `periode_id` kosong sehingga tagihan tidak terbentuk | migrasi `20261119000000_periode_pengajuan.sql` | Selesai |
 | — | F03 bisa disimpan "Baik/Sangat baik" tanpa bukti | migrasi `20261120000000_f03_wajib_bukti.sql`, `EvaluasiDiri.jsx`, `kelengkapan.js` | Selesai |
 | — | Tanggal panjang, status kerja/kawin di F02/F07; label "Lunas" di kolom angsuran; subjudul Pembayaran per peran; badge Pelaporan admin; pesan 404 AISYS; teks login; toolbar dokumen | `konstanta.js`, `isi.js`, `TagihanDetail.jsx`, `Pembayaran.jsx`, `AdminLayout.jsx`, `aisys.js`, `Login.jsx`, `dokumen.css` | Selesai |
-| 17 | AISYS: baris tanpa padanan tidak bisa dipilih manual | `TabTransfer.jsx` (pilih manual dari `terbaca`) | Kode selesai, **belum diuji di layar** |
+| 17 | AISYS: baris tanpa padanan tidak bisa dipilih manual | `TabTransfer.jsx` (pilih manual dari `terbaca`) | Selesai (10 Nov, RPL-2026-0026: AISYS membaca 9 MK; 3 baris tanpa padanan menampilkan "Tidak ditemukan padanan; pilih sendiri"; pilihan manual mencentang baris dan mengisi formulir) |
 | — | Penilaian perolehan hilang saat pindah tab | dialog "Perubahan belum disimpan" di `TabPerolehan.jsx` | Selesai |
 | — | Riwayat keuangan muncul di ringkasan asesor; tautan MK salah | `TabRingkasan.jsx`, `Penilaian.jsx` | Selesai |
 | — | Kartu pembayaran di Beranda pemohon | `Beranda.jsx` | Selesai |
@@ -74,7 +75,7 @@ sudah di-commit dan di-push ke `feat/alur-pedoman` tetapi belum dicek di layar; 
 | 19b | Repositori: nama "SURAT_HASIL …" dan dua F11 bernama sama | migrasi `20261123000000_nama_berkas_repositori.sql` (nama + nomor dokumen) | Selesai |
 | 20 | Catatan asesor di halaman hasil menampilkan catatan awal, bukan hasil F10 | — | **Terbuka** |
 | 21 | AISYS menolak status "klarifikasi" (sanggahan) | migrasi `20261121000000_aisys_klarifikasi.sql` | Selesai |
-| 22 | "1 perubahan belum disimpan" tidak hilang setelah simpan per baris (SKS teks vs angka) | `TabTransfer.jsx` | Kode ter-deploy, **belum diuji di layar** (perlu pengajuan baru di tahap asesmen) |
+| 22 | "1 perubahan belum disimpan" tidak hilang setelah simpan per baris (SKS teks vs angka) | `TabTransfer.jsx` | Selesai (10 Nov, RPL-2026-0026: setelah simpan per baris, penanda kembali ke "1 dari 10 … sudah dinilai" dan Simpan semua nonaktif) |
 | 23 | Nomor BA F11 tidak masuk Surat Hasil bila kolom nomor pleno kosong | `isi.js` (ambil nomor F11), petunjuk di `PlenoDetail.jsx` | Selesai |
 | 24 | Beranda pemohon menilai ulang F03 lama dengan aturan baru (0/1) | `kelengkapan.js` | Selesai |
 | 25 | Tombol "Surat hasil" pemohon: "Object not found" (dokumen mesin bukan berkas Storage) | `ui.jsx` (`BukaBerkas` membuka `/dokumen/<id>`) | Selesai |
@@ -124,7 +125,9 @@ yang baru diperbarui beberapa detik kemudian (terjadi pada `ui.jsx`, `kelengkapa
    median lama layanan (3 dan 1 hari) = 2 hari; pembayaran 2.100.000 + 313.000 = Rp2.413.000 (diskon Rp75.000);
    pelaporan 2 Masuk PDDikti. Pimpinan (`uji.ketuastikom`) melihat kartu dan kolom pembayaran; Komite tidak
    (hanya tampilan; Komite memang boleh mengakses data keuangan, lihat #36). Unduh CSV laporan belum dicoba.
-4. #22 dan #17: buat satu pengajuan uji baru sampai tahap asesmen, lalu cek penanda "belum disimpan" dan pilih padanan AISYS manual.
+4. ~~#22 dan #17 (pengajuan uji baru sampai asesmen).~~ Lulus 10 Nov 2026 dengan `uji.pemohon3` (RPL-2026-0026). Catatan:
+   - Bukti portofolio minimal satu tetap wajib untuk jalur **transfer** ("Tambahkan minimal satu bukti portofolio"). Perlu dipastikan apakah sesuai Juknis.
+   - Isian AISYS untuk 7 MK sengaja tidak disimpan (padanan uji). Pengajuan bisa dipakai lagi untuk uji pleno/sanggahan jalur transfer.
 5. Notifikasi WA (setelah token Fonnte dirotasi):
    - Deploy `notifikasi-wa` dengan `--no-verify-jwt`.
    - Secret: `FONNTE_TOKEN` (baru), `NOTIFIKASI_RAHASIA` (acak panjang).
