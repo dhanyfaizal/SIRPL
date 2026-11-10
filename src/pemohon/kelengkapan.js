@@ -72,9 +72,13 @@ export function hitungKelengkapan(data) {
       ket: 'Lengkapi program studi, data pribadi, berkas wajib, dan pilih mata kuliah yang diajukan.' },
     { id: 'f07', to: '/pemohon/pengajuan/riwayat-hidup', label: 'Riwayat hidup (F07)', selesai: riwayatOk,
       ket: 'Isi Daftar Riwayat Hidup. Pegawai tetap mengunggah F07 yang sudah ditandatangani atasan.' },
-    { id: 'bukti', to: '/pemohon/pengajuan/bukti', label: 'Bukti portofolio', selesai: jumlahBukti > 0,
-      info: jumlahBukti ? `${jumlahBukti} bukti` : null,
-      ket: 'Unggah bukti yang mendukung klaim kemampuan Anda. Setiap bukti diberi nomor untuk dirujuk di F03.' },
+    // Bukti portofolio dirujuk di F03, jadi wajib untuk perolehan/gabungan. Untuk transfer kredit,
+    // transkrip dan ijazah di Berkas wajib sudah menjadi bukti utama; portofolio opsional.
+    { id: 'bukti', to: '/pemohon/pengajuan/bukti', label: 'Bukti portofolio', selesai: perolehan ? jumlahBukti > 0 : true,
+      info: jumlahBukti ? `${jumlahBukti} bukti` : perolehan ? null : 'opsional',
+      ket: perolehan
+        ? 'Unggah bukti yang mendukung klaim kemampuan Anda. Setiap bukti diberi nomor untuk dirujuk di F03.'
+        : 'Opsional untuk transfer kredit. Transkrip dan ijazah di Berkas wajib sudah menjadi bukti utama.' },
   ]
   if (perolehan) {
     langkah.push({ id: 'f03', to: '/pemohon/pengajuan/evaluasi-diri', label: 'Evaluasi diri (F03)',

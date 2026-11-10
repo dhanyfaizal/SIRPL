@@ -178,6 +178,7 @@ export default function Bukti() {
           <div className="pm-kosong-besar">
             <div className="pm-tebal">Belum ada bukti</div>
             <p className="pm-kecil">Contoh bukti: sertifikat kompetensi, surat keterangan kerja, logbook, dokumen perancangan, atau penilaian kinerja.</p>
+            {bisaDiubah && tahap.selesai ? <p className="pm-kecil">{tahap.ket} Anda dapat langsung melanjutkan.</p> : null}
             {bolehTambah ? <Tombol jenis="primary" ikon={Plus} onClick={() => setForm('baru')}>Tambah bukti pertama</Tombol> : null}
           </div>
         )}
@@ -197,7 +198,7 @@ export default function Bukti() {
         <BarTahap info={<>Tahap {tahap.no} dari {k.langkah.length}: <b>Bukti portofolio</b> · {data.bukti.length} bukti</>}>
           <button type="button" className="btn btn-secondary" onClick={() => navigate('/pemohon/pengajuan/riwayat-hidup')}>Kembali</button>
           <TombolLanjut disabled={terkunci} onClick={() => {
-            if (!data.bukti.length) { toast.error('Tambahkan minimal satu bukti portofolio'); return }
+            if (!tahap.selesai) { toast.error('Tambahkan minimal satu bukti portofolio'); return }
             navigate(k.sesudah('bukti').to)
           }}>Lanjutkan</TombolLanjut>
         </BarTahap>

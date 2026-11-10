@@ -72,8 +72,11 @@ export function butirPeriksa(p, d) {
   daftar.push({ kode: 'f07', label: 'Daftar Riwayat Hidup (F07)' + (pegawaiTetap ? ' bertanda tangan atasan' : ''),
     path: pegawaiTetap ? p.file_f07_ttd_url : null, ada: !!d.riwayat?.status_pekerjaan && (!pegawaiTetap || !!p.file_f07_ttd_url),
     ket: pegawaiTetap ? 'Pegawai tetap: F07 diunggah setelah ditandatangani atasan.' : 'Riwayat pendidikan, pekerjaan, pelatihan, dan organisasi.' })
-  daftar.push({ kode: 'bukti', label: 'Bukti portofolio bernomor', ada: (d.bukti || []).length > 0,
-    ket: `${(d.bukti || []).length} bukti. Nomor dan nama dokumen jelas, berkas dapat dibuka.` })
+  // Portofolio wajib untuk perolehan/gabungan (dirujuk F03); opsional untuk transfer kredit.
+  const nBukti = (d.bukti || []).length
+  daftar.push({ kode: 'bukti', label: 'Bukti portofolio bernomor' + (perolehan ? '' : ' (opsional untuk transfer)'),
+    ada: perolehan ? nBukti > 0 : true,
+    ket: nBukti ? `${nBukti} bukti. Nomor dan nama dokumen jelas, berkas dapat dibuka.` : 'Tidak ada bukti portofolio. Transfer kredit dinilai dari transkrip.' })
   if (perolehan) {
     const mkP = mkPerolehan(d)
     const lengkap = mkP.filter((m) => evaluasiLengkap((d.evaluasi || []).find((e) => e.mk_id === m.mk_id))).length

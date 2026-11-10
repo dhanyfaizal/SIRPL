@@ -18,10 +18,10 @@ perbaikannya, apa yang masih menunggu, dan cara melanjutkan.
 | Database staging | Proyek Supabase **SIRPL-staging** (`cwmzxdcwqolhfnfxrqay`) |
 | Produksi (JANGAN untuk uji) | `rpl.stikomyos.my.id`, `sirpl.vercel.app` |
 | Edge Function terpasang di staging | `aisys` (model `gpt-5-mini`), `repositori` (tanpa Verify JWT) |
-| Edge Function belum terpasang | `notifikasi-wa` (menunggu token Fonnte baru) |
+| Edge Function belum terpasang | `notifikasi-wa` (Fonnte). Disimpan sebagai opsi; notifikasi WA kini **manual** lewat nomor WA Business (lihat 4.4) |
 
 ### Akun uji (pola email `uji.<peran>@stikomyos.ac.id`)
-`uji.pemohon`, `uji.pemohon2`, `uji.pemohon3` (dibuat 10 Nov 2026 lewat dashboard Supabase), `uji.pmb`, `uji.baak`, `uji.sekretaris`, `uji.ketuatim`,
+`uji.pemohon`, `uji.pemohon2`, `uji.pemohon3` (dibuat 10 Nov 2026 lewat dashboard Supabase), `uji.admin` (Admin Uji SIRPL), `uji.pmb`, `uji.baak`, `uji.sekretaris`, `uji.ketuatim`,
 `uji.asesor`, `uji.komite`, `uji.ketuastikom`. Semua memakai satu kata sandi uji yang sama.
 
 ### Data uji
@@ -29,7 +29,7 @@ perbaikannya, apa yang masih menunggu, dan cara melanjutkan.
 |---|---|---|---|
 | Uji Pemohon | RPL-2026-0024 | Gabungan | 14 SKS (7 MK), lewat sanggahan Pancasila; NIM **2026RPL0024**; biaya lunas |
 | uji.pemohon2 | RPL-2026-0025 | Perolehan | 6 SKS (2 MK); NIM **2026RPL0025** (ditetapkan sebelum aturan lunas berlaku; angsuran ke-2 masih terbuka) |
-| uji.pemohon3 | RPL-2026-0026 | Transfer | Dibuat 10 Nov 2026 untuk uji #17/#22. Status **Dalam asesmen**; asesor `uji.asesor` (koordinator); biaya pendaftaran dan asesmen lunas; 1 MK dinilai (Kewarganegaraan, Diakui B). Transkrip dan ijazah PDF tiruan buatan uji. |
+| uji.pemohon3 | RPL-2026-0026 | Transfer | Dibuat 10 Nov 2026 untuk uji #17/#22. Asesor `uji.asesor` (koordinator); 7 MK diakui (16 SKS), 3 tidak diakui; pleno hasil ditetapkan, status **Hasil menunggu tanggapan**; F11 `004/BA-RPL` **menunggu tanda tangan** Ketua Tim dan Asesor (0/2); biaya pendaftaran dan asesmen lunas. Transkrip dan ijazah PDF tiruan buatan uji. |
 
 RPL-2026-0024 dan 0025 sudah ber-SK `901/SK/STIKOM-YS/XI/2026` dan berstatus pelaporan **Masuk PDDikti** (tahap 4, sejak 10 Nov 2026).
 
@@ -81,7 +81,7 @@ sudah di-commit dan di-push ke `feat/alur-pedoman` tetapi belum dicek di layar; 
 | 25 | Tombol "Surat hasil" pemohon: "Object not found" (dokumen mesin bukan berkas Storage) | `ui.jsx` (`BukaBerkas` membuka `/dokumen/<id>`) | Selesai |
 | 26 | Setelah sanggahan, pemohon masih melihat Surat Hasil/F09 lama tanpa penanda | `PanelDokumen.jsx` ("Perlu diterbitkan ulang", "Versi lama"), `Hasil.jsx`, `Dokumen.jsx` | Selesai |
 | 27 | Baris SK tidak menunjukkan bahwa F08 sudah terbit (tombol tetap "Terbitkan lampiran F08") | `Sk.jsx`: memuat F08 per SK; tampil lencana "F08 final n/n" atau "F08 terbit · ttd n/n" dan tombol "Terbitkan ulang"; bila sebagian, "Terbitkan F08 (n belum)" | Selesai (10 Nov: SK 901 menampilkan "F08 final 2/2" dan tombol "Terbitkan ulang") |
-| 28 | Modul Pimpinan tanpa badge dokumen menunggu tanda tangan; halaman Tanda tangan keluar dari tata letak (tanpa sidebar) | Rute baru `/pimpinan`, `/tim`, `/asesor`, `/admin` + `/tanda-tangan` di dalam tata letak (`TandaTanganModul`); menu tiap modul diarahkan ke situ; `/tanda-tangan` mandiri tetap untuk tautan lama. Badge Pimpinan dari `jumlahTtdMenunggu` (`dokumen/api.js`) | Selesai sebagian (10 Nov: Sekretaris dan Ketua STIKOM membuka Tanda tangan dengan sidebar di `/pimpinan/tanda-tangan`; badge tidak tampil karena 0 menunggu, sesuai data). **Belum dilihat:** badge dengan angka (perlu dokumen menunggu tanda tangan Ketua STIKOM) dan rute `/tim`, `/asesor`, `/admin` + `/tanda-tangan` |
+| 28 | Modul Pimpinan tanpa badge dokumen menunggu tanda tangan; halaman Tanda tangan keluar dari tata letak (tanpa sidebar) | Rute baru `/pimpinan`, `/tim`, `/asesor`, `/admin` + `/tanda-tangan` di dalam tata letak (`TandaTanganModul`); menu tiap modul diarahkan ke situ; `/tanda-tangan` mandiri tetap untuk tautan lama. Badge Pimpinan dari `jumlahTtdMenunggu` (`dokumen/api.js`) | Selesai (10 Nov: sidebar di `/pimpinan`, `/tim`, `/asesor`, `/admin` + `/tanda-tangan`; badge **1** di menu Pimpinan `uji.ketuatim` saat F11 004 menunggu tanda tangan; 0 menunggu → badge tidak tampil) |
 | 29 | NIM bisa ditetapkan sebelum biaya lunas | migrasi `20261122000000_nim_wajib_lunas.sql` (`sisa_tagihan`, `tetapkan_nim`), kolom Pembayaran di `Nim.jsx` | Selesai |
 | 30 | Tab "Sudah ber-NIM" berisi 22 data alur lama dengan NIM kosong yang bisa diedit | `Nim.jsx` | Selesai |
 | 31 | Halaman hasil tetap bertuliskan "belum final" setelah SK | `Hasil.jsx` | Selesai |
@@ -89,8 +89,10 @@ sudah di-commit dan di-push ke `feat/alur-pedoman` tetapi belum dicek di layar; 
 | 33 | "Setiap akses tercatat" tanpa tampilan riwayat | `Repositori.jsx` ("Dibuka N kali · terakhir …") | Selesai (10 Nov: "Dibuka 4 kali · terakhir …" tampil) |
 | 34 | Kolom kata sandi tautan tidak tersamar | `Repositori.jsx` | Selesai (10 Nov: kolom bertipe password) |
 | 35 | Halaman Pelaporan mencampur 22 data alur lama tanpa NIM/SK (tidak selaras dengan badge) | `Pelaporan.jsx` (syarat `alur_versi !== 1`, sama dengan badge). Perbaikan pertama tidak pernah ter-commit; ditulis ulang 10 Nov 2026 | Selesai (10 Nov, commit `598ff33`: tahap 1 berisi 0, tahap 2 berisi 2 pemohon uji) |
-| — | Data: kurikulum SI tanpa sub-CPMK; akun asesor tanpa prodi; `uji.pemohon2` dan `uji.ketuastikom` tanpa nama lengkap (dokumen mencetak username) | lengkapi data di staging | **Terbuka** |
-| — | Komite "Sudah disetujui" dan Beranda "Selesai" ikut menghitung data alur lama | — | **Terbuka** (kecil) |
+| — | Data: kurikulum SI tanpa sub-CPMK; akun asesor tanpa prodi; akun uji tanpa nama lengkap (dokumen mencetak username) | 10 Nov: nama lengkap diisi (Uji Pemohon Dua/Tiga, Uji Ketua STIKOM, Uji Sekretaris, Uji PMB, Uji BAAK); `uji.asesor` homebase Sistem Informasi. **Sub-CPMK belum**: perlu isi kurikulum resmi dari Kaprodi SI (Admin → Kurikulum) | Sebagian (sisa sub-CPMK) |
+| — | Komite "Sudah disetujui" dan Beranda "Selesai" ikut menghitung data alur lama | `PimpinanData.jsx` menyaring `alur_versi` 1 di sumber data modul Pimpinan | **Belum deploy** |
+| 37 | Bukti portofolio wajib juga untuk jalur transfer | `kelengkapan.js`, `Bukti.jsx`, `tim/aturan.js`: wajib untuk perolehan/gabungan (dirujuk F03), opsional untuk transfer; daftar periksa BAAK menandai "(opsional untuk transfer)" | **Belum deploy** |
+| 38 | CSV Pelaporan: Tanggal SK `2026-11-10`, kolom tanggal lain `10 Nov 2026` | `Pelaporan.jsx` memakai format yang sama | **Belum deploy** |
 | 36 | Laporan menyembunyikan pembayaran dari Komite hanya di tampilan (`lihatUang`); lewat API, `uji.komite` tetap mendapat `terbayar`/`potongan` per pengajuan dari RPC `laporan_rpl` dan bisa membaca tabel `pembayaran_rpl` dan `tagihan_rpl` langsung (RLS) | Diputuskan 10 Nov 2026: Komite **boleh** melihat data keuangan; akses API dibiarkan. Penyembunyian di tampilan hanya untuk kerapian, bukan pembatasan akses | **Diterima** (tidak diubah) |
 
 ---
@@ -118,7 +120,7 @@ yang baru diperbarui beberapa detik kemudian (terjadi pada `ui.jsx`, `kelengkapa
    Catatan kecil:
    - Sekali, setelah simpan tahap 3→4, angka tab dan daftar tidak berubah walau notifikasi sukses muncul;
      data tersimpan (terlihat setelah muat ulang). Tidak terulang pada dua percobaan berikutnya.
-   - CSV: kolom Tanggal SK berformat `2026-11-10`, sedangkan kolom tanggal pelaporan `10 Nov 2026`.
+   - CSV: kolom Tanggal SK berformat `2026-11-10`, sedangkan kolom tanggal pelaporan `10 Nov 2026` (diperbaiki, #38).
    - CSV: Nama `uji.pemohon2` (akun tanpa nama lengkap) dan Prodi asal `efafae` (isian uji) — data, bukan kode.
 3. ~~Laporan dan analitik (Pimpinan/Komite).~~ Lulus 10 Nov 2026. Hanya data alur Juknis (2 pendaftar).
    Angka dicocokkan dengan RPC `laporan_rpl`: rata-rata SKS (14+6)/2 = 10,0; tingkat pengakuan 20/44 = 45%;
@@ -126,14 +128,21 @@ yang baru diperbarui beberapa detik kemudian (terjadi pada `ui.jsx`, `kelengkapa
    pelaporan 2 Masuk PDDikti. Pimpinan (`uji.ketuastikom`) melihat kartu dan kolom pembayaran; Komite tidak
    (hanya tampilan; Komite memang boleh mengakses data keuangan, lihat #36). Unduh CSV laporan belum dicoba.
 4. ~~#22 dan #17 (pengajuan uji baru sampai asesmen).~~ Lulus 10 Nov 2026 dengan `uji.pemohon3` (RPL-2026-0026). Catatan:
-   - Bukti portofolio minimal satu tetap wajib untuk jalur **transfer** ("Tambahkan minimal satu bukti portofolio"). Perlu dipastikan apakah sesuai Juknis.
+   - Bukti portofolio minimal satu tetap wajib untuk jalur **transfer** ("Tambahkan minimal satu bukti portofolio"). Diperbaiki: opsional untuk transfer (#37).
    - Isian AISYS untuk 7 MK sengaja tidak disimpan (padanan uji). Pengajuan bisa dipakai lagi untuk uji pleno/sanggahan jalur transfer.
-5. Notifikasi WA (setelah token Fonnte dirotasi):
-   - Deploy `notifikasi-wa` dengan `--no-verify-jwt`.
-   - Secret: `FONNTE_TOKEN` (baru), `NOTIFIKASI_RAHASIA` (acak panjang).
-   - Pastikan migrasi `20261118000000_notifikasi_wa.sql` sudah jalan.
-   - Database Webhook: tabel `antrean_notifikasi`, event Insert, ke fungsi `notifikasi-wa`, header `x-sirpl-rahasia` = nilai `NOTIFIKASI_RAHASIA`.
-6. ~~Uji perbaikan #20, #27, #28.~~ Lulus 10 Nov 2026 (lihat tabel). Sisa #28: lihat badge berangka saat ada F08 baru menunggu tanda tangan, dan buka Tanda tangan dari modul Tim/Asesor/Admin.
+5. Notifikasi WA mode manual: lihat 4.4. (Langkah Fonnte hanya bila suatu saat mode diubah ke otomatis: deploy `notifikasi-wa` dengan `--no-verify-jwt`; secret `FONNTE_TOKEN` dan `NOTIFIKASI_RAHASIA`; Database Webhook tabel `antrean_notifikasi` event Insert dengan header `x-sirpl-rahasia`.)
+6. ~~Uji perbaikan #20, #27, #28.~~ Lulus 10 Nov 2026 (lihat tabel).
+7. Setelah deploy #37, #38, dan filter alur lama Pimpinan: cek Beranda Pimpinan "Selesai" = 2 (bukan 24); CSV Pelaporan Tanggal SK `10 Nov 2026`; pemohon transfer baru bisa lanjut tanpa bukti portofolio.
+8. Notifikasi WA manual: jalankan migrasi `20261118000000_notifikasi_wa.sql` (bila belum) dan `20261124000000_wa_manual.sql`; Admin → Notifikasi WhatsApp: Status **Aktif**, Cara kirim **Manual**, alamat aplikasi staging; ubah status satu pengajuan uji lalu cek pesan muncul di **WA keluar** (Tim/PMB/Admin), Buka WhatsApp, Tandai terkirim, Batal.
+
+### 4.4 Notifikasi WhatsApp: mode manual (keputusan 10 Nov 2026)
+- **Pengirim:** satu nomor **WA Business institusi**, ditautkan di WhatsApp Desktop/Web komputer BAAK/PMB (maks. 4 perangkat tertaut).
+- **Penerima:** pemohon **dan** staf (14 + 10 jenis pesan), karena pemberitahuan di web saja tidak cukup.
+- **Nomor pemohon:** kolom WhatsApp yang diisi di formulir pengajuan (F02, disimpan di `profiles.no_whatsapp`).
+- **Alur:** pemicu basis data menyusun pesan ke `antrean_notifikasi` → staf membuka menu **WA keluar** (Tim: BAAK/Sekretaris/Ketua Tim; PMB; Admin di halaman Notifikasi) → **Buka WhatsApp** membuka `wa.me/<nomor>?text=<pesan>` → tekan Kirim di WhatsApp → **Tandai terkirim** (tercatat waktu dan pengirim) atau **Lewati**. Badge menu menunjukkan jumlah yang belum dikirim.
+- **Fonnte disimpan:** Admin bisa memilih Cara kirim **Otomatis (Fonnte)**; pada mode manual `ambil_antrean_wa` tidak mengembalikan apa pun sehingga Edge Function tidak mengirim.
+- **Batas:** "terkirim" berarti staf sudah menandai; sistem tidak bisa memastikan pesan sampai/dibaca.
+- Berkas: migrasi `20261124000000_wa_manual.sql` (kolom `mode`, `dikirim_oleh`, RPC `daftar_wa_keluar`, `jumlah_wa_menunggu`, `tandai_wa`), `src/notifikasi/` (`jenis.js`, `WaKeluar.jsx`), rute `/tim/wa` dan `/keuangan/wa`, `admin/pages/Notifikasi.jsx`.
 
 ### 4.3 Bersih-bersih sesudah uji
 - Rotasi kunci Sumopod dan Fonnte yang pernah bocor.
@@ -156,6 +165,7 @@ yang baru diperbarui beberapa detik kemudian (terjadi pada `ui.jsx`, `kelengkapa
 | `20261121000000_aisys_klarifikasi.sql` | AISYS boleh saat sanggahan | sudah |
 | `20261122000000_nim_wajib_lunas.sql` | `sisa_tagihan`, NIM setelah lunas | sudah |
 | `20261123000000_nama_berkas_repositori.sql` | nama berkas repositori + nomor | sudah |
+| `20261124000000_wa_manual.sql` | WA mode manual (WA keluar), Fonnte jadi opsi | **belum** |
 
 Semua migrasi memakai `BEGIN/COMMIT` sendiri dan aman dijalankan ulang (`CREATE OR REPLACE` / `DROP ... IF EXISTS`).
 

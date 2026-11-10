@@ -14,7 +14,9 @@ function cek({ data, error }) {
 
 async function muatSemua() {
   const [pengajuan, prodi, periode, sk] = await Promise.all([
-    supabase.from('pengajuan_rpl').select('*').in('status', STATUS_PASCA).order('submitted_at', { ascending: true }).then(cek),
+    // Modul Pimpinan hanya untuk alur Juknis; data alur lama (alur_versi 1) tidak ikut dihitung.
+    supabase.from('pengajuan_rpl').select('*').in('status', STATUS_PASCA).or('alur_versi.is.null,alur_versi.neq.1')
+      .order('submitted_at', { ascending: true }).then(cek),
     supabase.from('program_studi').select('*').order('nama').then(cek),
     supabase.from('periode_rpl').select('*').order('created_at', { ascending: false }).then(cek),
     supabase.from('sk_rekognisi').select('*').order('tanggal_sk', { ascending: false }).then(cek),

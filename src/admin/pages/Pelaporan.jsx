@@ -58,7 +58,7 @@ export default function Pelaporan() {
         const sk = peta.sk[p.sk_id]
         const pa = peta.penetapan[p.id]
         return [p.nomor_pendaftaran, nama(p), peta.orang[p.user_id]?.email, peta.prodi[p.prodi_pilihan_id]?.nama, JENIS_RPL[p.jenis_rpl]?.label,
-          peta.periode[p.periode_id]?.nama, p.pt_asal, p.prodi_asal, p.nim, pa?.total_sks_diakui ?? '', pa?.total_sks_sisa ?? '', sk?.nomor_sk, sk?.tanggal_sk,
+          peta.periode[p.periode_id]?.nama, p.pt_asal, p.prodi_asal, p.nim, pa?.total_sks_diakui ?? '', pa?.total_sks_sisa ?? '', sk?.nomor_sk, sk?.tanggal_sk ? tanggal(sk.tanggal_sk) : '',
           PELAPORAN.find((x) => x.v === p.status_pelaporan)?.l, p.dilaporkan_sistem_rpl_at ? tanggal(p.dilaporkan_sistem_rpl_at) : '',
           p.diverifikasi_lldikti_at ? tanggal(p.diverifikasi_lldikti_at) : '', p.dilaporkan_pddikti_at ? tanggal(p.dilaporkan_pddikti_at) : '']
       }),
